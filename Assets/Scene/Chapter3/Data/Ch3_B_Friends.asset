@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85239dcd5239ebf49bb032a6778a7bf8, type: 3}
+  m_Name: Ch3_B_Friends
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - speakerId: Mecro
+    text: "\uC598\uB4E4\uC544! \uB098\uC57C, \uBA54\uD06C\uB85C!"
+    holdTime: 0
+  - speakerId: Friend_B
+    text: "...\uB204\uAD6C?"
+    holdTime: 0
+  - speakerId: Friend_C
+    text: "\uC6B0\uB9AC \uB3D9\uB124 \uC560 \uC544\uB2CC \uAC83 \uAC19\uC740\uB370?"
+    holdTime: 0
+  - speakerId: Mecro
+    text: "\uC7A5\uB09C\uCE58\uC9C0 \uB9C8! \uC5B4\uC81C\uB3C4 \uAC19\uC774 \uB180\uC558\uC796\uC544!"
+    holdTime: 0
+  - speakerId: Friend_B
+    text: "<glitch>\uBA54\uD06C\uB85C</glitch>? \uADF8\uB7F0 \uC560\uB294 \uBAB0\uB77C.
+      \uAC00\uC790."
+    holdTime: 0

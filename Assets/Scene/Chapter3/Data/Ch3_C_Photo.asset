@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85239dcd5239ebf49bb032a6778a7bf8, type: 3}
+  m_Name: Ch3_C_Photo
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - speakerId: Mecro
+    text: "\uC6B0\uB9AC \uAC00\uC871\uC0AC\uC9C4... \uC5C4\uB9C8, \uC544\uBE60..."
+    holdTime: 0
+  - speakerId: Mecro
+    text: "...\uB0B4\uAC00 \uC5C6\uC5B4. \uB0B4 \uC790\uB9AC\uB9CC \uD145 \uBE44\uC5B4
+      \uC788\uC5B4."
+    holdTime: 0

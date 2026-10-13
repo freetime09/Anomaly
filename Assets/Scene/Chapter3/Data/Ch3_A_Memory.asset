@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85239dcd5239ebf49bb032a6778a7bf8, type: 3}
+  m_Name: Ch3_A_Memory
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - speakerId: Mecro
+    text: "\uC800 \uB098\uBB34... \uC5B4\uB9B4 \uB54C \uB9E8\uB0A0 \uC62C\uB77C\uAC00
+      \uB180\uB358 \uADF8 \uB098\uBB34\uC796\uC544!"
+    holdTime: 0
+  - speakerId: Mecro
+    text: "\uC5EC\uAE30... \uC6B0\uB9AC \uB9C8\uC744\uC774\uC57C! \uB3CC\uC544\uC654\uC5B4!"
+    holdTime: 0

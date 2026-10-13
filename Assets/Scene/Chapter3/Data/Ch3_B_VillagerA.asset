@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85239dcd5239ebf49bb032a6778a7bf8, type: 3}
+  m_Name: Ch3_B_VillagerA
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - speakerId: Villager_A
+    text: "\uC5B4\uBA38, \uCC98\uC74C \uBCF4\uB294 \uC544\uC774\uB124? \uAE38\uC774\uB77C\uB3C4
+      \uC783\uC5C8\uB2C8?"
+    holdTime: 0
+  - speakerId: Mecro
+    text: "\uC544\uC8FC\uBA38\uB2C8! \uC800\uC608\uC694, \uBA54\uD06C\uB85C! \uC606\uC9D1
+      \uC0AC\uB294!"
+    holdTime: 0
+  - speakerId: Villager_A
+    text: "<glitch>\uBA54\uD06C\uB85C</glitch>...? \uBBF8\uC548\uD558\uAD6C\uB098,
+      \uADF8\uB7F0 \uC774\uB984\uC740 \uCC98\uC74C \uB4E3\uB294\uAC78."
+    holdTime: 0
