@@ -40,6 +40,8 @@ public class FallRespawn : MonoBehaviour
 
     CanvasGroup fadeGroup; // 알파로 페이드
 
+    readonly PuzzleSnapshot puzzles = new PuzzleSnapshot(); // 죽으면 되돌릴 퍼즐 상태 (시작/체크포인트 때 저장)
+
     /// <summary>죽는 순간 (백신 벽 등이 멈추는 데 사용)</summary>
     public event System.Action Died;
     /// <summary>부활 지점으로 옮겨진 순간 (화면이 검은 동안). 인자 = 부활 위치</summary>
@@ -59,6 +61,14 @@ public class FallRespawn : MonoBehaviour
         // 시작 위치를 기본 리스폰 지점으로 저장 (체크포인트를 밟기 전까지 여기로 부활)
         currentSpawnPos = transform.position;
         spawnRot = transform.rotation;
+        StartCoroutine(SaveInitialPuzzles());
+    }
+
+    // 다른 오브젝트들의 Start 까지 끝난 뒤 시작 상태를 저장
+    IEnumerator SaveInitialPuzzles()
+    {
+        yield return null;
+        if (currentOrder == int.MinValue) puzzles.Save();
     }
 
     void OnTriggerEnter2D(Collider2D other) { CheckDeath(other.gameObject); }
@@ -98,6 +108,7 @@ public class FallRespawn : MonoBehaviour
         player.EndDeath();                  // 죽음 상태 해제 → 기본 애니로 복귀
         if (player.branch != null) player.branch.Recover(); // 부활 시 나뭇가지를 손으로 회수(들고 있게)
         if (cam != null) cam.SnapToTarget(); // 카메라도 즉시 플레이어로 스냅
+        puzzles.Restore();                  // 퍼즐을 마지막 체크포인트(없으면 시작) 때 상태로
         if (Respawned != null) Respawned(currentSpawnPos);
 
         if (blackHoldTime > 0f) yield return new WaitForSeconds(blackHoldTime);
@@ -183,6 +194,7 @@ public class FallRespawn : MonoBehaviour
         if (order <= currentOrder) return false;
         currentOrder = order;
         currentSpawnPos = pos;
+        puzzles.Save(); // 이 순간의 퍼즐 상태를 부활 때 되돌릴 기준으로
         return true;
     }
 

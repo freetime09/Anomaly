@@ -10,7 +10,7 @@ using UnityEngine.Events;
 ///  - onHit/onDeath(UnityEvent)로 대상(신호·문 등)을 인스펙터에서 배선.
 /// 적/부술 수 있는 오브젝트에 붙여 쓴다.
 /// </summary>
-public class Breakable : MonoBehaviour, IDamageable
+public class Breakable : MonoBehaviour, IDamageable, IPuzzleState
 {
     [Header("체력")]
     [Tooltip("이만큼 맞으면 죽는다")]
@@ -109,6 +109,25 @@ public class Breakable : MonoBehaviour, IDamageable
         onDeath.Invoke();
         if (destroyOnDeath) Destroy(gameObject);
         else gameObject.SetActive(false);
+    }
+
+    // ── IPuzzleState (죽으면 체크포인트 때 체력·모습으로. 파괴된 건 못 되돌림) ──
+    struct BreakState { public int hp; public bool active; public Sprite sprite; }
+    public object SaveState()
+    {
+        if (rends == null) return new BreakState { hp = maxHp, active = gameObject.activeSelf }; // 꺼진 채 시작해 Awake 전
+        return new BreakState { hp = hp, active = gameObject.activeSelf, sprite = mainSprite != null ? mainSprite.sprite : null };
+    }
+    public void LoadState(object state)
+    {
+        var s = (BreakState)state;
+        if (rends == null) { hp = s.hp; gameObject.SetActive(s.active); return; }
+        hp = s.hp;
+        if (mainSprite != null) mainSprite.sprite = s.sprite;
+        for (int i = 0; i < rends.Length; i++) if (rends[i] != null) rends[i].color = baseColors[i];
+        flashUntil = 0f;
+        if (shaking) { if (shakeCo != null) StopCoroutine(shakeCo); transform.localPosition = shakeBase; shaking = false; }
+        gameObject.SetActive(s.active);
     }
 
     void Flash()

@@ -934,6 +934,12 @@ MonoBehaviour:
   lookTime: 1.8
   subtitle2: "\uBC31\uC2E0\uC774\uB2E4... \uB3C4\uB9DD\uCCD0\uC57C \uD574!"
   lookShakeMagnitude: 0.08
+  zoomOutScale: 1.3
+  emergeDelay: 0.6
+  emergeSpeed: 14
+  emergeTime: 0.45
+  emergeShake: 0.35
+  emergeGlitchTime: 0.3
   panBackTime: 0.6
   font: {fileID: 11400000, guid: a30c919b497a4994a9cb8216ed31580f, type: 2}
   subtitleSize: 48
@@ -10238,6 +10244,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1494311335}
   - component: {fileID: 1494311334}
+  - component: {fileID: 1494311336}
   m_Layer: 0
   m_Name: VaccineWall
   m_TagString: Untagged
@@ -10267,19 +10274,42 @@ MonoBehaviour:
   maxSpeed: 4.5
   catchUpGap: 7
   maxGap: 14
-  turnSpeed: 180
   introSpeed: 2.5
   span: 14
   depth: 30
+  edgeWidth: 2.5
   bodySprite: {fileID: 0}
   color: {r: 1, g: 1, b: 1, a: 1}
+  sortingLayer: Vaccine
   sortingOrder: 50
   killInset: 0.35
   wobble: 0.15
+  fitToSpace: 1
+  fitMax: 40
+  fitBridge: 1.5
+  wallLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  maxOvershoot: 8
+  thudPause: 0.25
+  thudShake: 0.35
+  thudShakeTime: 0.3
+  thudClip: {fileID: 0}
+  thudVolume: 1
+  thudDebris: 30
   respawnBackOff: 8
   restartDelay: 1
-  shakeGap: 3
-  shakeMagnitude: 0.06
+  shakeFar: 8
+  shakeNear: 1.5
+  shakeMin: 0.02
+  shakeMax: 0.2
+  glitchFrames: 5
+  glitchInterval: {x: 0.04, y: 0.1}
+  debrisRate: 30
+  digitRatio: 0.3
+  debrisSpeed: {x: 1.5, y: 5}
+  debrisLife: {x: 0.3, y: 0.7}
+  debrisSize: {x: 0.1, y: 0.3}
 --- !u!4 &1494311335
 Transform:
   m_ObjectHideFlags: 0
@@ -10295,6 +10325,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1869409012}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1494311336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1494311333}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 322a3432e4fd81c4291b98ea01677602, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VaccineChaseTension
+  far: 14
+  near: 2
+  response: 4
+  vignetteColor: {r: 0.85, g: 0.05, b: 0.05, a: 1}
+  vignetteMax: 0.7
+  vignetteReach: 0.45
+  heartRate: {x: 1.1, y: 2.6}
+  heartAmount: 0.35
+  loopClip: {fileID: 0}
+  volume: {x: 0.15, y: 0.9}
+  pitch: {x: 0.9, y: 1.25}
 --- !u!1 &1496213679
 GameObject:
   m_ObjectHideFlags: 0
@@ -12962,7 +13015,7 @@ MonoBehaviour:
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
-  m_ApplyToSortingLayers: 00000000
+  m_ApplyToSortingLayers: 00000000d0f4e43e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
   m_LightOrder: 0

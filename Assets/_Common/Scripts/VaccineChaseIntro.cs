@@ -7,8 +7,8 @@ using UnityEngine.UI;
 /// 검은 방(챕터 2) 추격 시작 연출. 추격 시작 트리거(VaccineChaseTrigger)를 처음 밟으면 재생된다.
 ///  1) 조작 잠금, 뒤에서 이상한 소리 + 화면 흔들림/글리치
 ///  2) 플레이어가 뒤(lookBackDir 쪽)를 돌아봄 + 자막1
-///  3) 카메라가 뒤로 이동 → 하얀 백신 벽이 천천히 밀려오는 게 보임 + 자막2
-///  4) 카메라가 플레이어로 돌아오고 플레이어는 앞을 봄
+///  3) 카메라가 뒤로 이동하며 줌아웃 → 흔들림이 커지다가 하얀 백신 벽이 아래에서 확 솟구침 → 천천히 다가옴 + 자막2
+///  4) 카메라가 플레이어로 돌아오며 줌 복귀, 플레이어는 앞을 봄
 ///  5) 조작 풀림 + 추격 시작 (벽.Begin)
 /// 한 번 본 뒤에는(부활 후 다시 밟아도) 바로 추격한다.
 /// </summary>
@@ -43,6 +43,20 @@ public class VaccineChaseIntro : MonoBehaviour
     [TextArea] public string subtitle2 = "백신이다... 도망쳐야 해!";
     [Tooltip("벽을 비추는 동안 화면 흔들림 세기")]
     public float lookShakeMagnitude = 0.08f;
+    [Tooltip("뒤를 비출 때 카메라 줌아웃 배율 (1이면 그대로, 클수록 멀리)")]
+    public float zoomOutScale = 1.3f;
+
+    [Header("3-2) 백신이 솟구침")]
+    [Tooltip("카메라가 도착한 뒤 백신이 솟구치기까지 (흔들림이 점점 커짐)")]
+    public float emergeDelay = 0.6f;
+    [Tooltip("솟구칠 때 속도 (유닛/초)")]
+    public float emergeSpeed = 14f;
+    [Tooltip("빠르게 솟구치는 시간 (이후 천천히 다가옴)")]
+    public float emergeTime = 0.45f;
+    [Tooltip("솟구치는 순간 화면 흔들림 세기 (점점 잦아듦)")]
+    public float emergeShake = 0.35f;
+    [Tooltip("솟구치는 순간 글리치 시간")]
+    public float emergeGlitchTime = 0.3f;
 
     [Header("4) 돌아오기")]
     public float panBackTime = 0.6f;
@@ -62,6 +76,8 @@ public class VaccineChaseIntro : MonoBehaviour
     VaccineWall wall;
     GestureRecognizer input;
     CameraFollow cam;
+    Camera camComp;
+    float baseSize;
     FallRespawn respawn;
     AudioSource audioSrc;
     AudioClip generatedClip;
@@ -76,6 +92,8 @@ public class VaccineChaseIntro : MonoBehaviour
         if (player == null) player = FindObjectOfType<PlayerController>();
         if (player != null) input = player.GetComponent<GestureRecognizer>();
         cam = FindObjectOfType<CameraFollow>();
+        if (cam != null) camComp = cam.GetComponent<Camera>();
+        if (camComp != null) baseSize = camComp.orthographicSize;
         respawn = FindObjectOfType<FallRespawn>();
         audioSrc = gameObject.AddComponent<AudioSource>();
         audioSrc.playOnAwake = false;
@@ -114,26 +132,42 @@ public class VaccineChaseIntro : MonoBehaviour
         StartCoroutine(ShowSubtitle(subtitle1, afterTurnTime + panTime * 0.5f));
         yield return new WaitForSeconds(afterTurnTime);
 
-        // 3) 카메라가 뒤로 → 벽이 천천히 다가옴 + 자막2
-        if (wall != null) wall.ShowForIntro();
+        // 3) 카메라가 뒤로 + 줌아웃
         Vector3 back = cam != null ? cam.transform.position + (Vector3)panOffset : Vector3.zero;
+        float zoomSize = baseSize * zoomOutScale;
         if (cam != null)
         {
             cam.enabled = false; // 따라가기 멈추고 직접 움직임
-            yield return MoveCamera(cam.transform.position, back, panTime);
+            yield return MoveCamera(cam.transform.position, back, panTime, baseSize, zoomSize);
         }
-        StartCoroutine(ShowSubtitle(subtitle2, lookTime));
-        for (float t = 0f; t < lookTime; t += Time.deltaTime)
+
+        // 3-1) 솟구치기 직전: 흔들림이 점점 커짐
+        for (float t = 0f; t < emergeDelay; t += Time.deltaTime)
         {
-            if (cam != null) cam.transform.position = back + (Vector3)(Random.insideUnitCircle * lookShakeMagnitude);
+            if (cam != null) cam.transform.position = back + (Vector3)(Random.insideUnitCircle * lookShakeMagnitude * (t / emergeDelay));
             yield return null;
         }
 
-        // 4) 카메라 복귀 + 앞을 봄
+        // 3-2) 백신이 아래에서 확 솟구침 → 천천히 다가옴 + 자막2
+        if (wall != null) { wall.ShowForIntro(); wall.SetIntroSpeed(emergeSpeed); }
+        audioSrc.PlayOneShot(clip, soundVolume);
+        StartCoroutine(Glitch(emergeGlitchTime, 0.9f));
+        StartCoroutine(ShowSubtitle(subtitle2, lookTime));
+        bool slowed = false;
+        for (float t = 0f; t < lookTime; t += Time.deltaTime)
+        {
+            if (!slowed && t >= emergeTime) { slowed = true; if (wall != null) wall.SetIntroSpeed(wall.introSpeed); }
+            float shake = lookShakeMagnitude + emergeShake * Mathf.Clamp01(1f - t / (emergeTime * 2f));
+            if (cam != null) cam.transform.position = back + (Vector3)(Random.insideUnitCircle * shake);
+            yield return null;
+        }
+        if (!slowed && wall != null) wall.SetIntroSpeed(wall.introSpeed);
+
+        // 4) 카메라 복귀 + 줌 원래대로 + 앞을 봄
         if (cam != null)
         {
             Vector3 home = player.transform.position + cam.offset;
-            yield return MoveCamera(back, home, panBackTime);
+            yield return MoveCamera(back, home, panBackTime, zoomSize, baseSize);
             cam.enabled = true;
         }
         player.Face(lookBackDir < 0 ? 1 : -1);
@@ -147,6 +181,7 @@ public class VaccineChaseIntro : MonoBehaviour
     {
         if (input != null) input.enabled = true;
         if (cam != null) cam.enabled = true;
+        SetCamSize(baseSize); // 중간에 끊겨도 줌 원래대로
         if (subText != null) SetSubAlpha(0f);
         Playing = false;
     }
@@ -163,15 +198,22 @@ public class VaccineChaseIntro : MonoBehaviour
         Played = false;
     }
 
-    IEnumerator MoveCamera(Vector3 from, Vector3 to, float time)
+    IEnumerator MoveCamera(Vector3 from, Vector3 to, float time, float fromSize, float toSize)
     {
         for (float t = 0f; t < time; t += Time.deltaTime)
         {
             float k = Mathf.SmoothStep(0f, 1f, t / time);
             cam.transform.position = Vector3.Lerp(from, to, k);
+            SetCamSize(Mathf.Lerp(fromSize, toSize, k));
             yield return null;
         }
         cam.transform.position = to;
+        SetCamSize(toSize);
+    }
+
+    void SetCamSize(float size)
+    {
+        if (camComp != null && camComp.orthographic && size > 0f) camComp.orthographicSize = size;
     }
 
     // ── 자막 ──
@@ -221,6 +263,9 @@ public class VaccineChaseIntro : MonoBehaviour
         subText.alignment = TextAlignmentOptions.Center;
         subText.color = new Color(1f, 1f, 1f, 0f);
         subText.raycastTarget = false;
+        // 하얀 백신 벽 위에서도 읽히게 검은 외곽선
+        subText.outlineWidth = 0.25f;
+        subText.outlineColor = new Color32(0, 0, 0, 255);
         var rt = subText.rectTransform;
         rt.anchorMin = new Vector2(0f, subtitleHeight);
         rt.anchorMax = new Vector2(1f, subtitleHeight);

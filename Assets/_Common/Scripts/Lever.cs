@@ -8,7 +8,7 @@ using UnityEngine.Events;
 /// 켜짐/꺼짐에 따라 스프라이트가 바뀌고, onTurnOn/onTurnOff(UnityEvent)로 대상(문·플랫폼 등)을 인스펙터에서 배선한다.
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
-public class Lever : MonoBehaviour, IInteractable
+public class Lever : MonoBehaviour, IInteractable, IPuzzleState
 {
     [Header("상태")]
     [Tooltip("현재/시작 상태. 체크면 on 으로 시작")]
@@ -149,11 +149,15 @@ public class Lever : MonoBehaviour, IInteractable
         if (on == value) return;
         on = value;
         ApplyVisual();
-        if (toggleClip != null && sfxSrc != null) sfxSrc.PlayOneShot(toggleClip, sfxVolume); // 레버 소리
+        if (toggleClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring) sfxSrc.PlayOneShot(toggleClip, sfxVolume); // 레버 소리
         SignalBus.Set(signalId, this, on); // 채널 신호 갱신
         if (on) onTurnOn.Invoke();
         else    onTurnOff.Invoke();
     }
+
+    // ── IPuzzleState (죽으면 체크포인트 때 상태로) ──
+    public object SaveState() { return on; }
+    public void LoadState(object state) { SetOn((bool)state); }
 
     void ApplyVisual()
     {

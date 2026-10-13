@@ -38,6 +38,9 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Vaccine
+    uniqueID: 1055192272
+    locked: 0
   - name: Default
     uniqueID: 0
     locked: 0

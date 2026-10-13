@@ -12,7 +12,7 @@ using UnityEngine;
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Collider2D))]
-public class PullBox : MonoBehaviour, IInteractable
+public class PullBox : MonoBehaviour, IInteractable, IPuzzleState
 {
     [Header("상호작용")]
     [Tooltip("O 제스처로 잡을 수 있는 반경(플레이어 기준, units)")]
@@ -232,6 +232,26 @@ public class PullBox : MonoBehaviour, IInteractable
         SetIgnorePlayer(false); // 다시 단단한 블록으로(플레이어와 충돌 복구)
         if (playerCtl != null) playerCtl.SetCarrying(false); // 이동 속도 원래대로
         SetGrabVisuals(false);
+    }
+
+    // ── IPuzzleState (죽으면 체크포인트 때 위치로) ──
+    struct BoxState { public Vector3 pos; public float rot; public bool active; }
+    public object SaveState()
+    {
+        if (rb == null) rb = GetComponent<Rigidbody2D>(); // 꺼진 채 시작해 Awake 전일 수 있음
+        return new BoxState { pos = transform.position, rot = rb.rotation, active = gameObject.activeSelf };
+    }
+    public void LoadState(object state)
+    {
+        var s = (BoxState)state;
+        if (rb == null) rb = GetComponent<Rigidbody2D>();
+        if (grabbed) Release();
+        gameObject.SetActive(s.active);
+        transform.position = s.pos;
+        rb.position = s.pos;
+        rb.rotation = s.rot;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
     }
 
     /// <summary>상호작용 가능 표시(O)를 켜고 끈다. (레버/나뭇가지와 동일한 링, PlayerController 가 표시 여부 결정)</summary>

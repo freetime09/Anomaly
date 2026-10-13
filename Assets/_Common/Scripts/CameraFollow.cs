@@ -30,6 +30,16 @@ public class CameraFollow : MonoBehaviour
     float shakeDur;
     float shakeMag;
 
+    // ── 지속 흔들림 (백신 벽 접근 등). 요청자별 세기 중 가장 큰 값을 매 프레임 적용 ──
+    readonly System.Collections.Generic.Dictionary<Object, float> rumbles = new System.Collections.Generic.Dictionary<Object, float>();
+
+    /// <summary>계속 흔들리는 세기를 설정한다 (0이면 해제). 같은 요청자가 매 프레임 갱신해도 됨.</summary>
+    public void SetRumble(Object owner, float magnitude)
+    {
+        if (owner == null) return;
+        if (magnitude <= 0f) rumbles.Remove(owner); else rumbles[owner] = magnitude;
+    }
+
     /// <summary>카메라를 duration(초) 동안 magnitude(units) 크기로 흔든다. 시간에 따라 서서히 잦아든다.
     /// 겹쳐 들어오면 더 큰 세기로 갱신한다.</summary>
     public void Shake(float duration, float magnitude)
@@ -88,6 +98,15 @@ public class CameraFollow : MonoBehaviour
             Vector2 off = Random.insideUnitCircle * (shakeMag * k);
             transform.position += new Vector3(off.x, off.y, 0f);
             if (shakeTimeLeft <= 0f) shakeMag = 0f;
+        }
+
+        // 지속 흔들림
+        if (rumbles.Count > 0)
+        {
+            float m = 0f;
+            foreach (var r in rumbles.Values) m = Mathf.Max(m, r);
+            Vector2 off = Random.insideUnitCircle * m;
+            transform.position += new Vector3(off.x, off.y, 0f);
         }
     }
 }

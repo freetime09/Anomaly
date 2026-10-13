@@ -6,7 +6,7 @@ using UnityEngine;
 ///  - signalId 채널 OFF → reappearWhenOff 면 다시 나타남, 아니면 사라진 채 유지
 /// 파괴하지 않고 '숨김'이라 신호가 다시 꺼지면 복구 가능하고, 이펙트도 끝까지 재생된다.
 /// </summary>
-public class SignalDisappear : SignalReceiver
+public class SignalDisappear : SignalReceiver, IPuzzleState
 {
     [Header("사라짐 동작")]
     [Tooltip("신호 조건이 풀리면 다시 나타난다. 끄면 한 번 사라지면 계속 유지.")]
@@ -55,8 +55,8 @@ public class SignalDisappear : SignalReceiver
     {
         if (gone) return;
         gone = true;
-        PlayEffect();
-        if (disappearClip != null && sfxSrc != null) sfxSrc.PlayOneShot(disappearClip, sfxVolume); // 사라지는 소리
+        if (!PuzzleSnapshot.Restoring) PlayEffect();
+        if (disappearClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring) sfxSrc.PlayOneShot(disappearClip, sfxVolume); // 사라지는 소리
         SetVisible(false);
     }
 
@@ -65,6 +65,16 @@ public class SignalDisappear : SignalReceiver
         if (!gone) return;
         gone = false;
         SetVisible(true);
+    }
+
+    // ── IPuzzleState (죽으면 체크포인트 때 상태로, 이펙트 없이) ──
+    public object SaveState() { return gone; }
+    public void LoadState(object state)
+    {
+        bool g = (bool)state;
+        if (g == gone) return;
+        gone = g;
+        SetVisible(!g);
     }
 
     void SetVisible(bool v)

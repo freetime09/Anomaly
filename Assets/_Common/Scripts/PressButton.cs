@@ -9,7 +9,7 @@ using UnityEngine.Events;
 /// latch(인스펙터 토글)가 켜져 있으면 한 번 눌리면 계속 ON 유지(한 번만 누르면 됨).
 /// onPressed/onReleased(UnityEvent)로 대상(문·플랫폼 등)을 인스펙터에서 배선한다.
 /// </summary>
-public class PressButton : MonoBehaviour
+public class PressButton : MonoBehaviour, IPuzzleState
 {
     [Header("상태 (읽기용)")]
     public bool pressed;
@@ -200,6 +200,19 @@ public class PressButton : MonoBehaviour
 
     /// <summary>래치를 풀어 다시 뗄 수 있게 초기화(다음 프레임부터 실제 눌림 상태 반영).</summary>
     public void ResetButton() { latched = false; }
+
+    // ── IPuzzleState (죽으면 체크포인트 때 상태로). 눌림은 다음 프레임에 실제로 올라간 것 기준으로 다시 판정 ──
+    public object SaveState() { return new bool[] { pressed, latched }; }
+    public void LoadState(object state)
+    {
+        var s = (bool[])state;
+        latched = s[1];
+        if (pressed == s[0]) return;
+        pressed = s[0];
+        ApplyVisual();
+        SignalBus.Set(signalId, this, pressed);
+        if (pressed) onPressed.Invoke(); else onReleased.Invoke();
+    }
 
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()

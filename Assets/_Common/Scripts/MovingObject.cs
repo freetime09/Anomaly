@@ -8,7 +8,7 @@ using UnityEngine;
 /// 배선: 레버 onTurnOn/버튼 onPressed → Activate(), onTurnOff/onReleased → Deactivate() (또는 Toggle()).
 /// 플레이어가 타고 다니는 단단한 플랫폼이면 Kinematic Rigidbody2D + Collider2D(Ground)를 붙일 것.
 /// </summary>
-public class MovingObject : SignalReceiver
+public class MovingObject : SignalReceiver, IPuzzleState
 {
     public enum Dir { Left, Right, Up, Down }
 
@@ -64,6 +64,21 @@ public class MovingObject : SignalReceiver
         if (on) target = startPos + Offset();
         else if (returnWhenOff) target = startPos;
         // returnWhenOff=false 면 target 그대로 두어 이동한 자리에 머무름
+    }
+
+    // ── IPuzzleState (죽으면 체크포인트 때 위치로, 미끄러지지 않고 바로) ──
+    struct MoveState { public Vector3 pos, target; public bool activated; }
+    public object SaveState()
+    {
+        return new MoveState { pos = rb != null ? (Vector3)rb.position : transform.position, target = target, activated = activated };
+    }
+    public void LoadState(object state)
+    {
+        var s = (MoveState)state;
+        transform.position = s.pos;
+        if (rb != null) rb.position = s.pos;
+        target = s.target;
+        activated = s.activated;
     }
 
     Vector3 Offset()
