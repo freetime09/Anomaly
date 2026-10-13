@@ -15,7 +15,9 @@ using UnityEngine;
 public class SignalWire : MonoBehaviour
 {
     [Header("신호 (채널)")]
-    [Tooltip("이 채널이 켜지면 전선이 밝아진다. 발신자(레버·버튼)의 signalId 와 같게")]
+    [Tooltip("켜면 부모(레버·버튼)의 signalId 를 자동으로 따라간다. 레버·버튼 프리팹 안의 전선은 켜둘 것")]
+    public bool useParentSignal = true;
+    [Tooltip("이 채널이 켜지면 전선이 밝아진다. 발신자(레버·버튼)의 signalId 와 같게 (Use Parent Signal 이 켜져 있고 부모가 레버·버튼이면 자동)")]
     public int signalId = 0;
 
     [Header("경로")]
@@ -50,7 +52,7 @@ public class SignalWire : MonoBehaviour
     [Tooltip("펄스가 흐르는 속도(units/초)")]
     public float pulseSpeed = 5f;
     [Tooltip("펄스 두께 배율(선 두께 기준)")]
-    public float pulseWidthScale = 1.6f;
+    public float pulseWidthScale = 1f;
 
     LineRenderer baseLine;
     readonly List<Vector3> path = new List<Vector3>();
@@ -77,6 +79,7 @@ public class SignalWire : MonoBehaviour
         ApplyBase();
 
         if (!Application.isPlaying) return;
+        SyncParentSignal();
         CreateFx();
         onChange = OnSignal;
         fill = -1f; // 첫 콜백이면 즉시 반영
@@ -101,6 +104,7 @@ public class SignalWire : MonoBehaviour
         if (!Application.isPlaying)
         {
             // 에디터: 점을 옮기면 바로 다시 그림
+            SyncParentSignal();
             ResolveMaterial();
             SetupLine(baseLine, sortingOrder, width);
             baseLine.startColor = baseLine.endColor = offColor;
@@ -127,6 +131,16 @@ public class SignalWire : MonoBehaviour
             Sample(Mathf.Max(0f, tail), Mathf.Min(totalLen, head), tmp);
             SetPositions(pulses[i], tmp);
         }
+    }
+
+    /// <summary>부모가 레버·버튼이면 그 signalId 를 그대로 쓴다.</summary>
+    void SyncParentSignal()
+    {
+        if (!useParentSignal || transform.parent == null) return;
+        var lever = transform.parent.GetComponent<Lever>();
+        if (lever != null) { signalId = lever.signalId; return; }
+        var button = transform.parent.GetComponent<PressButton>();
+        if (button != null) signalId = button.signalId;
     }
 
     void ResolveMaterial()
