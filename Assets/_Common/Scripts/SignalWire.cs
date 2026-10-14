@@ -24,6 +24,16 @@ public class SignalWire : MonoBehaviour
     [Tooltip("켜면 두 점이 대각선이면 '가로 먼저 → 세로' 로 꺾어서 잇는다(회로처럼 직각)")]
     public bool orthogonal = true;
 
+    [Header("자동 경로 (인스펙터의 '자동 경로 만들기' 버튼)")]
+    [Tooltip("선이 이어질 대상. 비우면 같은 Signal Id 를 받는 오브젝트(문·발판·404 벽) 중 가장 가까운 것")]
+    public Transform routeTarget;
+    [Tooltip("선이 블록 표면에서 얼마나 안쪽으로 지나갈지 (units)")]
+    public float routeInset = 0.35f;
+    [Tooltip("선이 지나갈 블록 레이어")]
+    public LayerMask routeLayers = 1 << 8; // Ground
+    [Tooltip("시작점·대상에서 이만큼 바깥까지 경로를 찾음 (units). 멀리 돌아가야 하면 키우기")]
+    public float routeMargin = 8f;
+
     [Header("모양")]
     [Tooltip("선 두께(units)")]
     public float width = 0.12f;
