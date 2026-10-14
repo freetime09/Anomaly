@@ -51,6 +51,8 @@ public class VaccineWall : MonoBehaviour
     public float killSideInset = 0.2f;
     [Tooltip("앞면 일렁임 크기 (유닛)")]
     public float wobble = 0.15f;
+    [Tooltip("지나간 곳의 오브젝트(문·레버·버튼·상자·404 벽·부서지는 벽·체크포인트)도 하얗게 덮음. 블럭·전선은 그대로 보임")]
+    public bool coverObjects = true;
 
     [Header("공간에 맞추기")]
     [Tooltip("벽 폭을 통로/방 크기에 맞춰 늘림 (양옆 벽까지). 끄면 항상 span")]
@@ -148,11 +150,13 @@ public class VaccineWall : MonoBehaviour
 
     Transform body;
     SpriteRenderer bodySr;
+    SpriteMask bodyMask; // 앞면 띠 모양대로 오브젝트를 가림
+    readonly System.Collections.Generic.List<SpriteRenderer> covered = new System.Collections.Generic.List<SpriteRenderer>(); // 덮일 오브젝트 그림
     // 지나간 곳을 채우는 하얀 사각형들. 구간마다 폭이 같은 부분끼리 묶은 조각(run)
-    class Run { public float a0, a1, left, right, killL, killR; public SpriteRenderer sr; }
+    class Run { public float a0, a1, left, right, killL, killR; public SpriteRenderer sr; public SpriteMask mask; }
     System.Collections.Generic.List<Run>[] runs;
     float frontLeft, frontRight; // 현재 앞면의 양옆 폭 (진행 방향 왼쪽/오른쪽)
-    float[] bandL, bandR;        // 구간별 통로의 보통 폭 (양옆)
+    float[][] bandL, bandR;      // 구간별·0.25 조각별 통로 폭 (양옆, 최대 span/2)
     Transform trailRoot;
     BoxCollider2D col;
     Transform player;
@@ -181,6 +185,49 @@ public class VaccineWall : MonoBehaviour
         if (respawn != null) player = respawn.transform;
         cam = FindObjectOfType<CameraFollow>();
         ResetToStart();
+    }
+
+    void Start()
+    {
+        if (coverObjects) MaskObjects();
+    }
+
+    /// <summary>덮일 오브젝트 그림을 모아 둔다. 백신(하얀 채움·앞면 띠)에 겹친 것만 그때그때 가림 모드로 바꾼다
+    /// (CoverObjects). 가려진 자리엔 그 뒤의 하얀 채움이 보인다 → 백신이 덮은 것처럼 보임.
+    /// 전부 늘 가림 모드로 두면 플레이 중 씬 뷰에서 스프라이트가 깜빡여서, 겹친 것만 바꾼다.</summary>
+    void MaskObjects()
+    {
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (!(mb is Lever || mb is PressButton || mb is PullBox || mb is MovingObject
+                  || mb is SignalDisappear || mb is Breakable || mb is Checkpoint)) continue;
+            // 전선(LineRenderer)은 블럭 안에 있는 것이라 그대로 둠
+            foreach (var sr in mb.GetComponentsInChildren<SpriteRenderer>(true))
+                if (!covered.Contains(sr)) covered.Add(sr);
+        }
+        CoverObjects();
+    }
+
+    /// <summary>백신에 겹친 오브젝트만 가림 모드, 나머지는 보통 모드.</summary>
+    void CoverObjects()
+    {
+        bool vis = bodySr != null && bodySr.enabled;
+        for (int i = 0; i < covered.Count; i++)
+        {
+            var o = covered[i];
+            if (o == null) continue;
+            bool hit = false;
+            if (vis)
+            {
+                Bounds b = o.bounds;
+                if (bodySr.bounds.Intersects(b)) hit = true;
+                for (int l = 0; l < runs.Length && !hit; l++)
+                    foreach (var r in runs[l])
+                        if (r.sr.enabled && r.sr.bounds.Intersects(b)) { hit = true; break; }
+            }
+            var m = hit ? SpriteMaskInteraction.VisibleOutsideMask : SpriteMaskInteraction.None;
+            if (o.maskInteraction != m) o.maskInteraction = m;
+        }
     }
 
     void OnEnable()
@@ -345,6 +392,7 @@ public class VaccineWall : MonoBehaviour
             if (frameTimer <= 0f)
             {
                 bodySr.sprite = frames[Random.Range(0, frames.Length)];
+                if (bodyMask != null) bodyMask.sprite = bodySr.sprite;
                 frameTimer = Random.Range(glitchInterval.x, glitchInterval.y);
             }
         }
@@ -506,7 +554,7 @@ public class VaccineWall : MonoBehaviour
         runs = new System.Collections.Generic.List<Run>[n];
         // 1) 구간마다 양옆 벽까지 실제 거리
         var rawL = new float[n][]; var rawR = new float[n][];
-        bandL = new float[n]; bandR = new float[n];
+        bandL = new float[n][]; bandR = new float[n][];
         for (int i = 0; i < n; i++)
         {
             int cnt = Mathf.Max(1, Mathf.CeilToInt(legLen[i] / step0));
@@ -519,9 +567,21 @@ public class VaccineWall : MonoBehaviour
                 rawL[i][k] = fitToSpace ? WallDistance(pt, perp, fitMax) : hw;
                 rawR[i][k] = fitToSpace ? WallDistance(pt, -perp, fitMax) : hw;
             }
-            // 이 통로의 보통 폭 (중간값, 최대 span/2) — 앞 구간이 이 통로를 미리 칠하지 않게 막는 데 씀
-            bandL[i] = Mathf.Min(hw, Median(rawL[i]));
-            bandR[i] = Mathf.Min(hw, Median(rawR[i]));
+            // 이 통로의 자리별 폭 (최대 span/2) — 앞 구간이 이 통로를 미리 칠하지 않게 막는 데 씀.
+            // 문 같은 얇은 것에 막힌 자리는 주변 fitBridge 안에서 가장 넓은 값으로
+            int win = Mathf.Max(0, Mathf.RoundToInt(fitBridge / Mathf.Max(step, 1e-3f)));
+            bandL[i] = new float[cnt]; bandR[i] = new float[cnt];
+            for (int k = 0; k < cnt; k++)
+            {
+                float l = 0f, r = 0f;
+                for (int m = Mathf.Max(0, k - win); m <= Mathf.Min(cnt - 1, k + win); m++)
+                {
+                    l = Mathf.Max(l, rawL[i][m] < float.MaxValue ? rawL[i][m] : hw);
+                    r = Mathf.Max(r, rawR[i][m] < float.MaxValue ? rawR[i][m] : hw);
+                }
+                bandL[i][k] = Mathf.Min(hw, l);
+                bandR[i][k] = Mathf.Min(hw, r);
+            }
         }
         for (int i = 0; i < n; i++)
         {
@@ -584,15 +644,7 @@ public class VaccineWall : MonoBehaviour
 
     static float Quantize(float v) { return Mathf.Ceil(v * 4f) / 4f; }
 
-    static float Median(float[] a)
-    {
-        var b = (float[])a.Clone();
-        System.Array.Sort(b);
-        float m = b[b.Length / 2];
-        return m < float.MaxValue ? m : float.MaxValue;
-    }
-
-    /// <summary>옆으로 넓힌 폭이 다음 구간들의 통로(보통 폭 band) 안으로 들어가면 거기까지로 줄임.</summary>
+    /// <summary>옆으로 넓힌 폭이 다음 구간들의 통로(그 자리의 폭 band) 안으로 들어가면 거기까지로 줄임.</summary>
     float ClampByLater(Vector2 p, Vector2 side, float ext, int i)
     {
         float hw = span * 0.5f;
@@ -605,7 +657,9 @@ public class VaccineWall : MonoBehaviour
                 Vector2 v = q - legA[j];
                 float along = Vector2.Dot(v, legDir[j]);
                 float across = Vector2.Dot(v, new Vector2(-legDir[j].y, legDir[j].x));
-                if (along >= -0.01f && along <= legLen[j] && across <= bandL[j] && across >= -bandR[j]) return d;
+                if (along < -0.01f || along > legLen[j]) continue;
+                int k = Mathf.Clamp(Mathf.FloorToInt(along / legLen[j] * bandL[j].Length), 0, bandL[j].Length - 1);
+                if (across <= bandL[j][k] && across >= -bandR[j][k]) return d;
             }
         }
         return ext;
@@ -718,6 +772,7 @@ public class VaccineWall : MonoBehaviour
                 float a1 = Mathf.Min(r.a1, limit);
                 bool on = vis && i <= leg && a1 - r.a0 > 0.01f;
                 if (r.sr.enabled != on) r.sr.enabled = on;
+                if (r.mask != null && r.mask.enabled != on) r.mask.enabled = on;
                 if (!on) continue;
                 var tr = r.sr.transform;
                 tr.position = legA[i] + u * ((r.a0 + a1) * 0.5f) + perp * ((r.left - r.right) * 0.5f);
@@ -725,6 +780,7 @@ public class VaccineWall : MonoBehaviour
                 tr.localScale = new Vector3(a1 - r.a0, r.left + r.right, 1f);
             }
         }
+        if (coverObjects) CoverObjects();
     }
 
     void BuildTrail()
@@ -744,6 +800,12 @@ public class VaccineWall : MonoBehaviour
                 sr.sortingOrder = sortingOrder - 1; // 앞면 지지직이 위
                 sr.enabled = false;
                 r.sr = sr;
+                if (coverObjects)
+                {
+                    r.mask = go.AddComponent<SpriteMask>();
+                    r.mask.sprite = pixelSprite;
+                    r.mask.enabled = false;
+                }
             }
     }
 
@@ -775,12 +837,18 @@ public class VaccineWall : MonoBehaviour
             bodySr.sprite = frames[0];
             Vector2 sz = bodySr.sprite.bounds.size; // 스케일로 edgeWidth x span 크기에 맞춤
             body.localScale = new Vector3(edgeWidth / sz.x, span / sz.y, 1f);
+            if (coverObjects)
+            {
+                bodyMask = go.AddComponent<SpriteMask>(); // 들쭉날쭉한 앞면 모양 그대로 가림 (슬라이스 스프라이트는 마스크가 못 따라가서 임시 그림일 때만)
+                bodyMask.sprite = frames[0];
+            }
         }
     }
 
     void SetVisible(bool on)
     {
         if (bodySr != null) bodySr.enabled = on;
+        if (bodyMask != null) bodyMask.enabled = on;
         if (col != null) col.enabled = on;
         UpdateTrail();
     }
