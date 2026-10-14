@@ -457,9 +457,12 @@ public class VaccineWall : MonoBehaviour
     void OnTriggerEnter2D(Collider2D other) { TryKill(other); }
     void OnTriggerStay2D(Collider2D other)  { TryKill(other); }
 
+    /// <summary>true 면 계속 쫓아오지만 닿아도 죽지 않는다 (챕터 끝 연출 중 등).</summary>
+    [System.NonSerialized] public bool harmless;
+
     void TryKill(Collider2D other)
     {
-        if (!running || paused) return;
+        if (!running || paused || harmless) return;
         var fr = other.GetComponentInParent<FallRespawn>();
         if (fr != null) fr.Die();
     }
