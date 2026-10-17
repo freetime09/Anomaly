@@ -959,6 +959,14 @@ public class PlayerController : MonoBehaviour
             }
             return true;
         }
+        // 박스(PullBox)는 Default 레이어라 위에서는 따로 찾음 → 박스 위에 서도 바닥
+        n = Physics2D.OverlapBoxNonAlloc(center, size, 0f, groundBuf);
+        for (int i = 0; i < n; i++)
+        {
+            var c = groundBuf[i];
+            if (c == null || c.isTrigger || c.attachedRigidbody == rb) continue;
+            if (c.GetComponentInParent<PullBox>() != null) return true;
+        }
         return false;
     }
 
