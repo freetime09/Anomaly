@@ -35,6 +35,14 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
     [Tooltip("O 프롬프트를 플레이어 위로 띄우는 높이 (units)")]
     public float promptHeight = 2.4f;
 
+    [Header("상호작용 영역 테두리")]
+    public bool showOutline = true;
+    [Tooltip("테두리 위·아래 y (캡쳐 픽셀). 좌우는 windowPixelX")]
+    public Vector2 outlinePixelY = new Vector2(385, 700);
+    [Tooltip("선 두께 (캡쳐 픽셀)")]
+    public float outlineWidth = 1.5f;
+    public Color outlineColor = new Color(1f, 1f, 1f, 0.85f);
+
     [Header("???Scene (폴더를 연 캡쳐 위에 덮을 글자들)")]
     public NameCover[] covers =
     {
@@ -65,6 +73,7 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
     int step;          // 0 = 처음, 1 = 폴더 연 뒤, 2 = 끝
     GameObject prompt;
     GameObject nameRoot;
+    GameObject outline;
     readonly List<TMPro.TextMeshPro> texts = new List<TMPro.TextMeshPro>();
     readonly List<SpriteRenderer> backs = new List<SpriteRenderer>();
     float glitchTimer;
@@ -75,6 +84,7 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
         var fr = FindAnyObjectByType<FallRespawn>();
         if (fr != null) player = fr.transform;
         CreatePrompt();
+        if (showOutline) CreateOutline();
     }
 
     void OnDestroy()
@@ -177,11 +187,13 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
             var dim = new Color(k, k, k, 1f);
             if (background != null) background.color = dim;
             for (int n = 0; n < backs.Count; n++) backs[n].color = covers[n].backColor * dim;
+            if (outlineLine != null) outlineLine.startColor = outlineLine.endColor = outlineColor * dim;
             foreach (var tx in texts) tx.alpha = k;
             yield return null;
         }
         if (background != null) background.gameObject.SetActive(false);
         if (nameRoot != null) nameRoot.SetActive(false);
+        if (outline != null) outline.SetActive(false);
         foreach (var g in disableOnBlack) if (g != null) g.SetActive(false);
         foreach (var g in enableOnBlack) if (g != null) g.SetActive(true);
 
@@ -244,6 +256,30 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
         // 스프라이트 로컬: (픽셀 - 피벗) / ppu, y 는 아래가 + 이므로 뒤집음
         Vector2 local = new Vector2(px.x - sp.pivot.x, (r.height - px.y) - sp.pivot.y) / sp.pixelsPerUnit;
         return background.transform.TransformPoint(local);
+    }
+
+    LineRenderer outlineLine;
+
+    /// <summary>상호작용 영역(Project 창 앞)을 얇은 흰 선으로 두른다.</summary>
+    void CreateOutline()
+    {
+        if (background == null || background.sprite == null) return;
+        outline = new GameObject("InteractOutline");
+        outline.transform.SetParent(background.transform, false);
+        var lr = outline.AddComponent<LineRenderer>();
+        Vector2 a = PixelToWorld(new Vector2(windowPixelX.x, outlinePixelY.x));
+        Vector2 b = PixelToWorld(new Vector2(windowPixelX.y, outlinePixelY.y));
+        lr.useWorldSpace = true;
+        lr.loop = true;
+        lr.positionCount = 4;
+        lr.SetPositions(new Vector3[] { new Vector3(a.x, a.y), new Vector3(b.x, a.y), new Vector3(b.x, b.y), new Vector3(a.x, b.y) });
+        lr.widthMultiplier = outlineWidth / background.sprite.pixelsPerUnit;
+        lr.numCornerVertices = 0;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = lr.endColor = outlineColor;
+        lr.sortingLayerID = background.sortingLayerID;
+        lr.sortingOrder = background.sortingOrder + 3;
+        outlineLine = lr;
     }
 
     void CreatePrompt()
