@@ -1,12 +1,11 @@
 using System.Collections;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// 챕터2 시작 연출: 1챕터에서 넘어오자마자 플레이어가 공중에서 검은 방으로 떨어진다.
 ///  1) 시작 순간 화면 지지직(글리치) → 2) 화면이 까맣게 되고 하얀 속도선이 위로 스쳐 지나가며 낙하 (중간중간 글리치)
-///  3) 착지 순간 화면이 밝아지며 충격(흔들림 + 글리치), 잠깐 조작 잠금 → 4) 짧은 자막.
+///  3) 착지 순간 화면이 밝아지며 충격(흔들림 + 글리치), 잠깐 조작 잠금 → 4) 메크로 말풍선 대사 (챕터 3과 같은 방식).
 /// 플레이어의 씬 배치 위치가 착지 지점(= 기본 부활 지점)이고, 시작할 때 그 위 fallHeight 만큼 올려서 떨어뜨린다.
 /// 연출 동안은 제스처 입력을 잠근다.
 /// </summary>
@@ -65,14 +64,9 @@ public class Chapter2Intro : MonoBehaviour
     [Tooltip("착지 후 조작을 막아두는 시간 (충격 여운)")]
     public float landLockTime = 0.5f;
 
-    [Header("자막")]
-    [TextArea] public string subtitle = "...여긴 어디지?";
-    public TMP_FontAsset font;
-    public float subtitleSize = 48f;
-    public float subtitleFade = 0.4f;
-    public float subtitleHold = 2.2f;
-    [Tooltip("자막 세로 위치 (화면 아래 0 ~ 위 1)")]
-    [Range(0f, 1f)] public float subtitleHeight = 0.42f;
+    [Header("대사 (챕터 3과 같은 말풍선)")]
+    [Tooltip("착지 뒤 메크로 머리 위 말풍선으로 나올 대사")]
+    public DialogueData dialogue;
 
     Rigidbody2D rb;
     GestureRecognizer input;
@@ -89,7 +83,6 @@ public class Chapter2Intro : MonoBehaviour
     Canvas canvas;
     RectTransform[] bars;
     Image[] barImgs;
-    TextMeshProUGUI subText;
     bool glitching;
 
     void Start()
@@ -169,9 +162,9 @@ public class Chapter2Intro : MonoBehaviour
         player.ResetMotion();
         yield return new WaitForSeconds(landLockTime);
 
-        // 4) 조작 가능 → 자막
+        // 4) 조작 가능 → 말풍선 대사
         if (input != null) input.enabled = true;
-        yield return Subtitle();
+        if (dialogue != null) yield return DialoguePlayer.Ensure().PlayAndWait(dialogue);
         Cleanup();
     }
 
@@ -303,20 +296,6 @@ public class Chapter2Intro : MonoBehaviour
             bars[i].anchorMin = bars[i].anchorMax = new Vector2(0.5f, 0.5f);
             b.SetActive(false);
         }
-
-        var t = new GameObject("Subtitle", typeof(RectTransform));
-        t.transform.SetParent(go.transform, false);
-        subText = t.AddComponent<TextMeshProUGUI>();
-        if (font != null) subText.font = font;
-        subText.fontSize = subtitleSize;
-        subText.alignment = TextAlignmentOptions.Center;
-        subText.color = new Color(1f, 1f, 1f, 0f);
-        subText.raycastTarget = false;
-        var rt = subText.rectTransform;
-        rt.anchorMin = new Vector2(0f, subtitleHeight);
-        rt.anchorMax = new Vector2(1f, subtitleHeight);
-        rt.sizeDelta = new Vector2(0f, 120f);
-        rt.anchoredPosition = Vector2.zero;
     }
 
     IEnumerator Glitch(float duration, float strength)
@@ -348,20 +327,6 @@ public class Chapter2Intro : MonoBehaviour
         foreach (var b in bars) b.gameObject.SetActive(false);
         glitching = false;
     }
-
-    // ── 자막 ──
-    IEnumerator Subtitle()
-    {
-        if (string.IsNullOrEmpty(subtitle)) yield break;
-        subText.text = subtitle;
-        for (float t = 0f; t < subtitleFade; t += Time.deltaTime) { SetSubAlpha(t / subtitleFade); yield return null; }
-        SetSubAlpha(1f);
-        yield return new WaitForSeconds(subtitleHold);
-        for (float t = 0f; t < subtitleFade; t += Time.deltaTime) { SetSubAlpha(1f - t / subtitleFade); yield return null; }
-        SetSubAlpha(0f);
-    }
-
-    void SetSubAlpha(float a) { var c = subText.color; c.a = Mathf.Clamp01(a); subText.color = c; }
 
     void Cleanup()
     {

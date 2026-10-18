@@ -1,13 +1,12 @@
 using System.Collections;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// 검은 방(챕터 2) 추격 시작 연출. 추격 시작 트리거(VaccineChaseTrigger)를 처음 밟으면 재생된다.
 ///  1) 조작 잠금, 뒤에서 이상한 소리 + 화면 흔들림/글리치
-///  2) 플레이어가 뒤(lookBackDir 쪽)를 돌아봄 + 자막1
-///  3) 카메라가 뒤로 이동하며 줌아웃 → 흔들림이 커지다가 하얀 백신 벽이 아래에서 확 솟구침 → 천천히 다가옴 + 자막2
+///  2) 플레이어가 뒤(lookBackDir 쪽)를 돌아봄 + 말풍선 대사1 (챕터 3과 같은 방식)
+///  3) 카메라가 뒤로 이동하며 줌아웃 → 흔들림이 커지다가 하얀 백신 벽이 아래에서 확 솟구침 → 천천히 다가옴 + 말풍선 대사2
 ///  4) 카메라가 플레이어로 돌아오며 줌 복귀, 플레이어는 앞을 봄
 ///  5) 조작 풀림 + 추격 시작 (벽.Begin)
 /// 한 번 본 뒤에는(부활 후 다시 밟아도) 바로 추격한다.
@@ -30,7 +29,8 @@ public class VaccineChaseIntro : MonoBehaviour
     [Header("2) 돌아보기")]
     [Tooltip("돌아볼 방향 (1 = 오른쪽, -1 = 왼쪽). 연출이 끝나면 반대쪽(진행 방향)을 봄")]
     public int lookBackDir = -1;
-    [TextArea] public string subtitle1 = "...무슨 소리지?";
+    [Tooltip("돌아볼 때 메크로 말풍선 대사")]
+    public DialogueData dialogue1;
     [Tooltip("돌아본 뒤 카메라가 움직이기까지 시간")]
     public float afterTurnTime = 1.0f;
 
@@ -40,7 +40,8 @@ public class VaccineChaseIntro : MonoBehaviour
     public float panTime = 0.9f;
     [Tooltip("백신 벽을 비추는 시간")]
     public float lookTime = 1.8f;
-    [TextArea] public string subtitle2 = "백신이다... 도망쳐야 해!";
+    [Tooltip("백신이 솟구칠 때 메크로 말풍선 대사")]
+    public DialogueData dialogue2;
     [Tooltip("벽을 비추는 동안 화면 흔들림 세기")]
     public float lookShakeMagnitude = 0.08f;
     [Tooltip("뒤를 비출 때 카메라 줌아웃 배율 (1이면 그대로, 클수록 멀리)")]
@@ -61,12 +62,6 @@ public class VaccineChaseIntro : MonoBehaviour
     [Header("4) 돌아오기")]
     public float panBackTime = 0.6f;
 
-    [Header("자막")]
-    public TMP_FontAsset font;
-    public float subtitleSize = 48f;
-    public float subtitleFade = 0.3f;
-    [Range(0f, 1f)] public float subtitleHeight = 0.42f;
-
     [Header("글리치")]
     public int glitchBars = 12;
 
@@ -84,7 +79,6 @@ public class VaccineChaseIntro : MonoBehaviour
     Canvas canvas;
     RectTransform[] bars;
     Image[] barImgs;
-    TextMeshProUGUI subText;
     bool glitching;
 
     void Awake()
@@ -126,10 +120,10 @@ public class VaccineChaseIntro : MonoBehaviour
         StartCoroutine(Glitch(startGlitchTime, 0.6f));
         yield return new WaitForSeconds(beforeTurnTime);
 
-        // 2) 뒤돌아봄 + 자막1
+        // 2) 뒤돌아봄 + 대사1
         player.ResetMotion();
         player.Face(lookBackDir < 0 ? -1 : 1);
-        StartCoroutine(ShowSubtitle(subtitle1, afterTurnTime + panTime * 0.5f));
+        if (dialogue1 != null) DialoguePlayer.Ensure().Play(dialogue1);
         yield return new WaitForSeconds(afterTurnTime);
 
         // 3) 카메라가 뒤로 + 줌아웃
@@ -148,11 +142,11 @@ public class VaccineChaseIntro : MonoBehaviour
             yield return null;
         }
 
-        // 3-2) 백신이 아래에서 확 솟구침 → 천천히 다가옴 + 자막2
+        // 3-2) 백신이 아래에서 확 솟구침 → 천천히 다가옴 + 대사2
         if (wall != null) { wall.ShowForIntro(); wall.SetIntroSpeed(emergeSpeed); }
         audioSrc.PlayOneShot(clip, soundVolume);
         StartCoroutine(Glitch(emergeGlitchTime, 0.9f));
-        StartCoroutine(ShowSubtitle(subtitle2, lookTime));
+        if (dialogue2 != null) DialoguePlayer.Ensure().Play(dialogue2);
         bool slowed = false;
         for (float t = 0f; t < lookTime; t += Time.deltaTime)
         {
@@ -182,7 +176,6 @@ public class VaccineChaseIntro : MonoBehaviour
         if (input != null) input.enabled = true;
         if (cam != null) cam.enabled = true;
         SetCamSize(baseSize); // 중간에 끊겨도 줌 원래대로
-        if (subText != null) SetSubAlpha(0f);
         Playing = false;
     }
 
@@ -191,6 +184,7 @@ public class VaccineChaseIntro : MonoBehaviour
     {
         if (!Playing) return;
         StopAllCoroutines();
+        if (DialoguePlayer.Instance != null) DialoguePlayer.Instance.Stop(); // 말풍선도 같이 끊음
         glitching = false;
         if (bars != null) foreach (var b in bars) b.gameObject.SetActive(false);
         Finish();
@@ -216,21 +210,7 @@ public class VaccineChaseIntro : MonoBehaviour
         if (camComp != null && camComp.orthographic && size > 0f) camComp.orthographicSize = size;
     }
 
-    // ── 자막 ──
-    IEnumerator ShowSubtitle(string text, float hold)
-    {
-        if (string.IsNullOrEmpty(text) || subText == null) yield break;
-        subText.text = text;
-        for (float t = 0f; t < subtitleFade; t += Time.deltaTime) { SetSubAlpha(t / subtitleFade); yield return null; }
-        SetSubAlpha(1f);
-        yield return new WaitForSeconds(Mathf.Max(0f, hold - subtitleFade * 2f));
-        for (float t = 0f; t < subtitleFade; t += Time.deltaTime) { SetSubAlpha(1f - t / subtitleFade); yield return null; }
-        if (subText.text == text) SetSubAlpha(0f); // 그 사이 다음 자막으로 바뀌었으면 건드리지 않음
-    }
-
-    void SetSubAlpha(float a) { var c = subText.color; c.a = Mathf.Clamp01(a); subText.color = c; }
-
-    // ── 화면 (글리치 줄 + 자막) ──
+    // ── 화면 (글리치 줄) ──
     void BuildCanvas()
     {
         var go = new GameObject("ChaseIntroCanvas");
@@ -254,23 +234,6 @@ public class VaccineChaseIntro : MonoBehaviour
             bars[i].anchorMin = bars[i].anchorMax = new Vector2(0.5f, 0.5f);
             b.SetActive(false);
         }
-
-        var t = new GameObject("Subtitle", typeof(RectTransform));
-        t.transform.SetParent(go.transform, false);
-        subText = t.AddComponent<TextMeshProUGUI>();
-        if (font != null) subText.font = font;
-        subText.fontSize = subtitleSize;
-        subText.alignment = TextAlignmentOptions.Center;
-        subText.color = new Color(1f, 1f, 1f, 0f);
-        subText.raycastTarget = false;
-        // 하얀 백신 벽 위에서도 읽히게 검은 외곽선
-        subText.outlineWidth = 0.25f;
-        subText.outlineColor = new Color32(0, 0, 0, 255);
-        var rt = subText.rectTransform;
-        rt.anchorMin = new Vector2(0f, subtitleHeight);
-        rt.anchorMax = new Vector2(1f, subtitleHeight);
-        rt.sizeDelta = new Vector2(0f, 120f);
-        rt.anchoredPosition = Vector2.zero;
     }
 
     IEnumerator Glitch(float duration, float strength)

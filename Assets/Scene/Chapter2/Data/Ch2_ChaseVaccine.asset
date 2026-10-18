@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85239dcd5239ebf49bb032a6778a7bf8, type: 3}
+  m_Name: Ch2_ChaseVaccine
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - speakerId: Mecro
+    text: "\uBC31\uC2E0\uC774\uB2E4... \uB3C4\uB9DD\uCCD0\uC57C \uD574!"
+    holdTime: 0

@@ -19,6 +19,12 @@ public class CameraHudAnchor : MonoBehaviour
     public Vector2 worldOffset = new Vector2(2.4f, 1.9f);
     [Tooltip("카메라 앞쪽 거리(프러스텀 안). 실제 위/아래 정렬은 sortingOrder가 결정.")]
     public float depth = 5f;
+    [Tooltip("0보다 크면, 카메라 오쏘 사이즈가 이 값일 때의 크기를 기준으로 HUD 크기·여유를 같이 키운다 (카메라를 멀리 뺀 씬에서도 HUD가 화면에서 같은 크기). 0이면 끔")]
+    public float referenceOrthoSize = 0f;
+
+    Vector3 baseScale;
+
+    void Awake() { baseScale = transform.localScale; }
 
     void LateUpdate()
     {
@@ -26,8 +32,10 @@ public class CameraHudAnchor : MonoBehaviour
         if (cam == null || !cam.orthographic) return;
         float halfH = cam.orthographicSize;
         float halfW = halfH * cam.aspect;
-        float x = Mathf.Lerp(-halfW, halfW, viewportAnchor.x) + worldOffset.x;
-        float y = Mathf.Lerp(-halfH, halfH, viewportAnchor.y) + worldOffset.y;
+        float k = referenceOrthoSize > 0f ? halfH / referenceOrthoSize : 1f;
+        if (referenceOrthoSize > 0f) transform.localScale = baseScale * k;
+        float x = Mathf.Lerp(-halfW, halfW, viewportAnchor.x) + worldOffset.x * k;
+        float y = Mathf.Lerp(-halfH, halfH, viewportAnchor.y) + worldOffset.y * k;
         transform.localPosition = new Vector3(x, y, depth); // 카메라 로컬 = 화면 기준
         transform.localRotation = Quaternion.identity;
     }

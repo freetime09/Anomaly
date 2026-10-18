@@ -9,10 +9,10 @@ EditorBuildSettings:
     path: Assets/Title/Title.unity
     guid: 8e1e64d1da0830c42ba8d0e638f11bdb
   - enabled: 1
-    path: Assets/Tutorial/Tutorial1.unity
+    path: Assets/Scene/Tutorial/Tutorial1.unity
     guid: 6cc44a62f2658b04f805fc018dba16d3
   - enabled: 1
-    path: Assets/Chapter2/Chapter2.unity
+    path: Assets/Scene/Chapter2/Chapter2.unity
     guid: 85820c5126fea2b42af6907f4682ec3d
   - enabled: 1
     path: Assets/Scene/Chapter3/Chapter3.unity
