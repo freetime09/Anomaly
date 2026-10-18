@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 21440609}
   - component: {fileID: 21440608}
   - component: {fileID: 21440610}
+  - component: {fileID: 21440611}
   m_Layer: 0
   m_Name: EditorCapture
   m_TagString: Untagged
@@ -211,6 +212,36 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &21440611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21440607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3cdfe79aa687464283c79c03a61351d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CaptureSkillBar
+  icons:
+  - skill: 5
+    pixelRect: {x: 536, y: 1007, z: 29, w: 29}
+  - skill: 2
+    pixelRect: {x: 571, y: 1007, z: 29, w: 29}
+  - skill: 4
+    pixelRect: {x: 606, y: 1007, z: 29, w: 29}
+  - skill: 6
+    pixelRect: {x: 641, y: 1007, z: 29, w: 29}
+  - skill: 1
+    pixelRect: {x: 676, y: 1007, z: 29, w: 29}
+  - skill: 3
+    pixelRect: {x: 711, y: 1007, z: 29, w: 29}
+  - skill: 0
+    pixelRect: {x: 746, y: 1007, z: 29, w: 29}
+  player: {fileID: 0}
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.6}
+  orderOffset: 4
 --- !u!114 &21440610
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -232,12 +263,12 @@ MonoBehaviour:
     pixelRect: {x: 1659, y: 787, z: 80, w: 17}
   - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
     pixelRect: {x: 1384, y: 1186, z: 84, w: 22}
-  interval: {x: 0.4, y: 1.6}
-  burstTime: {x: 0.08, y: 0.25}
-  slices: 4
-  maxShift: 7.44
-  colorSplit: 3.72
-  splitAlpha: 0.6
+  interval: {x: 0.25, y: 1}
+  burstTime: {x: 0.12, y: 0.35}
+  slices: 5
+  maxShift: 16
+  colorSplit: 8
+  splitAlpha: 0.85
 --- !u!1 &116973730
 GameObject:
   m_ObjectHideFlags: 0
@@ -1063,6 +1094,7 @@ GameObject:
   - component: {fileID: 862957453}
   - component: {fileID: 862957452}
   - component: {fileID: 862957451}
+  - component: {fileID: 862957454}
   m_Layer: 0
   m_Name: ProjectWindow
   m_TagString: Untagged
@@ -1101,6 +1133,40 @@ MonoBehaviour:
   enableOnBlack: []
   disableOnBlack: []
   onBlack:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1182274169}
+        m_TargetAssemblyTypeName: HudReveal, Assembly-CSharp
+        m_MethodName: Reveal
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &862957454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 862957450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 180e619b6a946044a96b9d72112d5dc3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueTrigger
+  dialogue: {fileID: 11400000, guid: f90544c8d21c473f949c93fef581aca9, type: 2}
+  playOnce: 1
+  lockPlayerControl: 0
+  queueWhenBusy: 1
+  onDialogueStarted:
+    m_PersistentCalls:
+      m_Calls: []
+  onDialogueFinished:
     m_PersistentCalls:
       m_Calls: []
 --- !u!61 &862957452
@@ -1516,6 +1582,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5571010317375463017, guid: 6d0901675afd7d1458bad59cdbd07222, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1182274168}
+    - targetCorrespondingSourceObject: {fileID: 5571010317375463017, guid: 6d0901675afd7d1458bad59cdbd07222, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1182274169}
   m_SourcePrefab: {fileID: 100100000, guid: 6d0901675afd7d1458bad59cdbd07222, type: 3}
 --- !u!4 &1182274166 stripped
 Transform:
@@ -1527,6 +1596,21 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 5571010317375463017, guid: 6d0901675afd7d1458bad59cdbd07222, type: 3}
   m_PrefabInstance: {fileID: 1182274165}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1182274169
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1182274167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71c9a3d20437fa849927a171c06a8c6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HudReveal
+  fadeDuration: 0.6
+  waitForVortex: 0
+  extraDelay: 0
 --- !u!114 &1182274168
 MonoBehaviour:
   m_ObjectHideFlags: 0
