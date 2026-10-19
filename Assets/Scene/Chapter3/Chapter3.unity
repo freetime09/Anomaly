@@ -5682,6 +5682,8 @@ MonoBehaviour:
   autoHoldBase: 0.8
   autoHoldPerChar: 0.05
   gapBetweenLines: 0.2
+  allowClickSkip: 1
+  skipOnlyWhileLocked: 1
 --- !u!4 &1372391224
 Transform:
   m_ObjectHideFlags: 0
@@ -6588,6 +6590,7 @@ MonoBehaviour:
   viewportAnchor: {x: 0, y: 0}
   worldOffset: {x: 14.25, y: 1}
   depth: 27.75
+  referenceOrthoSize: 0
 --- !u!1 &1616535795
 GameObject:
   m_ObjectHideFlags: 0
@@ -7521,8 +7524,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HouseDoorEntrance
   destination: {fileID: 1435863502}
   destinationBackground: {r: 0.16, g: 0.12, b: 0.1, a: 1}
+  requireInteract: 1
   enterOnce: 1
   enterDelay: 0.3
+  promptHeight: 2.2
+  promptColor: {r: 1, g: 1, b: 1, a: 1}
   openClip: {fileID: 0}
   openVolume: 1
   onEntered:

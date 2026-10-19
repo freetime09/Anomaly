@@ -6,6 +6,7 @@ using UnityEngine;
 /// DialogueData(대사 묶음)를 순서대로 재생하는 진행자.
 ///  - 대사 한 줄마다: 화자(DialogueSpeaker)를 Id 로 찾아 → 그 머리 위 말풍선에 한 글자씩 출력 → 잠깐 유지 → 숨김.
 ///  - 버튼 입력 없이 시간에 따라 자동으로 넘어간다 (걸으면서도 대화가 자연스럽게 흘러가도록).
+///  - 조작이 잠긴 대화(NPC·컷신)에서는 마우스 왼쪽 클릭으로 문장 단위 스킵 가능 (출력 완성 → 다음 문장).
 ///  - 필요하면 대화 동안 조작을 잠근다 (CutsceneLock).
 ///  - 씬에 직접 두지 않아도 Ensure() 로 자동 생성된다. 직접 두면 Inspector 값으로 속도를 조절할 수 있다.
 /// </summary>
@@ -28,6 +29,13 @@ public class DialoguePlayer : MonoBehaviour
     [Tooltip("말풍선이 사라지고 다음 대사가 뜨기까지의 간격(초)")]
     [Min(0f)] public float gapBetweenLines = 0.2f;
 
+    [Header("클릭 스킵")]
+    [Tooltip("켜면 대화 중 마우스 왼쪽 클릭으로 문장을 넘긴다: 출력 중이면 그 문장을 한 번에 다 보여 주고, 다 보인 상태면 다음 문장으로 넘어간다")]
+    public bool allowClickSkip = true;
+    [Tooltip("켜면 조작이 잠긴 대화(NPC 대화·컷신 대사)에서만 클릭 스킵이 된다. " +
+             "걸으면서 하는 독백 중에는 왼쪽 클릭이 제스처 그리기라서, 끄면 그리기 시작할 때마다 대사가 넘어가 버린다")]
+    public bool skipOnlyWhileLocked = true;
+
     // 재생을 기다리는 대화 한 건
     struct Pending
     {
@@ -39,6 +47,8 @@ public class DialoguePlayer : MonoBehaviour
     Coroutine running;
     DialogueSpeaker currentSpeaker;
     bool lockedControl;
+    bool holding;      // 문장이 다 출력되고 유지 시간을 기다리는 중
+    bool skipHold;     // 유지 시간을 건너뛰라는 클릭이 들어옴
     readonly System.Collections.Generic.Queue<Pending> queue = new System.Collections.Generic.Queue<Pending>();
 
     /// <summary>대화가 재생 중이거나 기다리는 대화가 남아 있는가?</summary>
@@ -54,6 +64,26 @@ public class DialoguePlayer : MonoBehaviour
     {
         if (Instance == this) Instance = null;
         if (lockedControl) CutsceneLock.Unlock(this);
+    }
+
+    // 클릭 입력은 Update 에서 받는다. 코루틴(Run)은 모든 Update 다음에 실행되므로
+    // 이번 프레임의 클릭이 같은 프레임의 Run 에 바로 반영된다.
+    void Update()
+    {
+        if (!allowClickSkip || running == null || currentSpeaker == null) return;
+        if (!Input.GetMouseButtonDown(0)) return;
+        if (PauseMenu.IsPaused || PauseMenu.IsPointerOnSettingsButton(Input.mousePosition)) return; // 설정 창·톱니 클릭은 제외
+        if (skipOnlyWhileLocked && !CutsceneLock.IsLocked) return;
+        SkipLine();
+    }
+
+    /// <summary>현재 문장을 한 단계 넘긴다: 출력 중이면 '전부 보이기', 다 보인 상태면 '다음 문장'.
+    /// 클릭 외의 입력(터치 버튼 등)에서도 부를 수 있게 public 으로 둔다.</summary>
+    public void SkipLine()
+    {
+        if (running == null || currentSpeaker == null) return;
+        if (currentSpeaker.Bubble.IsTyping) currentSpeaker.Bubble.CompleteTyping();
+        else if (holding) skipHold = true;
     }
 
     /// <summary>씬에 DialoguePlayer 가 없으면 만들어서 반환한다.</summary>
@@ -97,6 +127,8 @@ public class DialoguePlayer : MonoBehaviour
     void StopCurrent()
     {
         if (running != null) { StopCoroutine(running); running = null; }
+        holding = false;
+        skipHold = false;
         if (currentSpeaker != null) { currentSpeaker.Bubble.HideImmediate(); currentSpeaker = null; }
         if (lockedControl) { CutsceneLock.Unlock(this); lockedControl = false; }
     }
@@ -107,6 +139,22 @@ public class DialoguePlayer : MonoBehaviour
         bool done = false;
         Play(data, lockControl, () => done = true);
         while (!done && IsPlaying) yield return null;
+    }
+
+    /// <summary>다 출력된 문장을 seconds 동안 유지한다. 그 사이 클릭(skipHold)이 들어오면 바로 끝낸다.
+    /// WaitForSeconds 는 중간에 끊을 수 없어서 매 프레임 시간을 세는 방식으로 기다린다.</summary>
+    IEnumerator Hold(float seconds)
+    {
+        holding = true;
+        skipHold = false;
+        float t = 0f;
+        while (t < seconds && !skipHold)
+        {
+            t += Time.deltaTime;
+            yield return null;
+        }
+        holding = false;
+        skipHold = false;
     }
 
     IEnumerator Run(DialogueData data, bool lockControl, Action onFinished)
@@ -127,7 +175,7 @@ public class DialoguePlayer : MonoBehaviour
             yield return speaker.Bubble.Say(line.text, charsPerSecond);
 
             float hold = line.holdTime > 0f ? line.holdTime : autoHoldBase + speaker.Bubble.LastCharacterCount * autoHoldPerChar;
-            yield return new WaitForSeconds(hold);
+            yield return Hold(hold);
 
             speaker.Bubble.Hide();
             currentSpeaker = null;

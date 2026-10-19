@@ -39,6 +39,11 @@ public class SpeechBubble : MonoBehaviour
     /// <summary>마지막으로 출력한 대사의 실제 글자 수 (태그 제외). 자동 유지 시간 계산에 쓴다.</summary>
     public int LastCharacterCount { get; private set; }
 
+    /// <summary>한 글자씩 출력하는 중인가? (Say 코루틴이 아직 끝나지 않음)</summary>
+    public bool IsTyping { get; private set; }
+
+    bool completeRequested; // CompleteTyping() 요청 → 다음 프레임에 남은 글자를 한 번에 표시
+
     /// <summary>speaker 의 설정으로 말풍선 오브젝트를 만든다.</summary>
     public static SpeechBubble Create(DialogueSpeaker speaker)
     {
@@ -119,8 +124,17 @@ public class SpeechBubble : MonoBehaviour
         LastCharacterCount = total;
         float shown = 0f;
         int visible = 0;
+        IsTyping = true;
+        completeRequested = false;
         while (visible < total)
         {
+            if (completeRequested)
+            {
+                // 스킵: 남은 글자를 한 번에 보여 준다. 목소리는 글자마다 내면 소리가 겹치므로 생략
+                visible = total;
+                text.maxVisibleCharacters = visible;
+                break;
+            }
             shown += Mathf.Max(1f, charsPerSecond) * Time.deltaTime;
             int next = Mathf.Min(total, Mathf.FloorToInt(shown));
             for (int i = visible; i < next; i++) PlayVoice(i);
@@ -128,6 +142,14 @@ public class SpeechBubble : MonoBehaviour
             text.maxVisibleCharacters = visible;
             yield return null;
         }
+        IsTyping = false;
+        completeRequested = false;
+    }
+
+    /// <summary>출력 중인 대사를 즉시 끝까지 보여 준다 (클릭 스킵용). 출력 중이 아니면 아무 일도 안 한다.</summary>
+    public void CompleteTyping()
+    {
+        if (IsTyping) completeRequested = true;
     }
 
     /// <summary>말풍선을 서서히 숨긴다.</summary>
@@ -137,6 +159,8 @@ public class SpeechBubble : MonoBehaviour
     public void HideImmediate()
     {
         if (fadeCo != null) { StopCoroutine(fadeCo); fadeCo = null; }
+        IsTyping = false; // Say 가 도중에 끊겨도(대화 강제 종료) 출력 중 상태가 남지 않게
+        completeRequested = false;
         ApplyAlpha(0f);
         gameObject.SetActive(false);
     }
