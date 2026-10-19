@@ -1131,7 +1131,8 @@ MonoBehaviour:
   shakeMagnitude: 0.25
   fadeTime: 0
   enableOnBlack: []
-  disableOnBlack: []
+  disableOnBlack:
+  - {fileID: 1619580602}
   onBlack:
     m_PersistentCalls:
       m_Calls:
@@ -2027,6 +2028,7 @@ MonoBehaviour:
   zoomOut: 1.4
   zoomTime: 2.2
   godBubbleScale: 1.8
+  godBubbleGap: 0.8
   bossSprite: {fileID: 0}
   bossSize: 8
   bossHeight: 13.5
@@ -2045,7 +2047,7 @@ MonoBehaviour:
   sweepThickness: 0.7
   lowLane: {x: 0, y: 0.9}
   highLane: {x: 1.15, y: 3.2}
-  orbSpeed: 4
+  orbSpeed: 6.5
   reflectSpeed: 14
   orbCharge: 0.7
   orbInterval: 1.4
@@ -2068,7 +2070,15 @@ MonoBehaviour:
   bossColor: {r: 1, g: 1, b: 1, a: 1}
   stunColor: {r: 1, g: 0.25, b: 0.25, a: 1}
   reflectedColor: {r: 0.4, g: 1, b: 1, a: 1}
-  bossSkillHint: {fileID: 3918515020495221531, guid: 904bb0c47a4b4c44eb899e1a391c5afc, type: 3}
+  tutorial: 1
+  tutorialTimeScale: 0.25
+  tutorialDistance: 4
+  demoColor: {r: 1, g: 0.9, b: 0.2, a: 1}
+  tutorialSlowIn: 0.3
+  tutorialDarkness: 0.75
+  tutorialLight: {r: 1, g: 0.95, b: 0.75, a: 0.1}
+  reflectZoom: 0.6
+  sectionZoom: 0.8
   onDefeated:
     m_PersistentCalls:
       m_Calls: []

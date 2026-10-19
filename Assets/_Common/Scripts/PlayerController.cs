@@ -402,6 +402,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>제스처 인식 결과를 실제 동작으로 실행.</summary>
     public void ExecuteCommand(Command cmd)
     {
+        if (combatOnly && cmd != Command.AttackLeft && cmd != Command.AttackRight && cmd != Command.Boss) return;
         switch (cmd)
         {
             case Command.MoveRight: StartMove(1f); break;
@@ -419,6 +420,9 @@ public class PlayerController : MonoBehaviour
             case Command.Boss:        UseBossSkill(); break;
         }
     }
+
+    /// <summary>true 면 제스처 중 ㄱ 공격·§ 만 받고 이동·점프·슬라이드 등은 무시 (보스전 튜토리얼에서 BossFight 가 켠다).</summary>
+    [System.NonSerialized] public bool combatOnly;
 
     /// <summary>§ 스킬을 쓸 수 있는 상태인가 (보스전에서 보스가 틈을 보일 때만 BossFight 가 켠다).</summary>
     [System.NonSerialized] public bool bossSkillReady;
@@ -590,6 +594,7 @@ public class PlayerController : MonoBehaviour
 
     public void StartMoveByLength(int dir, float pixelLength)
     {
+        if (combatOnly) return;
         float dist = MoveDistanceFor(pixelLength);
         moveDir = dir;
         moveRemaining = dist;

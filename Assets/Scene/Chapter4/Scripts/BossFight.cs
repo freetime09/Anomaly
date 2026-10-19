@@ -34,6 +34,8 @@ public class BossFight : MonoBehaviour
     public float zoomTime = 2.2f;
     [Tooltip("신 말풍선 크기 (메크로 말풍선 대비 배율)")]
     public float godBubbleScale = 1.8f;
+    [Tooltip("신 말풍선 오른쪽 끝과 신 사이 간격 (units)")]
+    public float godBubbleGap = 0.8f;
 
     [Header("보스 그림")]
     [Tooltip("보스 그림 (비우면 임시 눈 그림). 픽셀아트면 Filter Mode = Point 권장")]
@@ -73,16 +75,24 @@ public class BossFight : MonoBehaviour
     public float sweepThickness = 0.7f;
     [Tooltip("아래 줄 (바닥 위 y 범위) → 점프로 피함")]
     public Vector2 lowLane = new Vector2(0f, 0.9f);
+    [Tooltip("아래 줄 속도 (점프만 하면 돼서 위 줄보다 빠르게)")]
+    public float lowSweepSpeed = 12f;
+    [Tooltip("아래 줄 막대 개수 (연달아 옴)")]
+    public int lowSweepCount = 2;
+    [Tooltip("아래 줄 막대 사이 시간 간격 (초). 착지하고 다시 뛸 틈")]
+    public float lowSweepGap = 0.8f;
     [Tooltip("위 줄 (바닥 위 y 범위) → 슬라이드로 피함. 슬라이드 키(약 0.76)보다 위, 선 키(약 1.9)보다 아래에서 시작")]
     public Vector2 highLane = new Vector2(1.15f, 3.2f);
 
     [Header("탄 (ㄱ 으로 되받아치기)")]
-    public float orbSpeed = 4f;
+    public float orbSpeed = 6.5f;
     public float reflectSpeed = 14f;
     [Tooltip("탄을 모으는 시간 (초)")]
     public float orbCharge = 0.7f;
     [Tooltip("탄 사이 간격 (초)")]
     public float orbInterval = 1.4f;
+    [Tooltip("ㄱ 에 맞는 탄 판정 반지름 (클수록 쳐내기 쉬움). 메크로가 맞는 판정과는 따로")]
+    public float orbReflectRadius = 1.1f;
 
     [Header("신의 커서")]
     [Tooltip("커서가 메크로를 따라다니는 시간 (초)")]
@@ -114,8 +124,21 @@ public class BossFight : MonoBehaviour
     public Color bossColor = Color.white;
     public Color stunColor = new Color(1f, 0.25f, 0.25f);
     public Color reflectedColor = new Color(0.4f, 1f, 1f);
-    [Tooltip("틈을 보일 때 보스 아래에 띄울 § 그림")]
-    public Sprite bossSkillHint;
+
+    [Header("튜토리얼 (처음 한 번, 슬로우 모션)")]
+    [Tooltip("첫 탄이 가까이 올 때 / 첫 틈이 생길 때 느려지며 그릴 모양(ㄱ / §)을 보여준다. 맞게 그릴 때까지 기다림")]
+    public bool tutorial = true;
+    [Range(0.05f, 1f)] public float tutorialTimeScale = 0.25f;
+    [Tooltip("첫 탄이 메크로와 이 거리 안에 오면 튜토리얼 시작")]
+    public float tutorialDistance = 4f;
+    [Tooltip("그릴 모양 시범 선 색")]
+    public Color demoColor = new Color(1f, 0.9f, 0.2f);
+    [Tooltip("느려지기까지 걸리는 시간 (초, 실제 시간). 점점 멈춰가는 느낌")]
+    public float tutorialSlowIn = 0.3f;
+    [Tooltip("되받아치기 튜토리얼 때 카메라 확대 (1 = 그대로, 작을수록 가까이)")]
+    public float reflectZoom = 0.6f;
+    [Tooltip("§ 튜토리얼 때 카메라 확대")]
+    public float sectionZoom = 0.8f;
 
     [Tooltip("보스를 쓰러뜨렸을 때")]
     public UnityEvent onDefeated;
@@ -135,7 +158,7 @@ public class BossFight : MonoBehaviour
     float baseOrtho = 8f;
 
     Transform root, hazardRoot, bossAnchor;
-    SpriteRenderer boss, floorLine, hint;
+    SpriteRenderer boss, floorLine;
     float bossScale = 1f;
     readonly List<SpriteRenderer> heartIcons = new List<SpriteRenderer>();
     readonly List<Hazard> hazards = new List<Hazard>();
@@ -148,6 +171,27 @@ public class BossFight : MonoBehaviour
     Vector3 camPos;
     float shakeLeft, shakeDur, shakeMag;
     float glitchTimer, glitchHold;
+    DialogueSpeaker godSpeaker;
+
+    // 튜토리얼
+    enum Demo { None, AttackRight, AttackLeft, Section }
+    bool reflectTaught, skillTaught, teaching;
+    BossOrb tutorialOrb;
+    int holdSide = 1;
+    float baseFixedDt = 0.02f;
+    Demo demoKind;
+    LineRenderer demo;
+    SpriteRenderer demoTip;
+    Vector2[] demoPath;
+    float demoT;
+    enum Focus { Reflect, Section }
+    Focus focus;
+    bool slowOn;
+    float slowFx;               // 0 = 평소, 1 = 슬로우 모션 연출 다 들어감 (실제 시간으로 움직임)
+    bool arenaCamSet;
+    Vector3 arenaCamPos;
+    float arenaOrtho;
+    BossOrb firstOrb;           // 튜토리얼 첫 탄 (쏘는 순간부터 메크로는 ㄱ 만 가능)
 
     static Sprite squareSprite, eyeSprite, orbSprite, heartSprite, cursorSprite;
 
@@ -170,6 +214,7 @@ public class BossFight : MonoBehaviour
     IEnumerator Intro()
     {
         CutsceneLock.Lock(this);
+        baseFixedDt = Time.fixedDeltaTime;
         player = FindAnyObjectByType<PlayerController>();
         if (player == null) { CutsceneLock.Unlock(this); yield break; }
         pcol = player.GetComponent<BoxCollider2D>();
@@ -217,6 +262,7 @@ public class BossFight : MonoBehaviour
         if (cam != null) yield return MoveCamera(camPos, CamPosFor(big), baseOrtho, big, zoomTime);
         else yield return new WaitForSeconds(zoomTime);
         Shake(0.4f, 0.5f);
+        arenaCamPos = camPos; arenaOrtho = cam != null ? cam.orthographicSize : big; arenaCamSet = cam != null;
         yield return new WaitForSeconds(0.8f);
 
         if (introDialogue != null) yield return DialoguePlayer.Ensure().PlayAndWait(introDialogue);
@@ -270,9 +316,10 @@ public class BossFight : MonoBehaviour
 
     void OnDestroy()
     {
+        if (teaching) SetSlow(false);
         CutsceneLock.Unlock(this);
         if (fr != null) { fr.Died -= OnDied; fr.Respawned -= OnRespawned; }
-        if (player != null) { player.BossSkillUsed -= OnBossSkill; player.bossSkillReady = false; }
+        if (player != null) { player.BossSkillUsed -= OnBossSkill; player.bossSkillReady = false; player.combatOnly = false; }
     }
 
     void BuildArena()
@@ -306,15 +353,6 @@ public class BossFight : MonoBehaviour
         boss.transform.localScale = Vector3.one * bossScale;
         boss.color = new Color(bossColor.r, bossColor.g, bossColor.b, 0f);
 
-        if (bossSkillHint != null)
-        {
-            hint = MakeSprite("SkillHint", bossAnchor, bossSkillHint, 15, Color.white);
-            hint.transform.localPosition = new Vector3(0f, -(BossRadius + 1.3f), 0f);
-            float hgt = Mathf.Max(0.01f, bossSkillHint.bounds.size.y);
-            hint.transform.localScale = Vector3.one * (1.8f / hgt);
-            hint.gameObject.SetActive(false);
-        }
-
         BuildGodSpeaker();
     }
 
@@ -324,7 +362,7 @@ public class BossFight : MonoBehaviour
         var go = new GameObject("GodSpeaker");
         go.SetActive(false); // 설정을 다 넣은 뒤 켜야 말풍선이 그 설정으로 만들어짐
         go.transform.SetParent(bossAnchor, false);
-        go.transform.localPosition = new Vector3(-(BossRadius + 2f), 0.5f, 0f); // 신 왼쪽 옆
+        go.transform.localPosition = new Vector3(-(BossRadius + godBubbleGap), 0.5f, 0f); // 신 왼쪽 옆 (실제 자리는 KeepGodBubbleClear)
         var sp = go.AddComponent<DialogueSpeaker>();
         sp.speakerId = "God";
         sp.bubbleOffset = Vector2.zero;
@@ -344,6 +382,22 @@ public class BossFight : MonoBehaviour
         sp.borderColor = Color.white;
         sp.textColor = Color.white;
         go.SetActive(true);
+        godSpeaker = sp;
+    }
+
+    /// <summary>신 말풍선은 대사 길이마다 폭이 달라서, 오른쪽 끝을 신 왼쪽(간격 godBubbleGap)에 맞춰 옮긴다 → 신과 안 겹침.
+    /// SpeechBubble 이 자리를 잡은 뒤(LateUpdate, 이 컴포넌트가 더 늦게 실행)에 옮긴다.</summary>
+    void KeepGodBubbleClear()
+    {
+        if (godSpeaker == null || godSpeaker.Bubble == null || !godSpeaker.Bubble.gameObject.activeInHierarchy) return;
+        var bt = godSpeaker.Bubble.transform;
+        float maxX = float.MinValue;
+        foreach (var r in bt.GetComponentsInChildren<Renderer>())
+            if (r.enabled) maxX = Mathf.Max(maxX, r.bounds.max.x);
+        if (maxX == float.MinValue) return;
+        float halfW = boss != null && boss.sprite != null ? boss.sprite.bounds.extents.x * bossScale : BossRadius; // 그림 실제 폭 (지지직 흔들림은 무시)
+        float right = BossPosition.x - halfW - godBubbleGap;
+        bt.position += Vector3.right * (right - maxX);
     }
 
     // ───────────── 진행 ─────────────
@@ -355,6 +409,7 @@ public class BossFight : MonoBehaviour
         while (!defeated)
         {
             float k = Mathf.Max(0.5f, 1f - phaseSpeedUp * phase);
+            while (teaching) yield return null; // 튜토리얼 중엔 다음 패턴을 시작하지 않음
             Pattern p = order[idx++ % order.Length];
             float chance = phase >= 2 ? comboChance.y : phase >= 1 ? comboChance.x : 0f;
             Pattern partner;
@@ -453,16 +508,27 @@ public class BossFight : MonoBehaviour
             yield return Telegraph(new List<Hazard> { band, mark }, telegraphTime * k);
             RemoveHazard(mark);
 
+            // 아래 줄은 빠르게, 여러 개가 lowSweepGap 초 간격으로 연달아 옴
+            float speed = low ? lowSweepSpeed : sweepSpeed;
+            int count = low ? Mathf.Max(1, lowSweepCount) : 1;
+            float spacing = speed * lowSweepGap;
             float x = cx + side * (arenaHalfWidth + 1f), end = cx - side * (arenaHalfWidth + 1f);
-            var bar = AddRect(new Vector2(x, yc), new Vector2(sweepThickness, hh), hazardColor, 20);
-            bar.armed = true;
-            while (side > 0 ? x > end : x < end)
+            var barList = new List<Hazard>();
+            for (int i = 0; i < count; i++)
             {
-                x -= side * sweepSpeed * Time.deltaTime;
-                bar.sr.transform.position = new Vector3(x, yc, 0f);
+                var bar = AddRect(new Vector2(x + side * spacing * i, yc), new Vector2(sweepThickness, hh), hazardColor, 20);
+                bar.armed = true;
+                barList.Add(bar);
+            }
+            float last = x + side * spacing * (count - 1);
+            while (side > 0 ? last > end : last < end)
+            {
+                float dx = side * speed * Time.deltaTime;
+                x -= dx; last -= dx;
+                for (int i = 0; i < count; i++) barList[i].sr.transform.position = new Vector3(x + side * spacing * i, yc, 0f);
                 yield return null;
             }
-            RemoveHazard(bar);
+            foreach (var bar in barList) RemoveHazard(bar);
             RemoveHazard(band);
             low = !low;
             if (b < bars - 1) yield return new WaitForSeconds(0.6f);
@@ -475,6 +541,7 @@ public class BossFight : MonoBehaviour
         int n = phase >= 2 ? 3 : 2;
         for (int i = 0; i < n; i++)
         {
+            while (teaching) yield return null; // 튜토리얼 중엔 다음 탄을 쏘지 않음
             // 플레이어 옆 위로 옮겨 가서 비스듬히 쏜다 (정수리로 떨어지면 ㄱ 으로 못 받음)
             float px = player.transform.position.x;
             float minX = ArenaLeft + BossRadius * 0.5f, maxX = ArenaRight - BossRadius * 0.5f;
@@ -497,6 +564,13 @@ public class BossFight : MonoBehaviour
             Vector2 target = pcol.bounds.center;
             orb.velocity = (target - (Vector2)orb.transform.position).normalized * orbSpeed * (1f + 0.1f * phase);
             orb.enabled = true;
+            if (tutorial && !reflectTaught && firstOrb == null)
+            {
+                // 첫 탄: 쏘는 순간 메크로를 멈추고 ㄱ 만 받게 → 가까이 오면 슬로우 모션으로 알려줌 (TickOrb)
+                firstOrb = orb;
+                player.ResetMotion();
+                player.combatOnly = true;
+            }
             yield return new WaitForSeconds(orbInterval * k);
         }
         yield return MoveBoss(BossRest, 0.6f);
@@ -511,7 +585,7 @@ public class BossFight : MonoBehaviour
         var orb = go.AddComponent<BossOrb>();
         orb.fight = this;
         var cc = go.AddComponent<CircleCollider2D>();
-        cc.radius = orb.radius * 1.3f; // ㄱ 히트박스에 맞기 쉽게 조금 크게
+        cc.radius = orbReflectRadius; // ㄱ 히트박스에 맞기 쉽게 크게
         cc.isTrigger = true;
         orb.enabled = false; // 모으는 동안은 멈춤
         orbs.Add(orb);
@@ -533,7 +607,14 @@ public class BossFight : MonoBehaviour
             }
             return;
         }
-        if (!dying && !defeated && Time.time >= invulnUntil && CircleHitsBox(p, o.radius * 0.8f, PlayerHitBounds()))
+        // 첫 탄: 가까이 오면 슬로우 모션 + ㄱ 시범. 탄은 메크로 앞(공격 판정 자리)에 멈춰서 맞게 칠 때까지 기다린다
+        if (o == firstOrb && !reflectTaught && !teaching && Vector2.Distance(p, pcol.bounds.center) < tutorialDistance)
+        {
+            StartReflectTutorial(o);
+            return;
+        }
+        if (o.held) return;
+        if (!teaching && !dying && !defeated && Time.time >= invulnUntil && CircleHitsBox(p, o.radius * 0.8f, PlayerHitBounds()))
         {
             RemoveOrb(o);
             Hurt();
@@ -547,6 +628,37 @@ public class BossFight : MonoBehaviour
         var sr = o.GetComponent<SpriteRenderer>();
         if (sr != null) sr.color = reflectedColor;
         Shake(0.1f, 0.08f);
+        if (o == firstOrb && !reflectTaught)
+        {
+            reflectTaught = true;
+            player.combatOnly = false;
+        }
+        if (o == tutorialOrb)
+        {
+            o.held = false;
+            tutorialOrb = null;
+            reflectTaught = true;
+            teaching = false;
+            SetSlow(false);
+            HideDemo();
+            invulnUntil = Time.time + 0.5f; // 풀리자마자 다른 탄에 맞지 않게
+            Shake(0.2f, 0.25f); // 탁 풀리는 타격감
+        }
+    }
+
+    /// <summary>튜토리얼 탄이 멈춰 있을 자리 = 메크로가 그쪽을 보고 ㄱ 할 때의 공격 판정 중심.</summary>
+    public Vector2 OrbHoldPoint => (Vector2)player.transform.position + new Vector2(holdSide * player.attackReach, player.attackHeight);
+
+    void StartReflectTutorial(BossOrb o)
+    {
+        teaching = true;
+        tutorialOrb = o;
+        o.held = true;
+        holdSide = o.transform.position.x >= player.transform.position.x ? 1 : -1;
+        if (player.branch != null && player.branch.CurrentState != Branch.State.Held) player.branch.Recover(); // 공격하려면 나뭇가지가 손에 있어야 함
+        focus = Focus.Reflect;
+        SetSlow(true);
+        ShowDemo(holdSide > 0 ? Demo.AttackRight : Demo.AttackLeft);
     }
 
     // 신의 커서: 따라오다 멈추고 → 선택 박스를 끌어서 → 지운다
@@ -681,10 +793,13 @@ public class BossFight : MonoBehaviour
         boss.color = stunColor;
         yield return MoveBoss(BossRest + Vector2.down * 3.5f, 0.5f);
         player.bossSkillReady = true;
-        if (hint != null) hint.gameObject.SetActive(true);
-        for (float t = 0f; t < stunTime && !stunHit; t += Time.deltaTime) yield return null;
+        bool teach = tutorial && !skillTaught; // 첫 틈: 슬로우 모션 + § 를 그릴 때까지 기다림
+        if (teach) { teaching = true; focus = Focus.Section; player.ResetMotion(); player.combatOnly = true; SetSlow(true); }
+        ShowDemo(Demo.Section); // § 시범은 틈마다 보여줌
+        for (float t = 0f; (teach || t < stunTime) && !stunHit; t += Time.deltaTime) yield return null;
         player.bossSkillReady = false;
-        if (hint != null) hint.gameObject.SetActive(false);
+        HideDemo();
+        if (teach) { teaching = false; player.combatOnly = false; SetSlow(false); if (stunHit) skillTaught = true; }
         stunned = false;
 
         if (stunHit)
@@ -727,7 +842,8 @@ public class BossFight : MonoBehaviour
 
     void Update()
     {
-        if (!started || player == null || dying || defeated || Time.time < invulnUntil) return;
+        UpdateSlowFx();
+        if (!started || player == null || dying || defeated || teaching || Time.time < invulnUntil) return;
         Bounds pb = PlayerHitBounds();
         bool hit = false;
         foreach (var h in hazards)
@@ -806,7 +922,11 @@ public class BossFight : MonoBehaviour
         orbs.Clear();
         stunned = false; stunHit = false;
         if (player != null) player.bossSkillReady = false;
-        if (hint != null) hint.gameObject.SetActive(false);
+        HideDemo();
+        if (teaching) { teaching = false; SetSlow(false); }
+        tutorialOrb = null;
+        if (!reflectTaught) firstOrb = null;
+        if (player != null) player.combatOnly = false;
         if (boss != null) { boss.color = bossColor; boss.transform.localPosition = Vector3.zero; boss.transform.localScale = Vector3.one * bossScale; }
         if (bossAnchor != null) bossAnchor.position = BossRest;
     }
@@ -815,6 +935,8 @@ public class BossFight : MonoBehaviour
 
     void LateUpdate()
     {
+        KeepGodBubbleClear();
+        UpdateDemo();
         if (!camLocked || cam == null) return;
         Vector3 off = Vector3.zero;
         if (shakeLeft > 0f)
@@ -849,6 +971,143 @@ public class BossFight : MonoBehaviour
                 }
             }
         }
+    }
+
+    // ───────────── 튜토리얼: 슬로우 모션 / 그릴 모양 시범 ─────────────
+
+    /// <summary>슬로우 모션 켜기/끄기. 켤 때는 tutorialSlowIn 동안 점점 느려지고(UpdateSlowFx), 끌 때는 바로 원래 속도.</summary>
+    void SetSlow(bool on)
+    {
+        slowOn = on;
+        if (!on)
+        {
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = baseFixedDt;
+        }
+    }
+
+    /// <summary>슬로우 모션 연출 (실제 시간 기준): 점점 느려짐 + 카메라 확대.</summary>
+    void UpdateSlowFx()
+    {
+        float prev = slowFx;
+        slowFx = Mathf.MoveTowards(slowFx, slowOn ? 1f : 0f, Time.unscaledDeltaTime / Mathf.Max(0.01f, slowOn ? tutorialSlowIn : 0.2f));
+        if (slowOn)
+        {
+            Time.timeScale = Mathf.Lerp(1f, tutorialTimeScale, slowFx);
+            Time.fixedDeltaTime = baseFixedDt * Time.timeScale; // 느려도 물리가 끊겨 보이지 않게
+        }
+        if (cam != null && arenaCamSet && player != null && (slowFx > 0f || prev > 0f))
+        {
+            float k = Mathf.SmoothStep(0f, 1f, slowFx);
+            Vector3 fp; float fo;
+            FocusView(out fp, out fo);
+            camPos = Vector3.Lerp(arenaCamPos, fp, k);
+            cam.orthographicSize = Mathf.Lerp(arenaOrtho, fo, k);
+        }
+    }
+
+    void FocusView(out Vector3 pos, out float ortho)
+    {
+        float z = arenaCamPos.z;
+        if (focus == Focus.Reflect)
+        {
+            ortho = arenaOrtho * reflectZoom;
+            Vector2 c = (Vector2)player.transform.position + new Vector2(holdSide * 0.7f, 1.8f);
+            pos = new Vector3(c.x, c.y, z);
+        }
+        else
+        {
+            ortho = arenaOrtho * sectionZoom;
+            Vector2 b = BossPosition;
+            pos = new Vector3(b.x + 1.5f, (b.y + floorTop) * 0.5f + 1f, z);
+        }
+    }
+
+
+
+    void ShowDemo(Demo d)
+    {
+        if (demo == null)
+        {
+            var go = new GameObject("GestureDemo");
+            go.transform.SetParent(root, false);
+            demo = go.AddComponent<LineRenderer>();
+            demo.useWorldSpace = true;
+            demo.material = new Material(Shader.Find("Sprites/Default"));
+            demo.widthMultiplier = 0.25f;
+            demo.numCapVertices = 4;
+            demo.numCornerVertices = 4;
+            demo.sortingOrder = 300;
+            demoTip = MakeSprite("Tip", go.transform, OrbSprite(), 301, Color.white);
+            demoTip.transform.localScale = Vector3.one * 0.6f;
+        }
+        demo.startColor = demo.endColor = demoColor;
+        demoPath = d == Demo.Section ? SectionPath() : AttackPath(d == Demo.AttackLeft);
+        demoKind = d;
+        demoT = 0f;
+        demo.gameObject.SetActive(true);
+        UpdateDemo();
+    }
+
+    void HideDemo()
+    {
+        demoKind = Demo.None;
+        if (demo != null) demo.gameObject.SetActive(false);
+    }
+
+    /// <summary>시범 선을 펜으로 그리듯 그렸다가 잠깐 멈추고 다시 그린다 (실제 시간 기준이라 슬로우 모션에도 같은 속도).
+    /// ㄱ 은 메크로 머리 위, § 는 보스 오른쪽 옆 (신 말풍선은 왼쪽).</summary>
+    void UpdateDemo()
+    {
+        if (demoKind == Demo.None || demo == null || demoPath == null || player == null) return;
+        bool section = demoKind == Demo.Section;
+        Vector2 c = section ? BossPosition + Vector2.right * (BossRadius + 2.2f) : (Vector2)player.transform.position + Vector2.up * 3.8f;
+        float s = section ? 1.5f : 2f;
+        float drawTime = section ? 1.6f : 0.7f;
+        demoT += Time.unscaledDeltaTime;
+        float prog = Mathf.Clamp01((demoT % (drawTime + 0.7f)) / drawTime);
+        int n = Mathf.Clamp(Mathf.CeilToInt(prog * (demoPath.Length - 1)) + 1, 2, demoPath.Length);
+        demo.positionCount = n;
+        for (int i = 0; i < n; i++) demo.SetPosition(i, c + demoPath[i] * s);
+        demoTip.transform.position = c + demoPath[n - 1] * s;
+    }
+
+    /// <summary>ㄱ: 가로로 긋고 아래로 (왼쪽 공격이면 좌우 반전). 높이 약 1.2.</summary>
+    static Vector2[] AttackPath(bool left)
+    {
+        var corners = new[] { new Vector2(-0.6f, 0.5f), new Vector2(0.6f, 0.5f), new Vector2(0.45f, -0.7f) };
+        var pts = new List<Vector2>();
+        for (int i = 0; i < corners.Length - 1; i++)
+            for (int k = 0; k < 12; k++) pts.Add(Vector2.Lerp(corners[i], corners[i + 1], k / 12f));
+        pts.Add(corners[corners.Length - 1]);
+        if (left) for (int i = 0; i < pts.Count; i++) pts[i] = new Vector2(-pts[i].x, pts[i].y);
+        return pts.ToArray();
+    }
+
+    /// <summary>§: 위 S → 가운데 고리 → 아래 S 를 한 획으로. 높이 약 2 (중심 0,0).</summary>
+    static Vector2[] SectionPath()
+    {
+        var key = new[]
+        {
+            new Vector2(0.80f, 1.75f), new Vector2(0.55f, 1.98f), new Vector2(0.25f, 1.88f), new Vector2(0.18f, 1.60f),
+            new Vector2(0.40f, 1.40f), new Vector2(0.72f, 1.22f), new Vector2(0.82f, 0.98f), new Vector2(0.62f, 0.80f),
+            new Vector2(0.38f, 0.86f), new Vector2(0.20f, 1.06f), new Vector2(0.30f, 1.25f), new Vector2(0.55f, 1.20f),
+            new Vector2(0.80f, 0.98f), new Vector2(0.82f, 0.70f), new Vector2(0.62f, 0.55f), new Vector2(0.30f, 0.38f),
+            new Vector2(0.18f, 0.20f), new Vector2(0.25f, 0.02f), new Vector2(0.52f, -0.02f), new Vector2(0.75f, 0.12f),
+        };
+        var off = new Vector2(0.5f, 1f);
+        var pts = new List<Vector2>();
+        for (int i = 0; i < key.Length - 1; i++)
+        {
+            Vector2 p0 = key[Mathf.Max(0, i - 1)], p1 = key[i], p2 = key[i + 1], p3 = key[Mathf.Min(key.Length - 1, i + 2)];
+            for (int k = 0; k < 8; k++)
+            {
+                float u = k / 8f, u2 = u * u, u3 = u2 * u;
+                pts.Add(0.5f * (2f * p1 + (-p0 + p2) * u + (2f * p0 - 5f * p1 + 4f * p2 - p3) * u2 + (-p0 + 3f * p1 - 3f * p2 + p3) * u3) - off);
+            }
+        }
+        pts.Add(key[key.Length - 1] - off);
+        return pts.ToArray();
     }
 
     void Shake(float duration, float magnitude)
@@ -970,6 +1229,7 @@ public class BossFight : MonoBehaviour
 
     void RemoveOrb(BossOrb o)
     {
+        if (o == firstOrb && !reflectTaught) { firstOrb = null; if (player != null) player.combatOnly = false; } // 다음 탄에서 다시 알려줌
         orbs.Remove(o);
         if (o != null) Destroy(o.gameObject);
     }

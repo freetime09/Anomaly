@@ -10,6 +10,8 @@ public class BossOrb : MonoBehaviour, IDamageable
     public BossFight fight;
     public Vector2 velocity;
     public bool reflected;
+    [Tooltip("튜토리얼: 메크로 앞에 멈춰서 되받아칠 때까지 기다림")]
+    public bool held;
     public float radius = 0.45f;
 
     public void TakeHit(int damage, Vector2 hitDir)
@@ -22,6 +24,12 @@ public class BossOrb : MonoBehaviour, IDamageable
     void Update()
     {
         if (fight == null) return;
+        if (held)
+        {
+            transform.position = Vector2.MoveTowards(transform.position, fight.OrbHoldPoint, 6f * Time.deltaTime);
+            fight.TickOrb(this);
+            return;
+        }
         if (reflected) velocity = (fight.BossPosition - (Vector2)transform.position).normalized * fight.reflectSpeed; // 보스를 따라감
         transform.position += (Vector3)(velocity * Time.deltaTime);
         fight.TickOrb(this);
