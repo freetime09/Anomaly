@@ -9,7 +9,7 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider2D))]
 public class PlayerController : MonoBehaviour
 {
-    public enum Command { None, MoveLeft, MoveRight, Jump, SlideLeft, SlideRight, ThrowBranch, Interact, PlantBranch, ReturnBranch, TeleportBranch, AttackLeft, AttackRight }
+    public enum Command { None, MoveLeft, MoveRight, Jump, SlideLeft, SlideRight, ThrowBranch, Interact, PlantBranch, ReturnBranch, TeleportBranch, AttackLeft, AttackRight, Boss }
 
     [Header("이동")]
     [Tooltip("좌우 이동 속도 (units/초)")]
@@ -416,7 +416,19 @@ public class PlayerController : MonoBehaviour
             case Command.TeleportBranch: TeleportToBranch(); break;
             case Command.AttackLeft:  Attack(-1); break;
             case Command.AttackRight: Attack(1); break;
+            case Command.Boss:        UseBossSkill(); break;
         }
+    }
+
+    /// <summary>§ 스킬을 쓸 수 있는 상태인가 (보스전에서 보스가 틈을 보일 때만 BossFight 가 켠다).</summary>
+    [System.NonSerialized] public bool bossSkillReady;
+    /// <summary>§ 스킬을 썼을 때 (bossSkillReady 일 때만 호출됨)</summary>
+    public event System.Action BossSkillUsed;
+
+    void UseBossSkill()
+    {
+        if (dead || !bossSkillReady) return;
+        if (BossSkillUsed != null) BossSkillUsed();
     }
 
     static readonly Collider2D[] hitBuf = new Collider2D[16];
@@ -677,7 +689,7 @@ public class PlayerController : MonoBehaviour
                 if (sliding) return 1f;
                 return Mathf.Clamp01((slideCooldown - (Time.time - lastSlideTime)) / Mathf.Max(0.0001f, slideCooldown));
             case SkillId.Interact: return 0f; // 상호작용은 항상 가능
-            case SkillId.Boss:     return 1f; // 아직 잠김
+            case SkillId.Boss:     return bossSkillReady ? 0f : 1f; // 보스가 틈을 보일 때만
         }
         return 0f;
     }

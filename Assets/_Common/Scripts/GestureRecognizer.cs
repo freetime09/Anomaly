@@ -310,6 +310,9 @@ public class GestureRecognizer : MonoBehaviour
                 case "⋉": // 나뭇가지 위치로 텔레포트
                     player.ExecuteCommand(PlayerController.Command.TeleportBranch);
                     break;
+                case "§": // 보스 스킬 (보스전에서 보스가 틈을 보일 때만 동작)
+                    player.ExecuteCommand(PlayerController.Command.Boss);
+                    break;
                 default:
                     // 이름은 위에서 이미 로그됨. 연결된 동작만 아직 없음.
                     break;

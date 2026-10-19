@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85239dcd5239ebf49bb032a6778a7bf8, type: 3}
+  m_Name: Ch4_BossIntro
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  lines:
+  - speakerId: God
+    text: "...뭐야."
+    holdTime: 0
+  - speakerId: God
+    text: "<glitch>메크로</glitch>?"
+    holdTime: 0
+  - speakerId: God
+    text: "왜 아직 안 지워졌지?"
+    holdTime: 0
+  - speakerId: God
+    text: "...다시 지우면 되겠군."
+    holdTime: 0

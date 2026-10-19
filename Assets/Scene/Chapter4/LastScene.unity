@@ -212,6 +212,33 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &21440610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21440607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86407134bd67cef418c7b2eeba45bf64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CaptureGlitchRegions
+  regions:
+  - capture: {fileID: 21300000, guid: 774a940deda476342a3bfcc6b6f736da, type: 3}
+    pixelRect: {x: 1514, y: 856, z: 103, w: 26}
+  - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
+    pixelRect: {x: 1514, y: 812, z: 113, w: 22}
+  - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
+    pixelRect: {x: 1659, y: 787, z: 80, w: 17}
+  - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
+    pixelRect: {x: 1384, y: 1186, z: 84, w: 22}
+  interval: {x: 0.25, y: 1}
+  burstTime: {x: 0.12, y: 0.35}
+  slices: 5
+  maxShift: 16
+  colorSplit: 8
+  splitAlpha: 0.85
 --- !u!114 &21440611
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -242,33 +269,6 @@ MonoBehaviour:
   player: {fileID: 0}
   overlayColor: {r: 0, g: 0, b: 0, a: 0.6}
   orderOffset: 4
---- !u!114 &21440610
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 21440607}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 86407134bd67cef418c7b2eeba45bf64, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CaptureGlitchRegions
-  regions:
-  - capture: {fileID: 21300000, guid: 774a940deda476342a3bfcc6b6f736da, type: 3}
-    pixelRect: {x: 1514, y: 856, z: 103, w: 26}
-  - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
-    pixelRect: {x: 1514, y: 812, z: 113, w: 22}
-  - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
-    pixelRect: {x: 1659, y: 787, z: 80, w: 17}
-  - capture: {fileID: 21300000, guid: 373347ce6d6b39f44b92a4492c527048, type: 3}
-    pixelRect: {x: 1384, y: 1186, z: 84, w: 22}
-  interval: {x: 0.25, y: 1}
-  burstTime: {x: 0.12, y: 0.35}
-  slices: 5
-  maxShift: 16
-  colorSplit: 8
-  splitAlpha: 0.85
 --- !u!1 &116973730
 GameObject:
   m_ObjectHideFlags: 0
@@ -1147,28 +1147,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
---- !u!114 &862957454
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 862957450}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 180e619b6a946044a96b9d72112d5dc3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DialogueTrigger
-  dialogue: {fileID: 11400000, guid: f90544c8d21c473f949c93fef581aca9, type: 2}
-  playOnce: 1
-  lockPlayerControl: 0
-  queueWhenBusy: 1
-  onDialogueStarted:
-    m_PersistentCalls:
-      m_Calls: []
-  onDialogueFinished:
-    m_PersistentCalls:
-      m_Calls: []
+      - m_Target: {fileID: 1587097419}
+        m_TargetAssemblyTypeName: BossFight, Assembly-CSharp
+        m_MethodName: Begin
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!61 &862957452
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1230,6 +1220,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &862957454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 862957450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 180e619b6a946044a96b9d72112d5dc3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueTrigger
+  dialogue: {fileID: 11400000, guid: f90544c8d21c473f949c93fef581aca9, type: 2}
+  playOnce: 1
+  lockPlayerControl: 0
+  queueWhenBusy: 1
+  onDialogueStarted:
+    m_PersistentCalls:
+      m_Calls: []
+  onDialogueFinished:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1000790734
 GameObject:
   m_ObjectHideFlags: 0
@@ -1596,21 +1608,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 5571010317375463017, guid: 6d0901675afd7d1458bad59cdbd07222, type: 3}
   m_PrefabInstance: {fileID: 1182274165}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1182274169
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1182274167}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71c9a3d20437fa849927a171c06a8c6d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HudReveal
-  fadeDuration: 0.6
-  waitForVortex: 0
-  extraDelay: 0
 --- !u!114 &1182274168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1628,6 +1625,21 @@ MonoBehaviour:
   worldOffset: {x: 14.25, y: 1}
   depth: 27.75
   referenceOrthoSize: 8
+--- !u!114 &1182274169
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1182274167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71c9a3d20437fa849927a171c06a8c6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HudReveal
+  fadeDuration: 0.6
+  waitForVortex: 0
+  extraDelay: 0
 --- !u!1 &1337212185
 GameObject:
   m_ObjectHideFlags: 0
@@ -1980,6 +1992,101 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraClampToSprite
   area: {fileID: 21440608}
+--- !u!1 &1587097418
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1587097420}
+  - component: {fileID: 1587097419}
+  m_Layer: 0
+  m_Name: BossFight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1587097419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587097418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05eb1fc081be463d9716712a57f8609a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossFight
+  arenaHalfWidth: 18.5
+  floorMargin: 2.5
+  introDialogue: {fileID: 11400000, guid: 65e24708f0f24791ab45f0b06077579d, type: 2}
+  zoomOut: 1.4
+  zoomTime: 2.2
+  godBubbleScale: 1.8
+  bossSprite: {fileID: 0}
+  bossSize: 8
+  bossHeight: 13.5
+  hearts: 3
+  invulnTime: 1.5
+  bossPhases: 3
+  reflectsToStun: 2
+  stunTime: 6
+  restTime: 1.6
+  telegraphTime: 1.1
+  phaseSpeedUp: 0.1
+  comboChance: {x: 0.4, y: 0.65}
+  columnWidth: 1.6
+  columnActiveTime: 0.35
+  sweepSpeed: 8
+  sweepThickness: 0.7
+  lowLane: {x: 0, y: 0.9}
+  highLane: {x: 1.15, y: 3.2}
+  orbSpeed: 4
+  reflectSpeed: 14
+  orbCharge: 0.7
+  orbInterval: 1.4
+  cursorFollowTime: 1.8
+  cursorSpeed: 7
+  selectSize: {x: 3.6, y: 3.4}
+  eraseTime: 0.3
+  slamFollowTime: 1.6
+  slamFollowSpeed: 7
+  slamSize: {x: 3.2, y: 2.2}
+  slamHover: 8
+  slamShakeTime: 0.5
+  slamFallSpeed: 40
+  shockDelay: 0.7
+  shockSpeed: 9
+  shockSize: {x: 0.6, y: 0.8}
+  hazardColor: {r: 1, g: 1, b: 1, a: 1}
+  warnColor: {r: 1, g: 0.15, b: 0.15, a: 0.3}
+  eraserColor: {r: 1, g: 0.72, b: 0.78, a: 1}
+  bossColor: {r: 1, g: 1, b: 1, a: 1}
+  stunColor: {r: 1, g: 0.25, b: 0.25, a: 1}
+  reflectedColor: {r: 0.4, g: 1, b: 1, a: 1}
+  bossSkillHint: {fileID: 3918515020495221531, guid: 904bb0c47a4b4c44eb899e1a391c5afc, type: 3}
+  onDefeated:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!4 &1587097420
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587097418}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1619580602
 GameObject:
   m_ObjectHideFlags: 0
@@ -2524,3 +2631,4 @@ SceneRoots:
   - {fileID: 1893513030}
   - {fileID: 862957453}
   - {fileID: 767113317}
+  - {fileID: 1587097420}
