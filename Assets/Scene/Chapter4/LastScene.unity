@@ -2046,11 +2046,15 @@ MonoBehaviour:
   sweepSpeed: 8
   sweepThickness: 0.7
   lowLane: {x: 0, y: 0.9}
+  lowSweepSpeed: 12
+  lowSweepCount: 2
+  lowSweepGap: 0.8
   highLane: {x: 1.15, y: 3.2}
   orbSpeed: 6.5
   reflectSpeed: 14
   orbCharge: 0.7
   orbInterval: 1.4
+  orbReflectRadius: 1.1
   cursorFollowTime: 1.8
   cursorSpeed: 7
   selectSize: {x: 3.6, y: 3.4}
@@ -2075,8 +2079,6 @@ MonoBehaviour:
   tutorialDistance: 4
   demoColor: {r: 1, g: 0.9, b: 0.2, a: 1}
   tutorialSlowIn: 0.3
-  tutorialDarkness: 0.75
-  tutorialLight: {r: 1, g: 0.95, b: 0.75, a: 0.1}
   reflectZoom: 0.6
   sectionZoom: 0.8
   onDefeated:

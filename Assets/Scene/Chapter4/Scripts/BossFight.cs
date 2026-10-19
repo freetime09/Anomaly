@@ -140,10 +140,17 @@ public class BossFight : MonoBehaviour
     [Tooltip("§ 튜토리얼 때 카메라 확대")]
     public float sectionZoom = 0.8f;
 
+    [Header("이펙트")]
+    [Tooltip("쳐내기·명중·피격 때 아주 잠깐 멈춤")]
+    public bool hitStopOn = true;
+    [Tooltip("공격 예고·내려찍기·페이즈 전환 때 화면 지지직")]
+    public bool glitchOn = true;
+
     [Tooltip("보스를 쓰러뜨렸을 때")]
     public UnityEvent onDefeated;
 
     class Hazard { public SpriteRenderer sr; public bool armed; }
+    class Particle { public SpriteRenderer sr; public Vector2 v; public float life, max, gravity, spin, a; }
     enum Pattern { Columns, Orbs, Sweep, Cursor, Slam }
 
     // 한 바퀴 순서 (탄은 되받아칠 기회라 두 번)
@@ -192,6 +199,14 @@ public class BossFight : MonoBehaviour
     Vector3 arenaCamPos;
     float arenaOrtho;
     BossOrb firstOrb;           // 튜토리얼 첫 탄 (쏘는 순간부터 메크로는 ㄱ 만 가능)
+
+    // 이펙트
+    float hitStopLeft;
+    bool hitStopWas;
+    readonly List<Particle> particles = new List<Particle>();
+    float glitchLeft, glitchPower, glitchTick;
+    readonly List<SpriteRenderer> glitchBars = new List<SpriteRenderer>();
+    readonly List<SpriteRenderer> bossGhosts = new List<SpriteRenderer>();
 
     static Sprite squareSprite, eyeSprite, orbSprite, heartSprite, cursorSprite;
 
@@ -316,7 +331,7 @@ public class BossFight : MonoBehaviour
 
     void OnDestroy()
     {
-        if (teaching) SetSlow(false);
+        if (teaching || hitStopWas) { slowOn = false; Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt; }
         CutsceneLock.Unlock(this);
         if (fr != null) { fr.Died -= OnDied; fr.Respawned -= OnRespawned; }
         if (player != null) { player.BossSkillUsed -= OnBossSkill; player.bossSkillReady = false; player.combatOnly = false; }
@@ -469,10 +484,18 @@ public class BossFight : MonoBehaviour
                 list.Add(AddRect(new Vector2(x, floorTop + height * 0.5f), new Vector2(columnWidth, height), warnColor, 5));
             yield return Telegraph(list, telegraphTime * k);
 
-            foreach (var h in list) { h.sr.color = hazardColor; h.sr.sortingOrder = 20; h.armed = true; }
+            foreach (var h in list)
+            {
+                h.sr.color = hazardColor; h.sr.sortingOrder = 20; h.armed = true;
+                Dust(new Vector2(h.sr.transform.position.x, floorTop), 0, 10, hazardColor);
+            }
             Shake(0.12f, 0.1f);
             yield return new WaitForSeconds(columnActiveTime);
-            foreach (var h in list) h.armed = false;
+            foreach (var h in list)
+            {
+                h.armed = false;
+                Dissolve(new Vector2(h.sr.transform.position.x, floorTop + 4f), new Vector2(columnWidth, 8f), hazardColor, 14);
+            }
             yield return FadeOut(list, 0.25f);
             if (w < waves - 1) yield return new WaitForSeconds(0.45f);
         }
@@ -521,11 +544,21 @@ public class BossFight : MonoBehaviour
                 barList.Add(bar);
             }
             float last = x + side * spacing * (count - 1);
+            float trail = 0f;
             while (side > 0 ? last > end : last < end)
             {
                 float dx = side * speed * Time.deltaTime;
                 x -= dx; last -= dx;
                 for (int i = 0; i < count; i++) barList[i].sr.transform.position = new Vector3(x + side * spacing * i, yc, 0f);
+                if ((trail -= Time.deltaTime) <= 0f)
+                {
+                    trail = 0.04f;
+                    for (int i = 0; i < count; i++)
+                    {
+                        AfterImage(barList[i].sr);
+                        if (low) Dust(new Vector2(barList[i].sr.transform.position.x, floorTop), side, 1, hazardColor);
+                    }
+                }
                 yield return null;
             }
             foreach (var bar in barList) RemoveHazard(bar);
@@ -604,6 +637,9 @@ public class BossFight : MonoBehaviour
                 cracks++;
                 StartCoroutine(BossFlash(new Color(1f, 0.4f, 0.4f), 0.15f));
                 Shake(0.15f, 0.2f);
+                HitStop(0.07f);
+                Glitch(0.15f, 0.5f);
+                Burst(p, reflectedColor, 14, 8f, 0.25f);
             }
             return;
         }
@@ -628,6 +664,9 @@ public class BossFight : MonoBehaviour
         var sr = o.GetComponent<SpriteRenderer>();
         if (sr != null) sr.color = reflectedColor;
         Shake(0.1f, 0.08f);
+        HitStop(0.08f);
+        Burst(o.transform.position, Color.white, 6, 7f, 0.15f);
+        Burst(o.transform.position, reflectedColor, 8, 5f, 0.2f);
         if (o == firstOrb && !reflectTaught)
         {
             reflectTaught = true;
@@ -696,8 +735,10 @@ public class BossFight : MonoBehaviour
 
             box.sr.color = hazardColor; box.sr.sortingOrder = 20; box.armed = true;
             Shake(0.15f, 0.15f);
+            Glitch(0.15f, 0.6f);
             yield return new WaitForSeconds(eraseTime);
             box.armed = false;
+            Dissolve(box.sr.transform.position, selectSize, hazardColor, 24);
             yield return FadeOut(new List<Hazard> { box }, 0.25f);
             if (c < clicks - 1) yield return new WaitForSeconds(0.3f);
         }
@@ -750,6 +791,10 @@ public class BossFight : MonoBehaviour
                 yield return null;
             }
             Shake(0.4f, 0.4f);
+            HitStop(0.05f);
+            Glitch(0.25f, 0.8f);
+            Dust(new Vector2(x - halfW, floorTop), -1, 12, Color.white);
+            Dust(new Vector2(x + halfW, floorTop), 1, 12, Color.white);
             yield return new WaitForSeconds(0.1f);
             er.armed = false;
 
@@ -776,6 +821,8 @@ public class BossFight : MonoBehaviour
                     var p = wv.sr.transform.position;
                     p.x += (i == 0 ? -1f : 1f) * shockSpeed * Time.deltaTime;
                     wv.sr.transform.position = p;
+                    if (Random.value < 0.4f) Dust(new Vector2(p.x, floorTop), i == 0 ? -1 : 1, 1, hazardColor);
+                    if (Random.value < 0.5f) AfterImage(wv.sr);
                     if (p.x < ArenaLeft - 1f || p.x > ArenaRight + 1f) RemoveHazard(wv);
                     else any = true;
                 }
@@ -805,6 +852,10 @@ public class BossFight : MonoBehaviour
         if (stunHit)
         {
             phase++;
+            HitStop(0.2f);
+            Glitch(0.5f, 1f);
+            Burst(BossPosition, Color.white, 20, 12f, 0.3f, 6f);
+            Burst(BossPosition, stunColor, 24, 9f, 0.35f, 6f);
             Shake(0.6f, 0.6f);
             yield return BossFlash(Color.white, 0.6f, true);
             if (phase >= bossPhases) { yield return Defeat(); yield break; }
@@ -828,10 +879,14 @@ public class BossFight : MonoBehaviour
             boss.transform.localPosition = Random.insideUnitCircle * 0.6f;
             boss.color = Random.value < 0.5f ? stunColor : reflectedColor;
             Shake(0.1f, 0.3f);
+            Glitch(0.1f, 1f);
+            if (Random.value < 0.3f) Burst(BossPosition + Random.insideUnitCircle * BossRadius, Random.value < 0.5f ? Color.white : stunColor, 6, 8f, 0.3f, 4f);
             yield return null;
         }
         boss.transform.localPosition = Vector3.zero;
         boss.color = bossColor;
+        HitStop(0.25f);
+        Dissolve(BossPosition, Vector2.one * bossSize * 0.8f, Color.white, 60);
         yield return Fade(boss, 1f, 0f, 1f);
         bossAnchor.gameObject.SetActive(false);
         Debug.Log("[보스] 쓰러짐");
@@ -843,6 +898,7 @@ public class BossFight : MonoBehaviour
     void Update()
     {
         UpdateSlowFx();
+        UpdateParticles();
         if (!started || player == null || dying || defeated || teaching || Time.time < invulnUntil) return;
         Bounds pb = PlayerHitBounds();
         bool hit = false;
@@ -872,6 +928,9 @@ public class BossFight : MonoBehaviour
         SetHearts(heartsLeft - 1);
         ScreenFeedback.Ensure().FailFeedback();
         Shake(0.25f, 0.3f);
+        HitStop(0.1f);
+        Glitch(0.2f, 0.7f);
+        Burst(pcol.bounds.center, new Color(1f, 0.25f, 0.3f), 12, 6f, 0.18f);
         if (heartsLeft <= 0)
         {
             if (fr != null) fr.Die(); // → OnDied 에서 멈추고, OnRespawned 에서 처음부터
@@ -946,6 +1005,7 @@ public class BossFight : MonoBehaviour
             if (shakeLeft <= 0f) shakeMag = 0f;
         }
         cam.transform.position = camPos + off;
+        UpdateGlitch();
 
         // 하트: 화면 왼쪽 위 (설정 버튼 오른쪽). 카메라를 빼도 화면에서 같은 크기
         float h = cam.orthographicSize, w = h * cam.aspect, z = h / Mathf.Max(0.01f, baseOrtho);
@@ -991,11 +1051,7 @@ public class BossFight : MonoBehaviour
     {
         float prev = slowFx;
         slowFx = Mathf.MoveTowards(slowFx, slowOn ? 1f : 0f, Time.unscaledDeltaTime / Mathf.Max(0.01f, slowOn ? tutorialSlowIn : 0.2f));
-        if (slowOn)
-        {
-            Time.timeScale = Mathf.Lerp(1f, tutorialTimeScale, slowFx);
-            Time.fixedDeltaTime = baseFixedDt * Time.timeScale; // 느려도 물리가 끊겨 보이지 않게
-        }
+        ApplyTimeScale();
         if (cam != null && arenaCamSet && player != null && (slowFx > 0f || prev > 0f))
         {
             float k = Mathf.SmoothStep(0f, 1f, slowFx);
@@ -1084,18 +1140,22 @@ public class BossFight : MonoBehaviour
         return pts.ToArray();
     }
 
-    /// <summary>§: 위 S → 가운데 고리 → 아래 S 를 한 획으로. 높이 약 2 (중심 0,0).</summary>
+    /// <summary>§: 오른쪽 위에서 시작 → 위 S → 가운데 고리 → 오른쪽으로 내려와 왼쪽 아래에서 끝. 약 0.7×2 (중심 0,0).</summary>
     static Vector2[] SectionPath()
     {
         var key = new[]
         {
-            new Vector2(0.80f, 1.75f), new Vector2(0.55f, 1.98f), new Vector2(0.25f, 1.88f), new Vector2(0.18f, 1.60f),
-            new Vector2(0.40f, 1.40f), new Vector2(0.72f, 1.22f), new Vector2(0.82f, 0.98f), new Vector2(0.62f, 0.80f),
-            new Vector2(0.38f, 0.86f), new Vector2(0.20f, 1.06f), new Vector2(0.30f, 1.25f), new Vector2(0.55f, 1.20f),
-            new Vector2(0.80f, 0.98f), new Vector2(0.82f, 0.70f), new Vector2(0.62f, 0.55f), new Vector2(0.30f, 0.38f),
-            new Vector2(0.18f, 0.20f), new Vector2(0.25f, 0.02f), new Vector2(0.52f, -0.02f), new Vector2(0.75f, 0.12f),
+            new Vector2(0.31f, 0.77f), new Vector2(0.33f, 0.88f), new Vector2(0.26f, 0.97f), new Vector2(0.04f, 1.00f),
+            new Vector2(-0.16f, 0.95f), new Vector2(-0.27f, 0.84f), new Vector2(-0.29f, 0.69f), new Vector2(-0.25f, 0.57f),
+            new Vector2(-0.12f, 0.49f), new Vector2(0.08f, 0.41f), new Vector2(0.23f, 0.30f), new Vector2(0.33f, 0.18f),
+            new Vector2(0.35f, 0.01f), new Vector2(0.33f, -0.19f), new Vector2(0.27f, -0.30f), new Vector2(0.16f, -0.40f),
+            new Vector2(0.00f, -0.47f), new Vector2(-0.18f, -0.46f), new Vector2(-0.27f, -0.34f), new Vector2(-0.31f, -0.16f),
+            new Vector2(-0.29f, -0.02f), new Vector2(-0.18f, 0.07f), new Vector2(0.00f, 0.10f), new Vector2(0.18f, 0.09f),
+            new Vector2(0.27f, 0.01f), new Vector2(0.32f, -0.13f), new Vector2(0.31f, -0.38f), new Vector2(0.30f, -0.60f),
+            new Vector2(0.26f, -0.73f), new Vector2(0.16f, -0.86f), new Vector2(0.02f, -0.97f), new Vector2(-0.16f, -1.00f),
+            new Vector2(-0.27f, -0.94f), new Vector2(-0.35f, -0.80f),
         };
-        var off = new Vector2(0.5f, 1f);
+        var off = Vector2.zero;
         var pts = new List<Vector2>();
         for (int i = 0; i < key.Length - 1; i++)
         {
@@ -1108,6 +1168,174 @@ public class BossFight : MonoBehaviour
         }
         pts.Add(key[key.Length - 1] - off);
         return pts.ToArray();
+    }
+
+    // ───────────── 이펙트: 타격 멈춤 / 파편 / 글리치 ─────────────
+
+    /// <summary>아주 잠깐 시간을 거의 멈춘다 (실제 시간 기준). 겹치면 긴 쪽.</summary>
+    void HitStop(float time)
+    {
+        if (!hitStopOn) return;
+        hitStopLeft = Mathf.Max(hitStopLeft, time);
+    }
+
+    /// <summary>시간 배율 = 슬로우 모션 × 타격 멈춤. 일시정지 중엔 건드리지 않음.</summary>
+    void ApplyTimeScale()
+    {
+        if (PauseMenu.IsPaused) return;
+        bool stop = hitStopLeft > 0f;
+        if (stop) hitStopLeft -= Time.unscaledDeltaTime;
+        if (slowOn || stop || hitStopWas)
+        {
+            float ts = slowOn ? Mathf.Lerp(1f, tutorialTimeScale, slowFx) : 1f;
+            if (stop) ts = Mathf.Min(ts, 0.03f);
+            Time.timeScale = ts;
+            Time.fixedDeltaTime = baseFixedDt * ts; // 느려도 물리가 끊겨 보이지 않게
+        }
+        hitStopWas = stop;
+    }
+
+    /// <summary>pos 에서 사방으로 튀는 네모 파편.</summary>
+    void Burst(Vector2 pos, Color color, int count, float speed, float size, float gravity = 14f)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 v = Random.insideUnitCircle.normalized * speed * Random.Range(0.4f, 1f);
+            float s = size * Random.Range(0.5f, 1.2f);
+            AddParticle(pos, new Vector2(s, s), color, v, Random.Range(0.35f, 0.7f), gravity, Random.Range(-720f, 720f), 22);
+        }
+    }
+
+    /// <summary>바닥에서 한쪽(dir)으로 흩날리는 가루.</summary>
+    void Dust(Vector2 pos, int dir, int count, Color color)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 v = new Vector2((dir == 0 ? Random.Range(-1f, 1f) : dir * Random.Range(0.3f, 1f)) * 5f, Random.Range(1f, 4.5f));
+            float s = Random.Range(0.08f, 0.2f);
+            AddParticle(pos + new Vector2(Random.Range(-0.3f, 0.3f), 0f), new Vector2(s, s), color, v, Random.Range(0.3f, 0.6f), 10f, Random.Range(-360f, 360f), 22);
+        }
+    }
+
+    /// <summary>사각형 영역이 네모 조각으로 부서져 흩어짐 (지워지는 느낌).</summary>
+    void Dissolve(Vector2 center, Vector2 size, Color color, int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 p = center + new Vector2(Random.Range(-0.5f, 0.5f) * size.x, Random.Range(-0.5f, 0.5f) * size.y);
+            Vector2 v = new Vector2(Random.Range(-1.5f, 1.5f), Random.Range(0.5f, 3f));
+            float s = Random.Range(0.15f, 0.35f);
+            AddParticle(p, new Vector2(s, s), color, v, Random.Range(0.3f, 0.6f), -2f, 0f, 21);
+        }
+    }
+
+    /// <summary>예고가 끝나는 순간 영역 전체가 하얗게 번쩍.</summary>
+    void FlashRect(SpriteRenderer src)
+    {
+        if (src == null) return;
+        AddParticle(src.transform.position, src.transform.localScale, new Color(1f, 1f, 1f, 0.75f), Vector2.zero, 0.15f, 0f, 0f, 21);
+    }
+
+    /// <summary>움직이는 막대가 지나간 자리에 남는 잔상.</summary>
+    void AfterImage(SpriteRenderer src)
+    {
+        if (src == null) return;
+        var c = src.color; c.a *= 0.35f;
+        AddParticle(src.transform.position, src.transform.localScale, c, Vector2.zero, 0.25f, 0f, 0f, src.sortingOrder - 1);
+    }
+
+    void AddParticle(Vector2 pos, Vector2 scale, Color color, Vector2 vel, float life, float gravity, float spin, int order)
+    {
+        if (root == null) return;
+        var sr = MakeSprite("Fx", root, Square(), order, color);
+        sr.transform.position = pos;
+        sr.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+        particles.Add(new Particle { sr = sr, v = vel, life = life, max = life, gravity = gravity, spin = spin, a = color.a });
+    }
+
+    /// <summary>파편 움직이기 (게임 시간 기준이라 타격 멈춤 때 같이 멈춤).</summary>
+    void UpdateParticles()
+    {
+        float dt = Time.deltaTime;
+        for (int i = particles.Count - 1; i >= 0; i--)
+        {
+            var p = particles[i];
+            p.life -= dt;
+            if (p.sr == null || p.life <= 0f)
+            {
+                if (p.sr != null) Destroy(p.sr.gameObject);
+                particles.RemoveAt(i);
+                continue;
+            }
+            p.v.y -= p.gravity * dt;
+            var t = p.sr.transform;
+            t.position += (Vector3)(p.v * dt);
+            if (p.spin != 0f) t.Rotate(0f, 0f, p.spin * dt);
+            var c = p.sr.color; c.a = p.a * (p.life / p.max); p.sr.color = c;
+        }
+    }
+
+    /// <summary>화면이 지지직: 가로 줄무늬가 어긋나고 신이 빨강·파랑으로 갈라진다. 겹치면 센 쪽.</summary>
+    void Glitch(float time, float power)
+    {
+        if (!glitchOn) return;
+        glitchLeft = Mathf.Max(glitchLeft, time);
+        glitchPower = glitchLeft > 0f && glitchPower > power ? glitchPower : power;
+    }
+
+    void UpdateGlitch()
+    {
+        if (cam == null) return;
+        bool on = glitchLeft > 0f && !PauseMenu.IsPaused;
+        if (on) glitchLeft -= Time.unscaledDeltaTime;
+        else glitchPower = 0f;
+
+        if (glitchBars.Count == 0 && on)
+            for (int i = 0; i < 7; i++)
+            {
+                var sr = MakeSprite("GlitchBar", cam.transform, Square(), 90, Color.clear);
+                glitchBars.Add(sr);
+            }
+        if (bossGhosts.Count == 0 && on && boss != null)
+            for (int i = 0; i < 2; i++)
+            {
+                var sr = MakeSprite("BossGhost", bossAnchor, boss.sprite, boss.sortingOrder - 1, Color.clear);
+                bossGhosts.Add(sr);
+            }
+
+        // 줄무늬는 0.04초마다 새로 뿌림
+        glitchTick -= Time.unscaledDeltaTime;
+        bool reroll = glitchTick <= 0f;
+        if (reroll) glitchTick = 0.04f;
+        float h = cam.orthographicSize, w = h * cam.aspect;
+        for (int i = 0; i < glitchBars.Count; i++)
+        {
+            var sr = glitchBars[i];
+            if (!on || Random.value > glitchPower) { if (reroll || !on) sr.enabled = false; continue; }
+            if (!reroll) continue;
+            sr.enabled = true;
+            float bh = Random.Range(0.05f, 0.6f) * h * 0.25f;
+            sr.transform.localPosition = new Vector3(Random.Range(-0.6f, 0.6f) * glitchPower, Random.Range(-h, h), 10f);
+            sr.transform.localScale = new Vector3(2f * w * Random.Range(0.4f, 1.2f), bh, 1f);
+            Color c = i % 3 == 0 ? new Color(1f, 0.15f, 0.25f) : i % 3 == 1 ? new Color(0.2f, 0.9f, 1f) : Color.white;
+            c.a = Random.Range(0.12f, 0.35f) * glitchPower;
+            sr.color = c;
+        }
+        for (int i = 0; i < bossGhosts.Count; i++)
+        {
+            var g = bossGhosts[i];
+            if (g == null) continue;
+            if (!on || boss == null || defeated && !bossAnchor.gameObject.activeSelf) { g.enabled = false; continue; }
+            g.enabled = true;
+            g.sprite = boss.sprite;
+            g.transform.localScale = boss.transform.localScale;
+            if (reroll)
+            {
+                float off = (i == 0 ? -1f : 1f) * Random.Range(0.15f, 0.6f) * glitchPower;
+                g.transform.localPosition = boss.transform.localPosition + new Vector3(off, Random.Range(-0.1f, 0.1f), 0f);
+            }
+            g.color = i == 0 ? new Color(1f, 0.15f, 0.25f, 0.55f * boss.color.a) : new Color(0.2f, 0.9f, 1f, 0.55f * boss.color.a);
+        }
     }
 
     void Shake(float duration, float magnitude)
@@ -1167,10 +1395,13 @@ public class BossFight : MonoBehaviour
     {
         var baseA = new List<float>();
         foreach (var h in list) baseA.Add(h.sr != null ? h.sr.color.a : 0f);
+        Glitch(0.12f, 0.4f);
+        float phaseAcc = 0f;
         for (float t = 0f; t < time; t += Time.deltaTime)
         {
-            float speed = t > time - 0.3f ? 40f : 14f; // 직전엔 빠르게 깜빡임
-            float m = 0.55f + 0.45f * Mathf.Sin(t * speed);
+            float a = t / Mathf.Max(0.01f, time);
+            phaseAcc += Time.deltaTime * Mathf.Lerp(8f, 55f, a * a); // 점점 빨라지는 깜빡임
+            float m = Mathf.Lerp(0.55f, 0.8f, a) + Mathf.Lerp(0.45f, 0.2f, a) * Mathf.Sin(phaseAcc);
             for (int i = 0; i < list.Count; i++)
             {
                 if (list[i].sr == null || list[i].armed) continue;
@@ -1178,6 +1409,7 @@ public class BossFight : MonoBehaviour
             }
             yield return null;
         }
+        foreach (var h in list) if (h.sr != null && !h.armed) FlashRect(h.sr); // 떨어지기 직전 번쩍
     }
 
     IEnumerator FadeOut(List<Hazard> list, float time)
