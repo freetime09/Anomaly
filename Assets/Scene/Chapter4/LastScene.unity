@@ -1011,7 +1011,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueSpeaker
   speakerId: Mecro
   bubbleOffset: {x: 0, y: 1.21}
-  font: {fileID: 11400000, guid: a30c919b497a4994a9cb8216ed31580f, type: 2}
+  font: {fileID: 11400000, guid: a8470287b766003469c6c03d730a03fd, type: 2}
   fontSize: 4
   maxWidth: 6
   padding: 0.25
@@ -1067,6 +1067,10 @@ MonoBehaviour:
   overviewHold: 1
   afterDialogue: 0.2
   zoomTime: 1.6
+  lookCount: 4
+  lookInterval: 0.45
+  lookFinalDir: 1
+  afterLook: 0.3
   dialogue: {fileID: 11400000, guid: 28bce6988b27b174a98244017519068f, type: 2}
 --- !u!4 &767113317
 Transform:
@@ -2055,6 +2059,7 @@ MonoBehaviour:
   orbCharge: 0.7
   orbInterval: 1.4
   orbReflectRadius: 1.7
+  orbAssistRange: 3.2
   cursorFollowTime: 1.8
   cursorSpeed: 7
   selectSize: {x: 3.6, y: 3.4}
@@ -2068,6 +2073,18 @@ MonoBehaviour:
   shockDelay: 0.7
   shockSpeed: 9
   shockSize: {x: 0.6, y: 0.8}
+  rainCount: 8
+  rainInterval: 0.3
+  rainTelegraph: 0.8
+  rainFallSpeed: 26
+  rainSize: {x: 1.2, y: 0.8}
+  laserAimTime: 1.6
+  laserTurnSpeed: 70
+  laserLockTime: 0.45
+  laserWidth: 1.1
+  laserActiveTime: 0.35
+  cloneTime: 6
+  cloneDelay: 1
   hazardColor: {r: 1, g: 1, b: 1, a: 1}
   warnColor: {r: 1, g: 0.15, b: 0.15, a: 0.3}
   eraserColor: {r: 1, g: 0.72, b: 0.78, a: 1}
