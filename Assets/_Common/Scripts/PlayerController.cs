@@ -428,6 +428,8 @@ public class PlayerController : MonoBehaviour
     [System.NonSerialized] public bool bossSkillReady;
     /// <summary>§ 스킬을 썼을 때 (bossSkillReady 일 때만 호출됨)</summary>
     public event System.Action BossSkillUsed;
+    /// <summary>ㄱ 공격 판정이 나는 순간 (인자 = 휘두른 방향 +1/-1). 보스전에서 위에서 오는 탄도 받게 쓴다.</summary>
+    public event System.Action<int> AttackSwung;
 
     void UseBossSkill()
     {
@@ -473,6 +475,7 @@ public class PlayerController : MonoBehaviour
             var d = c.GetComponentInParent<IDamageable>();
             if (d != null) d.TakeHit(attackDamage, new Vector2(facing, 0f));
         }
+        if (AttackSwung != null) AttackSwung(facing);
     }
 
     /// <summary>바라보는 방향 앞에 타격 이펙트를 생성한다. 플레이어를 부모로 달아 스윙 동안 따라오게 하고, facing 으로 좌우 반전.</summary>

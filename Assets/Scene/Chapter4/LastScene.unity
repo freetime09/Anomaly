@@ -2054,7 +2054,7 @@ MonoBehaviour:
   reflectSpeed: 14
   orbCharge: 0.7
   orbInterval: 1.4
-  orbReflectRadius: 1.1
+  orbReflectRadius: 1.7
   cursorFollowTime: 1.8
   cursorSpeed: 7
   selectSize: {x: 3.6, y: 3.4}

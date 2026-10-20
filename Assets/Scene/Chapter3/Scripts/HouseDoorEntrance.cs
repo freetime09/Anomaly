@@ -29,6 +29,8 @@ public class HouseDoorEntrance : MonoBehaviour, IInteractable
     public bool enterOnce = true;
     [Tooltip("들어가기로 한 뒤(O 를 그리거나 문 앞 도착) 실제로 들어가기까지 잠깐 기다리는 시간(초). 바로 빨려 들어가면 어색하다")]
     [Min(0f)] public float enterDelay = 0.3f;
+    [Tooltip("켜면 소용돌이 전환으로 화면을 가리고 이동. 끄면 전환 없이 바로 On Entered (예: 다음 챕터로 넘어가는 문은 자체 페이드를 씀)")]
+    public bool useVortex = true;
 
     [Header("O 프롬프트")]
     [Tooltip("문 위로 O 를 띄우는 높이 (이 오브젝트 위치 기준, units)")]
@@ -115,11 +117,15 @@ public class HouseDoorEntrance : MonoBehaviour, IInteractable
         ShowPrompt(false);
         CutsceneLock.Lock(this);
         var player = FindAnyObjectByType<PlayerController>();
-        if (player != null) player.Face(1);
+        if (player != null)
+        {
+            float dx = transform.position.x - player.transform.position.x;
+            player.Face(Mathf.Abs(dx) > 0.1f ? (dx > 0f ? 1 : -1) : 1); // 문 쪽을 봄
+        }
         if (enterDelay > 0f) yield return new WaitForSeconds(enterDelay);
         if (openClip != null) sfx.PlayOneShot(openClip, openVolume);
 
-        var vortex = VortexTransition.Instance;
+        var vortex = useVortex ? VortexTransition.Instance : null;
         if (vortex != null)
         {
             vortex.Play(() => MovePlayer(player)); // 화면이 완전히 가려진 순간 이동

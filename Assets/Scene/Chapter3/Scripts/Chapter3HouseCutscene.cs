@@ -37,6 +37,10 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
     [Tooltip("마지막에 바라볼 방향 (-1 = 왼쪽 = 들어온 문 쪽, +1 = 오른쪽)")]
     public int turnDirection = -1;
 
+    [Header("끝")]
+    [Tooltip("컷신이 끝나면 켤 오브젝트 (예: 4챕터로 나가는 문). 컷신 동안 O 프롬프트가 뜨지 않게 꺼 둔다")]
+    public GameObject activateOnEnd;
+
     protected override void Awake()
     {
         base.Awake();
@@ -102,5 +106,6 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
     {
         ReleaseCamera();
         UnlockControl();
+        if (activateOnEnd != null) activateOnEnd.SetActive(true);
     }
 }

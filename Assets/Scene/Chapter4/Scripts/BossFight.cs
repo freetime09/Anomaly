@@ -92,7 +92,9 @@ public class BossFight : MonoBehaviour
     [Tooltip("탄 사이 간격 (초)")]
     public float orbInterval = 1.4f;
     [Tooltip("ㄱ 에 맞는 탄 판정 반지름 (클수록 쳐내기 쉬움). 메크로가 맞는 판정과는 따로")]
-    public float orbReflectRadius = 1.1f;
+    public float orbReflectRadius = 1.7f;
+    [Tooltip("ㄱ 을 휘두르면 메크로 중심에서 이 거리 안, 휘두른 쪽(위·대각선 포함)에 있는 탄도 쳐냄")]
+    public float orbAssistRange = 3.2f;
 
     [Header("신의 커서")]
     [Tooltip("커서가 메크로를 따라다니는 시간 (초)")]
@@ -116,6 +118,31 @@ public class BossFight : MonoBehaviour
     public float shockDelay = 0.7f;
     public float shockSpeed = 9f;
     public Vector2 shockSize = new Vector2(0.6f, 0.8f);
+
+    [Header("지우개 비 (두 번째 페이즈부터)")]
+    public int rainCount = 8;
+    [Tooltip("조각 사이 간격 (초)")]
+    public float rainInterval = 0.3f;
+    [Tooltip("떨어질 자리 예고 시간 (초)")]
+    public float rainTelegraph = 0.8f;
+    public float rainFallSpeed = 26f;
+    public Vector2 rainSize = new Vector2(1.2f, 0.8f);
+
+    [Header("레이저 조준 (두 번째 페이즈부터)")]
+    [Tooltip("조준선이 메크로를 따라오는 시간 (초)")]
+    public float laserAimTime = 1.6f;
+    [Tooltip("조준선이 돌아가는 속도 (도/초). 느릴수록 따라잡기 어려움")]
+    public float laserTurnSpeed = 70f;
+    [Tooltip("멈춘 뒤 쏘기까지 (초)")]
+    public float laserLockTime = 0.45f;
+    public float laserWidth = 1.1f;
+    public float laserActiveTime = 0.35f;
+
+    [Header("복붙 그림자 (두 번째 페이즈부터)")]
+    [Tooltip("그림자가 따라오는 시간 (초)")]
+    public float cloneTime = 6f;
+    [Tooltip("그림자가 메크로의 몇 초 전 자리를 따라오는지. 이보다 오래 멈춰 있으면 잡힘")]
+    public float cloneDelay = 1f;
 
     [Header("색")]
     public Color hazardColor = Color.white;
@@ -149,12 +176,15 @@ public class BossFight : MonoBehaviour
     [Tooltip("보스를 쓰러뜨렸을 때")]
     public UnityEvent onDefeated;
 
-    class Hazard { public SpriteRenderer sr; public bool armed; }
+    class Hazard
+    {
+        public SpriteRenderer sr; public bool armed;
+        public float hit = 1f;                      // 판정 크기 배율 (그림보다 작게)
+        public Vector2 beamFrom, beamTo; public float beamHalf; // 기울어진 레이저 판정 (beamHalf > 0 일 때)
+    }
+    struct TrailPoint { public float t; public Vector3 pos; public Sprite sprite; public bool flip; }
     class Particle { public SpriteRenderer sr; public Vector2 v; public float life, max, gravity, spin, a; }
-    enum Pattern { Columns, Orbs, Sweep, Cursor, Slam }
-
-    // 한 바퀴 순서 (탄은 되받아칠 기회라 두 번)
-    static readonly Pattern[] order = { Pattern.Cursor, Pattern.Orbs, Pattern.Slam, Pattern.Sweep, Pattern.Orbs, Pattern.Columns };
+    enum Pattern { Columns, Orbs, Sweep, Cursor, Slam, Rain, Laser, Clone }
 
     PlayerController player;
     BoxCollider2D pcol;
@@ -204,6 +234,7 @@ public class BossFight : MonoBehaviour
     float hitStopLeft;
     bool hitStopWas;
     readonly List<Particle> particles = new List<Particle>();
+    readonly List<TrailPoint> playerTrail = new List<TrailPoint>();
     float glitchLeft, glitchPower, glitchTick;
     readonly List<SpriteRenderer> glitchBars = new List<SpriteRenderer>();
     readonly List<SpriteRenderer> bossGhosts = new List<SpriteRenderer>();
@@ -233,8 +264,10 @@ public class BossFight : MonoBehaviour
         player = FindAnyObjectByType<PlayerController>();
         if (player == null) { CutsceneLock.Unlock(this); yield break; }
         pcol = player.GetComponent<BoxCollider2D>();
-        var anim = player.GetComponentInChildren<Animator>();
-        psr = anim != null ? anim.GetComponent<SpriteRenderer>() : null;
+        // 실제로 보이는 그림 (루트의 SpriteRenderer 는 꺼져 있고 자식 CharacterSprite 가 그림)
+        psr = null;
+        foreach (var r in player.GetComponentsInChildren<SpriteRenderer>())
+            if (r.enabled && r.sprite != null) { psr = r; break; }
         if (psr != null) psrColor = psr.color;
         fr = player.GetComponent<FallRespawn>();
 
@@ -291,6 +324,7 @@ public class BossFight : MonoBehaviour
             fr.Respawned += OnRespawned;
         }
         player.BossSkillUsed += OnBossSkill;
+        player.AttackSwung += OnAttackSwung;
 
         CutsceneLock.Unlock(this);
         StartCoroutine(Loop());
@@ -334,7 +368,7 @@ public class BossFight : MonoBehaviour
         if (teaching || hitStopWas) { slowOn = false; Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt; }
         CutsceneLock.Unlock(this);
         if (fr != null) { fr.Died -= OnDied; fr.Respawned -= OnRespawned; }
-        if (player != null) { player.BossSkillUsed -= OnBossSkill; player.bossSkillReady = false; player.combatOnly = false; }
+        if (player != null) { player.BossSkillUsed -= OnBossSkill; player.AttackSwung -= OnAttackSwung; player.bossSkillReady = false; player.combatOnly = false; }
     }
 
     void BuildArena()
@@ -419,13 +453,17 @@ public class BossFight : MonoBehaviour
 
     IEnumerator Loop()
     {
-        int idx = 0;
+        List<Pattern> round = null;
+        int ri = 0;
+        Pattern? last = null;
         yield return new WaitForSeconds(0.8f);
         while (!defeated)
         {
             float k = Mathf.Max(0.5f, 1f - phaseSpeedUp * phase);
             while (teaching) yield return null; // 튜토리얼 중엔 다음 패턴을 시작하지 않음
-            Pattern p = order[idx++ % order.Length];
+            if (round == null || ri >= round.Count) { round = ShuffleRound(last); ri = 0; }
+            Pattern p = round[ri++];
+            last = p;
             float chance = phase >= 2 ? comboChance.y : phase >= 1 ? comboChance.x : 0f;
             Pattern partner;
             if (TryPartner(p, out partner) && Random.value < chance)
@@ -453,11 +491,14 @@ public class BossFight : MonoBehaviour
             case Pattern.Orbs: return Orbs(k);
             case Pattern.Sweep: return Sweep(k);
             case Pattern.Cursor: return CursorErase(k);
+            case Pattern.Rain: return Rain(k);
+            case Pattern.Laser: return Laser(k);
+            case Pattern.Clone: return Clone(k);
             default: return Slam(k);
         }
     }
 
-    /// <summary>같이 나와도 되는 짝. 탄은 되받아치기에 집중하게 단독 (보스가 움직이는 패턴끼리도 겹치지 않음).</summary>
+    /// <summary>같이 나와도 되는 짝. 탄·레이저는 단독 (보스가 움직이는 패턴끼리도 겹치지 않음).</summary>
     static bool TryPartner(Pattern p, out Pattern partner)
     {
         switch (p)
@@ -466,6 +507,8 @@ public class BossFight : MonoBehaviour
             case Pattern.Sweep: partner = Pattern.Cursor; return true;
             case Pattern.Slam: partner = Pattern.Columns; return true;
             case Pattern.Cursor: partner = Pattern.Sweep; return true;
+            case Pattern.Rain: partner = Pattern.Sweep; return true;
+            case Pattern.Clone: partner = Pattern.Columns; return true;
         }
         partner = p;
         return false;
@@ -833,6 +876,224 @@ public class BossFight : MonoBehaviour
         }
     }
 
+    // 지우개 비: 떨어질 자리에 예고 → 위에서 지우개 조각이 떨어짐
+    IEnumerator Rain(float k)
+    {
+        int count = phase >= 2 ? rainCount + 4 : rainCount;
+        float left = ArenaLeft + rainSize.x * 0.5f, right = ArenaRight - rainSize.x * 0.5f;
+        float topY = cam != null ? cam.transform.position.y + cam.orthographicSize + rainSize.y : floorTop + 16f;
+        var recent = new List<float>();
+        int running = 0;
+        for (int i = 0; i < count; i++)
+        {
+            float x;
+            if (i % 3 == 0) x = Mathf.Clamp(player.transform.position.x, left, right); // 세 번에 한 번은 메크로 자리
+            else
+            {
+                x = Random.Range(left, right);
+                for (int tries = 0; tries < 10; tries++)
+                {
+                    bool ok = true;
+                    foreach (float r in recent) if (Mathf.Abs(r - x) < rainSize.x * 1.5f) { ok = false; break; }
+                    if (ok) break;
+                    x = Random.Range(left, right);
+                }
+            }
+            recent.Add(x);
+            if (recent.Count > 3) recent.RemoveAt(0);
+            running++;
+            StartCoroutine(RainDrop(x, topY, k, () => running--));
+            yield return new WaitForSeconds(rainInterval * k);
+        }
+        while (running > 0) yield return null;
+    }
+
+    IEnumerator RainDrop(float x, float topY, float k, System.Action done)
+    {
+        // 예고: 바닥 표시 + 위에서 내려오는 가는 선
+        var mark = AddRect(new Vector2(x, floorTop + 0.15f), new Vector2(rainSize.x, 0.3f), new Color(warnColor.r, warnColor.g, warnColor.b, 0.8f), 6);
+        var line = AddRect(new Vector2(x, (floorTop + topY) * 0.5f), new Vector2(0.08f, topY - floorTop), warnColor, 5);
+        yield return Telegraph(new List<Hazard> { mark, line }, rainTelegraph * k);
+        RemoveHazard(line);
+
+        var drop = AddRect(new Vector2(x, topY), rainSize, eraserColor, 19);
+        drop.armed = true;
+        float y = topY, landY = floorTop + rainSize.y * 0.5f, trail = 0f;
+        while (y > landY)
+        {
+            y = Mathf.Max(landY, y - rainFallSpeed * Time.deltaTime);
+            if (drop.sr == null) { done(); yield break; }
+            drop.sr.transform.position = new Vector3(x, y, 0f);
+            if ((trail -= Time.deltaTime) <= 0f) { trail = 0.03f; AfterImage(drop.sr); }
+            yield return null;
+        }
+        RemoveHazard(mark);
+        Shake(0.08f, 0.08f);
+        Dust(new Vector2(x, floorTop), 0, 8, Color.white);
+        yield return new WaitForSeconds(0.08f);
+        drop.armed = false;
+        if (drop.sr != null) Dissolve(drop.sr.transform.position, rainSize, eraserColor, 8);
+        RemoveHazard(drop);
+        done();
+    }
+
+    // 레이저: 신의 눈에서 조준선이 메크로를 따라오다 멈춤 → 굵은 레이저
+    IEnumerator Laser(float k)
+    {
+        int shots = phase >= 2 ? 2 : 1;
+        Vector2 from = BossPosition;
+        Vector2 dir = ((Vector2)pcol.bounds.center - from).normalized;
+        for (int s = 0; s < shots; s++)
+        {
+            var aim = AddRect(from, Vector2.one, new Color(warnColor.r, warnColor.g, warnColor.b, 0.6f), 6);
+            float tAim = laserAimTime * k;
+            for (float t = 0f; t < tAim; t += Time.deltaTime)
+            {
+                from = BossPosition;
+                Vector2 want = ((Vector2)pcol.bounds.center - from).normalized;
+                dir = Vector3.RotateTowards(dir, want, laserTurnSpeed * Mathf.Deg2Rad * Time.deltaTime, 0f);
+                PlaceBeam(aim, from, dir, 0.14f + 0.06f * Mathf.Sin(t * 30f));
+                yield return null;
+            }
+            // 고정 → 깜빡이며 굵어짐
+            float tLock = laserLockTime * k;
+            for (float t = 0f; t < tLock; t += Time.deltaTime)
+            {
+                float a = t / tLock;
+                PlaceBeam(aim, from, dir, Mathf.Lerp(0.1f, laserWidth * 0.6f, a));
+                var c = warnColor; c.a = Mathf.Lerp(0.6f, 0.85f, a) * (0.6f + 0.4f * Mathf.Sin(t * 50f)); aim.sr.color = c;
+                yield return null;
+            }
+            RemoveHazard(aim);
+
+            var beam = AddRect(from, Vector2.one, hazardColor, 20);
+            float len = PlaceBeam(beam, from, dir, laserWidth);
+            beam.beamFrom = from; beam.beamTo = from + dir * len; beam.beamHalf = laserWidth * 0.5f * 0.8f;
+            beam.armed = true;
+            Shake(0.3f, 0.35f);
+            HitStop(0.04f);
+            Glitch(0.25f, 0.8f);
+            Dust(beam.beamTo, 0, 16, hazardColor);
+            for (float t = 0f; t < laserActiveTime; t += Time.deltaTime)
+            {
+                PlaceBeam(beam, from, dir, laserWidth * (1f + 0.15f * Mathf.Sin(t * 60f)));
+                if (Random.value < 0.5f) Dust(beam.beamTo, 0, 1, hazardColor);
+                yield return null;
+            }
+            beam.armed = false;
+            yield return FadeOut(new List<Hazard> { beam }, 0.2f);
+            if (s < shots - 1) yield return new WaitForSeconds(0.3f);
+        }
+    }
+
+    /// <summary>from 에서 dir 쪽으로 바닥(또는 벽 너머)까지 가는 막대로 놓는다. 길이를 돌려줌.</summary>
+    float PlaceBeam(Hazard h, Vector2 from, Vector2 dir, float width)
+    {
+        float len = 60f;
+        if (dir.y < -0.01f) len = Mathf.Min(len, (from.y - floorTop) / -dir.y);
+        Vector2 mid = from + dir * len * 0.5f;
+        var t = h.sr.transform;
+        t.position = new Vector3(mid.x, mid.y, 0f);
+        t.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+        t.localScale = new Vector3(len, width, 1f);
+        return len;
+    }
+
+    // 복붙: 메크로를 복사한 검은 그림자가 메크로가 지나간 길을 늦게 따라옴 → 멈춰 있으면 잡힘
+    IEnumerator Clone(float k)
+    {
+        int n = phase >= 2 ? 2 : 1;
+        // 예고: 메크로가 하얗게 번쩍 (복사됨) + 신이 지지직
+        Glitch(0.2f, 0.6f);
+        for (int i = 0; i < 3; i++)
+        {
+            if (psr != null) AddParticle(psr.bounds.center, psr.bounds.size, new Color(1f, 1f, 1f, 0.6f), Vector2.zero, 0.15f, 0f, 0f, psr.sortingOrder + 1);
+            yield return new WaitForSeconds(0.24f * k);
+        }
+        var clones = new List<Hazard>();
+        for (int i = 0; i < n; i++)
+        {
+            var c = AddSprite(psr != null ? psr.sprite : Square(), PlayerVisualPos, 21, new Color(0.05f, 0.05f, 0.08f, 0f));
+            c.sr.transform.localScale = psr != null ? psr.transform.lossyScale : player.transform.lossyScale;
+            c.hit = 0.6f;
+            clones.Add(c);
+        }
+        float dur = cloneTime;
+        for (float t = 0f; t < dur; t += Time.deltaTime)
+        {
+            for (int i = 0; i < clones.Count; i++)
+            {
+                var c = clones[i];
+                if (c.sr == null) continue;
+                float delay = cloneDelay * (i + 1);
+                Vector3 pos; Sprite sp; bool flip;
+                SamplePlayer(Time.time - delay, out pos, out sp, out flip);
+                c.sr.transform.position = pos;
+                if (sp != null) c.sr.sprite = sp;
+                c.sr.flipX = flip;
+                float a = Mathf.Clamp01(t / 0.5f) * Mathf.Clamp01((dur - t) / 0.4f);
+                c.sr.color = new Color(0.05f, 0.05f, 0.08f, 0.9f * a);
+                c.armed = t > 0.5f && t < dur - 0.3f;
+                if (Random.value < 0.25f) AddParticle(pos + (Vector3)Random.insideUnitCircle * 0.4f, Vector2.one * 0.12f, new Color(1f, 0.15f, 0.25f, 0.8f), Vector2.up * 1.5f, 0.3f, 0f, 0f, 22);
+            }
+            yield return null;
+        }
+        foreach (var c in clones)
+        {
+            if (c.sr != null) Dissolve(c.sr.transform.position, c.sr.bounds.size, new Color(0.1f, 0.1f, 0.12f), 14);
+            RemoveHazard(c);
+        }
+    }
+
+    Vector3 PlayerVisualPos => psr != null ? psr.transform.position : player.transform.position;
+
+    /// <summary>메크로 위치를 기록 (복붙 그림자가 따라오는 길).</summary>
+    void RecordPlayer()
+    {
+        if (player == null) return;
+        playerTrail.Add(new TrailPoint { t = Time.time, pos = PlayerVisualPos, sprite = psr != null ? psr.sprite : null, flip = psr != null && psr.flipX });
+        while (playerTrail.Count > 2 && playerTrail[1].t < Time.time - 4f) playerTrail.RemoveAt(0);
+    }
+
+    void SamplePlayer(float time, out Vector3 pos, out Sprite sprite, out bool flip)
+    {
+        pos = PlayerVisualPos; sprite = psr != null ? psr.sprite : null; flip = psr != null && psr.flipX;
+        if (playerTrail.Count == 0) return;
+        if (time <= playerTrail[0].t) { pos = playerTrail[0].pos; sprite = playerTrail[0].sprite; flip = playerTrail[0].flip; return; }
+        for (int i = playerTrail.Count - 1; i >= 0; i--)
+        {
+            if (playerTrail[i].t > time) continue;
+            var a = playerTrail[i];
+            if (i + 1 < playerTrail.Count)
+            {
+                var b = playerTrail[i + 1];
+                pos = Vector3.Lerp(a.pos, b.pos, Mathf.InverseLerp(a.t, b.t, time));
+            }
+            else pos = a.pos;
+            sprite = a.sprite; flip = a.flip;
+            return;
+        }
+    }
+
+    /// <summary>한 바퀴 순서를 섞는다: 탄은 꼭 두 번, 같은 패턴 연속 금지 (바퀴 사이도). 새 패턴은 두 번째 페이즈부터.</summary>
+    List<Pattern> ShuffleRound(Pattern? last)
+    {
+        var pool = new List<Pattern> { Pattern.Cursor, Pattern.Slam, Pattern.Sweep, Pattern.Columns, Pattern.Orbs, Pattern.Orbs };
+        if (phase >= 1) { pool.Add(Pattern.Rain); pool.Add(Pattern.Laser); pool.Add(Pattern.Clone); }
+        for (int tries = 0; tries < 50; tries++)
+        {
+            for (int i = pool.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+            }
+            bool ok = !(last.HasValue && pool[0] == last.Value);
+            for (int i = 1; ok && i < pool.Count; i++) if (pool[i] == pool[i - 1]) ok = false;
+            if (ok) break;
+        }
+        return pool;
+    }
+
     // 틈 → §
     IEnumerator Stun()
     {
@@ -863,6 +1124,19 @@ public class BossFight : MonoBehaviour
         else cracks = reflectsToStun - 1; // 놓쳐도 한 번만 더 받아치면 다시 틈
         boss.color = bossColor;
         yield return MoveBoss(BossRest, 0.6f);
+    }
+
+    /// <summary>ㄱ 히트박스는 옆으로만 길어서 위에서 대각선으로 오는 탄이 잘 안 맞음 → 휘두른 쪽 반원 안의 탄은 같이 쳐냄.</summary>
+    void OnAttackSwung(int dir)
+    {
+        if (!started || dying || defeated || pcol == null) return;
+        Vector2 c = pcol.bounds.center;
+        foreach (var o in orbs.ToArray())
+        {
+            if (o == null || o.reflected || !o.enabled) continue;
+            Vector2 d = (Vector2)o.transform.position - c;
+            if (d.x * dir > -0.5f && d.magnitude < orbAssistRange) o.TakeHit(1, new Vector2(dir, 0f));
+        }
     }
 
     void OnBossSkill()
@@ -899,11 +1173,12 @@ public class BossFight : MonoBehaviour
     {
         UpdateSlowFx();
         UpdateParticles();
+        RecordPlayer();
         if (!started || player == null || dying || defeated || teaching || Time.time < invulnUntil) return;
         Bounds pb = PlayerHitBounds();
         bool hit = false;
         foreach (var h in hazards)
-            if (h.armed && h.sr != null && h.sr.bounds.Intersects(pb)) { hit = true; break; }
+            if (h.armed && h.sr != null && HazardHits(h, pb)) { hit = true; break; }
         if (hit) Hurt(); // 목록을 도는 중에 지우지 않게 밖에서
     }
 
@@ -913,6 +1188,22 @@ public class BossFight : MonoBehaviour
         Bounds b = pcol.bounds;
         b.size = new Vector3(b.size.x * 0.7f, b.size.y * 0.85f, 10f);
         return b;
+    }
+
+    static bool HazardHits(Hazard h, Bounds pb)
+    {
+        if (h.beamHalf > 0f)
+        {
+            // 레이저: 선분을 따라 원을 찍어 검사
+            float len = Vector2.Distance(h.beamFrom, h.beamTo);
+            int n = Mathf.Max(2, Mathf.CeilToInt(len / 0.3f));
+            for (int i = 0; i <= n; i++)
+                if (CircleHitsBox(Vector2.Lerp(h.beamFrom, h.beamTo, i / (float)n), h.beamHalf, pb)) return true;
+            return false;
+        }
+        Bounds b = h.sr.bounds;
+        if (h.hit != 1f) b.size = new Vector3(b.size.x * h.hit, b.size.y * h.hit, b.size.z);
+        return b.Intersects(pb);
     }
 
     static bool CircleHitsBox(Vector2 c, float r, Bounds b)

@@ -19,6 +19,9 @@ public class ChapterTransitionTrigger : MonoBehaviour
     [Tooltip("불러올 씬 이름 (Build Profiles 씬 목록에 있는 이름, 예: Chapter3)")]
     public string nextSceneName = "Chapter3";
 
+    [Tooltip("켜면 플레이어가 닿기만 해도 넘어감. 끄면 StartTransition 을 불러야 넘어감 (예: 문에서 O 를 그렸을 때)")]
+    public bool triggerOnTouch = true;
+
     [Header("페이드")]
     [Tooltip("화면이 검게 덮이는 시간(초)")]
     [Min(0f)] public float fadeOutTime = 1f;
@@ -37,7 +40,7 @@ public class ChapterTransitionTrigger : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.GetComponentInParent<PlayerController>() != null) StartTransition();
+        if (triggerOnTouch && other.GetComponentInParent<PlayerController>() != null) StartTransition();
     }
 
     /// <summary>다음 챕터로 넘어가기 시작한다 (UnityEvent 에서 직접 불러도 됨). 한 번만 동작.</summary>

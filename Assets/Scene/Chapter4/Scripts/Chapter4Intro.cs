@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// 챕터 4 시작 연출: 메크로 확대 상태로 시작 → 잠깐 뒤 카메라를 멀리 빼서 캡쳐(에디터 화면) 전체를 보여준 뒤
+/// 챕터 4 시작 연출: 메크로 확대 상태로 시작 → 두리번거림 → 카메라를 멀리 빼서 캡쳐(에디터 화면) 전체를 보여준 뒤
 /// 메크로 말풍선 대사(챕터 3과 같은 방식) → 메크로 쪽으로 줌인하고 조작을 풀어준다.
 /// 연출 동안은 CameraFollow 를 끄고 직접 카메라를 움직인다 (CameraClampToSprite 가 캡쳐 밖은 안 보이게 막음).
 /// 카메라가 멀어져도 말풍선이 화면에서 같은 크기로 보이도록 연출 동안 말풍선을 카메라 거리만큼 키운다.
@@ -14,7 +14,7 @@ public class Chapter4Intro : MonoBehaviour
     public SpriteRenderer overviewArea;
 
     [Header("시간 (초)")]
-    [Tooltip("시작(메크로 확대 상태)에서 카메라를 빼기 시작할 때까지")]
+    [Tooltip("시작(메크로 확대 상태)에서 두리번거리기 시작할 때까지")]
     public float startDelay = 0.5f;
     [Tooltip("카메라를 뒤로 빼는 시간")]
     public float zoomOutTime = 1.2f;
@@ -24,6 +24,16 @@ public class Chapter4Intro : MonoBehaviour
     public float afterDialogue = 0.2f;
     [Tooltip("줌인 시간")]
     public float zoomTime = 1.6f;
+
+    [Header("두리번 (확대 상태에서, 카메라를 빼기 전)")]
+    [Tooltip("좌우를 번갈아 보는 횟수 (0 이면 안 함)")]
+    [Min(0)] public int lookCount = 4;
+    [Tooltip("한 번 고개를 돌리고 다음까지의 간격(초)")]
+    [Min(0.05f)] public float lookInterval = 0.45f;
+    [Tooltip("두리번거린 뒤 바라볼 방향 (+1 오른쪽, -1 왼쪽)")]
+    public int lookFinalDir = 1;
+    [Tooltip("두리번거린 뒤 카메라를 빼기까지")]
+    public float afterLook = 0.3f;
 
     [Header("대사 (챕터 3과 같은 말풍선)")]
     public DialogueData dialogue;
@@ -60,6 +70,18 @@ public class Chapter4Intro : MonoBehaviour
         // 1) 메크로 확대 상태로 시작 → 잠깐 뒤 캡쳐 전체가 들어오게 뒤로 뺌
         view.transform.position = FollowTarget();
         yield return new WaitForSeconds(startDelay);
+        if (lookCount > 0)
+        {
+            int dir = -1;
+            for (int i = 0; i < lookCount; i++)
+            {
+                player.Face(dir);
+                dir = -dir;
+                yield return new WaitForSeconds(lookInterval);
+            }
+            player.Face(lookFinalDir);
+            yield return new WaitForSeconds(afterLook);
+        }
         Bounds b = overviewArea.bounds;
         float overSize = Mathf.Max(b.size.y * 0.5f, b.size.x * 0.5f / view.aspect);
         Vector3 overPos = new Vector3(b.center.x, b.center.y, view.transform.position.z);

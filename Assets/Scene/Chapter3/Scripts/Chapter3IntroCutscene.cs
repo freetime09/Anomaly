@@ -28,6 +28,8 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     public Color blackSpaceBackground = new Color(0.07f, 0.07f, 0.07f);
     [Tooltip("자동으로 달릴 때 이동 속도 배율 (1 = 평소 걷기 속도). 정신없이 달리는 느낌을 위해 평소보다 빠르게")]
     [Min(0.1f)] public float runSpeedMultiplier = 1.5f;
+    [Tooltip("검은 공간에서만 켤 것들 (2챕터와 같은 배경 꾸미기: 숫자 비·먼지·안개 등). 마을에 도착하면 꺼진다")]
+    public Behaviour[] blackSpaceOnly;
 
     [Header("마을 도착")]
     [Tooltip("순간이동으로 도착할 마을 입구 위치")]
@@ -80,6 +82,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
             Debug.LogWarning("[Chapter3Intro] 개발용 Skip Cutscene 이 켜져 있음 → 컷신 없이 마을 입구에서 시작");
             MovePlayer(villageArrivalPoint);
             SetBackground(villageBackground);
+            SetBlackSpaceDecor(false);
             return;
         }
         // 첫 신호(0.01초)를 기다리면 그 사이 한 프레임 동안 씬에 배치된 마을 장면이 비친다.
@@ -97,6 +100,13 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         MovePlayer(blackSpaceStart);
         player.Face(1);
         SetBackground(blackSpaceBackground);
+        SetBlackSpaceDecor(true);
+    }
+
+    void SetBlackSpaceDecor(bool on)
+    {
+        if (blackSpaceOnly == null) return;
+        foreach (var b in blackSpaceOnly) if (b != null) b.enabled = on;
     }
 
     /// <summary>[신호] 오른쪽으로 계속 달리기 시작 (평소보다 빠르게).</summary>
@@ -138,6 +148,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         if (glitch != null) glitch.SetIntensity(0f);
         MovePlayer(villageArrivalPoint);
         SetBackground(villageBackground);
+        SetBlackSpaceDecor(false);
         if (cam != null) cam.Shake(0.3f, arrivalShake);
     }
 
