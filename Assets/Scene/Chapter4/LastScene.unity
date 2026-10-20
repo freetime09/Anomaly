@@ -2081,6 +2081,8 @@ MonoBehaviour:
   tutorialSlowIn: 0.3
   reflectZoom: 0.6
   sectionZoom: 0.8
+  hitStopOn: 1
+  glitchOn: 1
   onDefeated:
     m_PersistentCalls:
       m_Calls: []
