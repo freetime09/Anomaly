@@ -26,7 +26,8 @@ public class DialogueSpeaker : MonoBehaviour
     public Vector2 bubbleOffset = new Vector2(0f, 1.6f);
 
     [Header("말풍선 모양")]
-    [Tooltip("대사 폰트. 한글이 들어 있는 폰트여야 함 (예: Griun_PuhaFont-Rg SDF)")]
+    [Tooltip("대사 폰트. 프로젝트 공통 대사 폰트는 Galmuri11 SDF (Assets/TextMesh Pro/Fonts). " +
+             "컴포넌트를 새로 붙이면 자동으로 들어간다. 다른 폰트를 쓸 때는 한글이 들어 있는 폰트여야 함")]
     public TMP_FontAsset font;
     [Tooltip("글자 크기 (TextMeshPro 월드 기준. 4 ≈ 한 줄 높이 0.4유닛 정도)")]
     public float fontSize = 4f;
@@ -78,8 +79,21 @@ public class DialogueSpeaker : MonoBehaviour
     /// <summary>말풍선 꼬리 끝이 와야 하는 월드 위치.</summary>
     public Vector3 BubbleAnchor => transform.position + (Vector3)bubbleOffset;
 
+    /// <summary>모든 대사가 같이 쓰는 기본 폰트(TMP 폰트 에셋) 경로. 원본 TTF 도 같은 폴더의 Galmuri11.ttf.</summary>
+    public const string DefaultFontPath = "Assets/TextMesh Pro/Fonts/Galmuri11 SDF.asset";
+
+#if UNITY_EDITOR
+    // 에디터에서 컴포넌트를 처음 붙이거나 Reset 할 때 기본 대사 폰트를 자동으로 넣는다
+    // → 앞으로 만드는 화자도 따로 지정하지 않아도 Galmuri11 로 말한다.
+    void Reset()
+    {
+        font = UnityEditor.AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(DefaultFontPath);
+    }
+#endif
+
     void Awake()
     {
+        if (font == null) Debug.LogWarning($"[DialogueSpeaker] {name}: Font 가 비어 있음 → 한글이 안 보일 수 있음 ({DefaultFontPath} 지정 권장)");
         Bubble = SpeechBubble.Create(this);
     }
 

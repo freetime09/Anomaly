@@ -196,6 +196,9 @@ public class GestureTrail : MonoBehaviour
         }
     }
 
+    // 조작이 잠겨 이 컴포넌트가 꺼지면 그리던 궤적·손끝 스파크를 바로 지운다 (GestureRecognizer 와 짝)
+    void OnDisable() { CancelTrail(); }
+
     /// <summary>그리던 궤적을 바로 지움.</summary>
     void CancelTrail()
     {

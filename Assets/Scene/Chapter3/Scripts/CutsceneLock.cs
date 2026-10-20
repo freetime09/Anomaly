@@ -47,11 +47,16 @@ public static class CutsceneLock
         if (owners.Count == 0) Apply(false); // 모두 풀렸을 때만 입력을 켠다
     }
 
-    /// <summary>제스처 입력 컴포넌트를 켜고 끈다. 잠글 때는 진행 중인 이동도 멈춘다.</summary>
+    /// <summary>제스처 입력과 그리기 궤적을 켜고 끈다. 잠글 때는 그리던 획과 진행 중인 이동도 취소한다.
+    /// (두 컴포넌트는 꺼질 때 OnDisable 에서 그리던 획·궤적을 스스로 버린다
+    ///  → 그리던 도중 대화가 걸려도 그리기가 이어지지 않고 그 자리에서 자연스럽게 멈춘다)</summary>
     static void Apply(bool locked)
     {
         var input = Object.FindAnyObjectByType<GestureRecognizer>();
         if (input != null) input.enabled = !locked;
+        // 궤적은 입력과 따로 마우스를 읽으므로 같이 꺼야 잠긴 동안 선이 그려지지 않는다
+        var trail = Object.FindAnyObjectByType<GestureTrail>();
+        if (trail != null) trail.enabled = !locked;
 
         if (locked)
         {

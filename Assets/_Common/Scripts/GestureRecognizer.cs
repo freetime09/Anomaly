@@ -235,6 +235,10 @@ public class GestureRecognizer : MonoBehaviour
         else if (Input.GetMouseButtonUp(0) && drawing) EndStroke();
     }
 
+    // 조작이 잠겨 이 컴포넌트가 꺼지면(대화·컷신·리스폰 등) 그리던 획을 버린다.
+    // 안 버리면 그리기 소리가 계속 나고 이동 미리보기가 남으며, 잠금이 풀린 뒤 손을 떼는 순간 명령이 실행돼 버린다.
+    void OnDisable() { CancelStroke(); }
+
     /// <summary>그리던 획을 버림 (인식/명령 없음).</summary>
     void CancelStroke()
     {
