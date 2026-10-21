@@ -181,4 +181,4 @@ MonoBehaviour:
   burstCount: 40
   effectRadius: 2
   disappearClip: {fileID: 8300000, guid: 7ad241c5b57757d42b4b13d1fdffb46c, type: 3}
-  sfxVolume: 1
+  sfxVolume: 0.8

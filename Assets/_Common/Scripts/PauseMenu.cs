@@ -10,6 +10,7 @@ using TMPro;
 ///  - 계속하기 / 체크포인트에서 다시 / 소리(전체 음량, 저장됨) / 타이틀로 / 게임 종료
 /// 모양(글씨·색·배치)은 프리팹 안의 UI 오브젝트를 직접 고치면 된다.
 /// </summary>
+[DefaultExecutionOrder(-100)]
 public class PauseMenu : MonoBehaviour
 {
     /// <summary>메뉴가 열려 있는가 — 입력 스크립트들이 이걸 보고 그리기를 막는다.</summary>
@@ -66,6 +67,12 @@ public class PauseMenu : MonoBehaviour
             var es = new GameObject("EventSystem", typeof(EventSystem));
             es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
         }
+    }
+
+    void Update()
+    {
+        // Update still runs at timeScale zero, so Escape can also resume the game.
+        if (instance == this && Input.GetKeyDown(KeyCode.Escape)) Toggle();
     }
 
     /// <summary>설정 아이콘 위를 누른 건지 — 입력 스크립트가 이 클릭을 제스처로 그리지 않게 확인한다.</summary>

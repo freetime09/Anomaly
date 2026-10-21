@@ -1,44 +1,52 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// HUD(예: SkillIcon)를 처음엔 투명하게 숨겨두었다가, Reveal() 호출 시
-/// (기본) 소용돌이 텔레포트 전환이 끝난 뒤 서서히(투명→불투명) 나타나게 한다.
-/// 자기 자식의 모든 SpriteRenderer 알파를 페이드한다. 한 번 나타나면 계속 유지.
-/// 튜토리얼: 텔레포터 onTeleport 이벤트 → HudReveal.Reveal() 로 배선.
-/// </summary>
+/// <summary>Fades the skill HUD in once. Tutorial reveal remains driven by its teleporter event.</summary>
 [DisallowMultipleComponent]
-[DefaultExecutionOrder(500)] // SkillBar 가 오버레이를 만든 뒤에 캡처하도록 늦게 실행
+[DefaultExecutionOrder(500)]
 public class HudReveal : MonoBehaviour
 {
-    [Tooltip("페이드 인 시간(초)")]
     public float fadeDuration = 0.6f;
-    [Tooltip("소용돌이 텔레포트 전환이 끝날 때까지 기다렸다가 나타난다")]
     public bool waitForVortex = true;
-    [Tooltip("전환이 끝난 뒤 추가로 기다리는 시간(초)")]
     public float extraDelay = 0f;
+    [Tooltip("Enable for chapter starts; leave off for the tutorial's first reveal event.")]
+    public bool revealOnStart = false;
+    [Tooltip("Small left-to-right delay between icons.")]
+    public float staggerDelay = 0.065f;
 
     SpriteRenderer[] rends;
     float[] baseAlpha;
+    float[] delays;
     bool revealed;
+    float elapsed = -1f;
     Coroutine co;
 
     void Start()
     {
-        // SkillBar(Awake)가 만든 쿨타임 오버레이까지 포함해 수집 → 전부 투명하게 숨김
+        Initialize();
+        if (revealOnStart) Reveal();
+    }
+
+    void Initialize()
+    {
+        if (rends != null) return;
         rends = GetComponentsInChildren<SpriteRenderer>(true);
         baseAlpha = new float[rends.Length];
+        delays = new float[rends.Length];
         for (int i = 0; i < rends.Length; i++)
         {
             baseAlpha[i] = rends[i].color.a;
+            Transform slot = rends[i].transform;
+            while (slot.parent != null && slot.parent != transform) slot = slot.parent;
+            delays[i] = slot.parent == transform ? slot.GetSiblingIndex() * staggerDelay : 0f;
             SetAlpha(i, 0f);
         }
     }
 
-    /// <summary>전환이 끝난 뒤 HUD를 서서히 나타나게 한다. (여러 번 불러도 처음 한 번만)</summary>
     public void Reveal()
     {
         if (revealed) return;
+        Initialize();
         revealed = true;
         if (co != null) StopCoroutine(co);
         co = StartCoroutine(RevealRoutine());
@@ -48,22 +56,37 @@ public class HudReveal : MonoBehaviour
     {
         if (waitForVortex)
         {
-            yield return null; // 전환이 시작되는 프레임을 넘긴 뒤
+            yield return null;
             while (VortexTransition.Instance != null && VortexTransition.Instance.IsPlaying)
-                yield return null; // 이동(소용돌이)이 완전히 끝날 때까지 대기
+                yield return null;
         }
         if (extraDelay > 0f) yield return new WaitForSecondsRealtime(extraDelay);
-
+        float end = Mathf.Max(0.001f, fadeDuration);
+        for (int i = 0; i < delays.Length; i++)
+            end = Mathf.Max(end, delays[i] + Mathf.Max(0.001f, fadeDuration));
         float t = 0f;
-        while (t < fadeDuration)
+        while (t < end)
         {
             t += Time.unscaledDeltaTime;
-            float k = Mathf.Clamp01(t / Mathf.Max(fadeDuration, 1e-4f));
-            for (int i = 0; i < rends.Length; i++) SetAlpha(i, baseAlpha[i] * k);
+            elapsed = t;
+            for (int i = 0; i < rends.Length; i++)
+            {
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - delays[i]) / Mathf.Max(fadeDuration, 0.001f)));
+                SetAlpha(i, baseAlpha[i] * k);
+            }
             yield return null;
         }
         for (int i = 0; i < rends.Length; i++) SetAlpha(i, baseAlpha[i]);
         co = null;
+    }
+
+    // SkillBar combines this reveal alpha with each icon's availability tint.
+    public float GetOpacity(Transform slot)
+    {
+        if (!revealed || elapsed < 0f) return 0f;
+        while (slot.parent != null && slot.parent != transform) slot = slot.parent;
+        float delay = slot.parent == transform ? slot.GetSiblingIndex() * staggerDelay : 0f;
+        return Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - delay) / Mathf.Max(fadeDuration, 0.001f)));
     }
 
     void SetAlpha(int i, float a)

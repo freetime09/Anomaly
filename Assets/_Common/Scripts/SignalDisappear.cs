@@ -56,7 +56,7 @@ public class SignalDisappear : SignalReceiver, IPuzzleState
         if (gone) return;
         gone = true;
         if (!PuzzleSnapshot.Restoring) PlayEffect();
-        if (disappearClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring) sfxSrc.PlayOneShot(disappearClip, sfxVolume); // 사라지는 소리
+        if (disappearClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring && CodeExplosionAudio.TryClaim(disappearClip)) sfxSrc.PlayOneShot(disappearClip, sfxVolume); // 사라지는 소리
         SetVisible(false);
     }
 

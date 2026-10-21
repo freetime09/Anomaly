@@ -72,6 +72,7 @@ public class SpeechBubble : MonoBehaviour
         text = textGo.AddComponent<TextMeshPro>();
         if (speaker.font != null) text.font = speaker.font;
         text.fontSize = speaker.fontSize;
+        text.fontStyle |= FontStyles.Bold;
         text.color = speaker.textColor;
         text.alignment = TextAlignmentOptions.Center;
         // TMP 기본 규칙은 한글을 글자 단위로 끊어("왔/니?") 어색하므로, 자동 줄바꿈은 끄고

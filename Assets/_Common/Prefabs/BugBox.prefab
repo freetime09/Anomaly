@@ -163,7 +163,7 @@ MonoBehaviour:
   hitFlashTime: 0.08
   knockback: 0
   breakClip: {fileID: 8300000, guid: 7ad241c5b57757d42b4b13d1fdffb46c, type: 3}
-  breakVolume: 1
+  breakVolume: 0.8
   burstOnDeath: 1
   burstColor: {r: 1, g: 0, b: 1, a: 1}
   burstCount: 400

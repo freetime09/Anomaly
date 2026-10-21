@@ -105,7 +105,7 @@ public class Breakable : MonoBehaviour, IDamageable, IPuzzleState
     {
         if (burstOnDeath) SpawnBurst();                   // 사라지기 전에 파티클 (별도 오브젝트라 비활성돼도 유지)
         // 터지는 소리 — 비활성/파괴돼도 안 끊기게 독립 재생
-        if (breakClip != null) AudioSource.PlayClipAtPoint(breakClip, transform.position, breakVolume);
+        if (breakClip != null && CodeExplosionAudio.TryClaim(breakClip)) AudioSource.PlayClipAtPoint(breakClip, transform.position, breakVolume);
         onDeath.Invoke();
         if (destroyOnDeath) Destroy(gameObject);
         else gameObject.SetActive(false);
