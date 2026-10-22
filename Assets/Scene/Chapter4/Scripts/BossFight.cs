@@ -176,6 +176,9 @@ public class BossFight : MonoBehaviour
     [Tooltip("보스를 쓰러뜨렸을 때")]
     public UnityEvent onDefeated;
 
+    [Tooltip("테스트용: 누르면 보스 바로 처치 (에디터·개발 빌드에서만)")]
+    public KeyCode debugDefeatKey = KeyCode.F7;
+
     class Hazard
     {
         public SpriteRenderer sr; public bool armed;
@@ -1167,6 +1170,22 @@ public class BossFight : MonoBehaviour
         onDefeated.Invoke();
     }
 
+    /// <summary>엔딩으로 넘어갈 때: 카메라 고정·하트·지지직을 풀고 보스전을 끈다.</summary>
+    public void EndFight()
+    {
+        camLocked = false;
+        slowOn = false; hitStopLeft = 0f; hitStopWas = false;
+        Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt;
+        if (cam != null) cam.orthographicSize = baseOrtho;
+        foreach (var h in heartIcons) if (h != null) h.gameObject.SetActive(false);
+        foreach (var g in glitchBars) if (g != null) g.enabled = false;
+        foreach (var g in bossGhosts) if (g != null) g.enabled = false;
+        foreach (var p in particles) if (p.sr != null) Destroy(p.sr.gameObject);
+        particles.Clear();
+        if (floorLine != null) floorLine.enabled = false;
+        enabled = false;
+    }
+
     // ───────────── 피격 / 죽음 ─────────────
 
     void Update()
@@ -1174,6 +1193,15 @@ public class BossFight : MonoBehaviour
         UpdateSlowFx();
         UpdateParticles();
         RecordPlayer();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // 테스트용: 보스 바로 처치 (에디터·개발 빌드에서만)
+        if (Input.GetKeyDown(debugDefeatKey) && started && !defeated && !dying)
+        {
+            StopAllCoroutines();
+            StartCoroutine(Defeat());
+            return;
+        }
+#endif
         if (!started || player == null || dying || defeated || teaching || Time.time < invulnUntil) return;
         Bounds pb = PlayerHitBounds();
         bool hit = false;

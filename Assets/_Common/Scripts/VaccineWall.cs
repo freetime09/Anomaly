@@ -336,6 +336,9 @@ public class VaccineWall : MonoBehaviour
         float gap = player != null ? Project(player.position) - FrontS() : 0f;
         Gap = gap;
 
+        // 이미 하얗게 칠해진 곳에 들어와도 죽음 (앞면 판정은 뒤로 killDepth 까지만이라 떨어지기·순간이동으로 들어오면 안 걸림)
+        if (!harmless && respawn != null && InTrail(PlayerCenter())) { respawn.Die(); return; }
+
         if (thudTimer > 0f)
         {
             // '쿵' 뒤 잠깐 멈췄다가 옆에서 다음 구간 시작
@@ -513,6 +516,33 @@ public class VaccineWall : MonoBehaviour
         if (!running || paused || harmless) return;
         var fr = other.GetComponentInParent<FallRespawn>();
         if (fr != null) fr.Die();
+    }
+
+    Collider2D playerCol;
+
+    Vector2 PlayerCenter()
+    {
+        if (playerCol == null && player != null) playerCol = player.GetComponent<Collider2D>();
+        return playerCol != null ? (Vector2)playerCol.bounds.center : player != null ? (Vector2)player.position : Vector2.positiveInfinity;
+    }
+
+    /// <summary>p 가 지금까지 칠해진 하얀 채움 안(실제 빈 공간 폭 killL/killR 기준)인가.
+    /// 지나온 구간은 끝까지, 현재 구간은 앞면 판정이 시작되는 곳까지.</summary>
+    bool InTrail(Vector2 p)
+    {
+        if (runs == null || float.IsInfinity(p.x)) return false;
+        for (int i = 0; i <= leg && i < runs.Length; i++)
+        {
+            float limit = i < leg ? float.MaxValue : legD - killInset;
+            Vector2 u = legDir[i];
+            Vector2 v = p - legA[i];
+            float along = Vector2.Dot(v, u);
+            float across = Vector2.Dot(v, new Vector2(-u.y, u.x)); // + = 진행 방향 왼쪽
+            if (along > limit) continue;
+            foreach (var r in runs[i])
+                if (along >= r.a0 && along < Mathf.Min(r.a1, limit) && across <= r.killL && across >= -r.killR) return true;
+        }
+        return false;
     }
 
     // ── 경로 계산 ──────────────────────────────

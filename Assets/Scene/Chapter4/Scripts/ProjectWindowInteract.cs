@@ -55,6 +55,13 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
     [Tooltip("가끔 글자가 깨지는 간격 (초, 최소~최대)")]
     public Vector2 glitchInterval = new Vector2(0.6f, 1.8f);
 
+    [Header("폴더 열 때 지지직")]
+    [Tooltip("1번째 O 뒤 화면이 지지직거리며 바뀌는 시간 (초)")]
+    public float openGlitchTime = 0.5f;
+    public float openShakeMagnitude = 0.12f;
+    [Tooltip("지지직 줄무늬 수")]
+    public int openGlitchBars = 10;
+
     [Header("검은 배경으로")]
     [Tooltip("2번째 O 뒤 아무 일 없이 기다리는 시간 (초). 그 뒤 흔들림·사라짐")]
     public float blackDelay = 0.5f;
@@ -112,11 +119,10 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
     {
         if (step == 0)
         {
-            if (openedCapture != null) background.sprite = openedCapture;
-            ShowCovers();
             step = 1;
+            StartCoroutine(OpenFolder());
         }
-        else if (step == 1)
+        else if (step == 1 && !opening)
         {
             step = 2;
             ShowPrompt(false);
@@ -160,6 +166,74 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
             texts[n].text = covers[n].text;
             texts[n].transform.localPosition = Vector3.zero;
         }
+    }
+
+    bool opening;
+
+    /// <summary>1번째 O: 화면이 지지직거리며 (옛 캡쳐 ↔ 새 캡쳐가 번갈아 깨지다가) 폴더를 연 캡쳐로 바뀐다.</summary>
+    IEnumerator OpenFolder()
+    {
+        opening = true;
+        CutsceneLock.Lock(this);
+        ShowPrompt(false);
+        Sprite before = background.sprite, after = openedCapture != null ? openedCapture : background.sprite;
+        var cam = FindAnyObjectByType<CameraFollow>();
+        if (cam != null) cam.Shake(openGlitchTime, openShakeMagnitude);
+
+        // 캡쳐 위 줄무늬
+        var barRoot = new GameObject("OpenGlitch").transform;
+        var tex = Texture2D.whiteTexture;
+        var white = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width);
+        var bars = new List<SpriteRenderer>();
+        for (int i = 0; i < openGlitchBars; i++)
+        {
+            var sr = new GameObject("Bar").AddComponent<SpriteRenderer>();
+            sr.transform.SetParent(barRoot, false);
+            sr.sprite = white;
+            sr.sortingLayerID = background.sortingLayerID;
+            sr.sortingOrder = background.sortingOrder + 4;
+            bars.Add(sr);
+        }
+        Vector3 bgPos = background.transform.position;
+
+        float t = 0f, tick = 0f;
+        while (t < openGlitchTime)
+        {
+            t += Time.deltaTime;
+            tick -= Time.deltaTime;
+            if (tick <= 0f)
+            {
+                tick = 0.04f;
+                float a = t / Mathf.Max(0.01f, openGlitchTime);
+                // 갈수록 새 캡쳐가 많이 보임
+                background.sprite = Random.value < a ? after : before;
+                background.color = Random.value < 0.2f ? new Color(0.55f, 0.55f, 0.55f) : Color.white;
+                background.transform.position = bgPos + new Vector3(Random.Range(-0.15f, 0.15f), 0f, 0f);
+                Bounds b = background.bounds;
+                for (int i = 0; i < bars.Count; i++)
+                {
+                    var sr = bars[i];
+                    sr.enabled = Random.value < 0.75f;
+                    if (!sr.enabled) continue;
+                    float h = b.size.y * Random.Range(0.01f, 0.07f);
+                    float w = b.size.x * Random.Range(0.2f, 0.9f);
+                    sr.transform.position = new Vector3(Random.Range(b.min.x + w * 0.5f, b.max.x - w * 0.5f), Random.Range(b.min.y, b.max.y), 0f);
+                    sr.transform.localScale = new Vector3(w, h, 1f);
+                    Color c = i % 4 == 0 ? new Color(1f, 0.15f, 0.25f) : i % 4 == 1 ? new Color(0.2f, 0.9f, 1f) : i % 4 == 2 ? Color.white : Color.black;
+                    c.a = Random.Range(0.25f, 0.6f);
+                    sr.color = c;
+                }
+            }
+            yield return null;
+        }
+        Destroy(barRoot.gameObject);
+        background.transform.position = bgPos;
+        background.color = Color.white;
+        background.sprite = after;
+        ShowCovers();
+        StartCoroutine(GlitchNames());
+        CutsceneLock.Unlock(this);
+        opening = false;
     }
 
     IEnumerator ToBlack()
