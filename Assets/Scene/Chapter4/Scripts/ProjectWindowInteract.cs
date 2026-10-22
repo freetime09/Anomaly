@@ -55,19 +55,15 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
     [Tooltip("가끔 글자가 깨지는 간격 (초, 최소~최대)")]
     public Vector2 glitchInterval = new Vector2(0.6f, 1.8f);
 
-    [Header("폴더 열 때 지지직")]
-    [Tooltip("1번째 O 뒤 화면이 지지직거리며 바뀌는 시간 (초)")]
-    public float openGlitchTime = 0.5f;
-    public float openShakeMagnitude = 0.12f;
-    [Tooltip("지지직 줄무늬 수")]
-    public int openGlitchBars = 10;
+    [Header("O 할 때 Project 창 지지직")]
+    [Tooltip("O 뒤 Project 창만 잠깐 지지직거리는 시간 (초)")]
+    public float windowGlitchTime = 0.25f;
+    [Tooltip("지지직 줄무늬 수 (Project 창 안)")]
+    public int windowGlitchBars = 5;
 
     [Header("검은 배경으로")]
-    [Tooltip("2번째 O 뒤 아무 일 없이 기다리는 시간 (초). 그 뒤 흔들림·사라짐")]
+    [Tooltip("2번째 O 뒤 아무 일 없이 기다리는 시간 (초). 그 뒤 지지직·사라짐")]
     public float blackDelay = 0.5f;
-    [Tooltip("2번째 O 뒤 흔들리는 시간 (초)")]
-    public float shakeTime = 0.8f;
-    public float shakeMagnitude = 0.25f;
     [Tooltip("캡쳐가 검게 사라지는 시간 (초)")]
     public float fadeTime = 1.5f;
     [Tooltip("검게 사라진 뒤 켤 오브젝트 (보스전 무대 등)")]
@@ -170,65 +166,14 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
 
     bool opening;
 
-    /// <summary>1번째 O: 화면이 지지직거리며 (옛 캡쳐 ↔ 새 캡쳐가 번갈아 깨지다가) 폴더를 연 캡쳐로 바뀐다.</summary>
+    /// <summary>1번째 O: Project 창 부분만 잠깐 지지직거리며 폴더를 연 캡쳐로 바뀐다. 나머지 화면은 그대로.</summary>
     IEnumerator OpenFolder()
     {
         opening = true;
         CutsceneLock.Lock(this);
         ShowPrompt(false);
-        Sprite before = background.sprite, after = openedCapture != null ? openedCapture : background.sprite;
-        var cam = FindAnyObjectByType<CameraFollow>();
-        if (cam != null) cam.Shake(openGlitchTime, openShakeMagnitude);
-
-        // 캡쳐 위 줄무늬
-        var barRoot = new GameObject("OpenGlitch").transform;
-        var tex = Texture2D.whiteTexture;
-        var white = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width);
-        var bars = new List<SpriteRenderer>();
-        for (int i = 0; i < openGlitchBars; i++)
-        {
-            var sr = new GameObject("Bar").AddComponent<SpriteRenderer>();
-            sr.transform.SetParent(barRoot, false);
-            sr.sprite = white;
-            sr.sortingLayerID = background.sortingLayerID;
-            sr.sortingOrder = background.sortingOrder + 4;
-            bars.Add(sr);
-        }
-        Vector3 bgPos = background.transform.position;
-
-        float t = 0f, tick = 0f;
-        while (t < openGlitchTime)
-        {
-            t += Time.deltaTime;
-            tick -= Time.deltaTime;
-            if (tick <= 0f)
-            {
-                tick = 0.04f;
-                float a = t / Mathf.Max(0.01f, openGlitchTime);
-                // 갈수록 새 캡쳐가 많이 보임
-                background.sprite = Random.value < a ? after : before;
-                background.color = Random.value < 0.2f ? new Color(0.55f, 0.55f, 0.55f) : Color.white;
-                background.transform.position = bgPos + new Vector3(Random.Range(-0.15f, 0.15f), 0f, 0f);
-                Bounds b = background.bounds;
-                for (int i = 0; i < bars.Count; i++)
-                {
-                    var sr = bars[i];
-                    sr.enabled = Random.value < 0.75f;
-                    if (!sr.enabled) continue;
-                    float h = b.size.y * Random.Range(0.01f, 0.07f);
-                    float w = b.size.x * Random.Range(0.2f, 0.9f);
-                    sr.transform.position = new Vector3(Random.Range(b.min.x + w * 0.5f, b.max.x - w * 0.5f), Random.Range(b.min.y, b.max.y), 0f);
-                    sr.transform.localScale = new Vector3(w, h, 1f);
-                    Color c = i % 4 == 0 ? new Color(1f, 0.15f, 0.25f) : i % 4 == 1 ? new Color(0.2f, 0.9f, 1f) : i % 4 == 2 ? Color.white : Color.black;
-                    c.a = Random.Range(0.25f, 0.6f);
-                    sr.color = c;
-                }
-            }
-            yield return null;
-        }
-        Destroy(barRoot.gameObject);
-        background.transform.position = bgPos;
-        background.color = Color.white;
+        Sprite after = openedCapture != null ? openedCapture : background.sprite;
+        yield return WindowGlitch(background.sprite, after, true);
         background.sprite = after;
         ShowCovers();
         StartCoroutine(GlitchNames());
@@ -236,24 +181,92 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
         opening = false;
     }
 
+    /// <summary>Project 창 영역만 잠깐 지지직. swapPiece 면 창 부분을 잘라 덮어 before ↔ after 가 번갈아 보이며 옆으로 튐
+    /// (덮개 글자가 없을 때만 — 있으면 줄무늬만).</summary>
+    IEnumerator WindowGlitch(Sprite before, Sprite after, bool swapPiece)
+    {
+        // Project 창 영역 (캡쳐 픽셀)
+        float px0 = Mathf.Min(windowPixelX.x, windowPixelX.y), px1 = Mathf.Max(windowPixelX.x, windowPixelX.y);
+        float py0 = Mathf.Min(outlinePixelY.x, outlinePixelY.y), py1 = Mathf.Max(outlinePixelY.x, outlinePixelY.y);
+        Vector2 wa = PixelToWorld(new Vector2(px0, py0)), wb = PixelToWorld(new Vector2(px1, py1));
+        Vector2 wMin = Vector2.Min(wa, wb), wMax = Vector2.Max(wa, wb);
+
+        var root = new GameObject("OpenGlitch").transform;
+        root.SetParent(background.transform, false);
+        // 창 조각: 옛/새 캡쳐에서 창 부분만 잘라 그 자리에 덮음
+        SpriteRenderer piece = null;
+        Vector3 pieceLocal = Vector3.zero;
+        Sprite beforePiece = null, afterPiece = null;
+        if (swapPiece)
+        {
+            piece = new GameObject("WindowPiece").AddComponent<SpriteRenderer>();
+            piece.transform.SetParent(root, false);
+            pieceLocal = background.transform.InverseTransformPoint((wMin + wMax) * 0.5f);
+            piece.transform.localPosition = pieceLocal;
+            piece.sortingLayerID = background.sortingLayerID;
+            piece.sortingOrder = background.sortingOrder + 1;
+            beforePiece = Crop(before, px0, py0, px1, py1); afterPiece = Crop(after, px0, py0, px1, py1);
+        }
+
+        var tex = Texture2D.whiteTexture;
+        var white = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width);
+        var bars = new List<SpriteRenderer>();
+        for (int i = 0; i < windowGlitchBars; i++)
+        {
+            var sr = new GameObject("Bar").AddComponent<SpriteRenderer>();
+            sr.transform.SetParent(root, true);
+            sr.sprite = white;
+            sr.sortingLayerID = background.sortingLayerID;
+            sr.sortingOrder = background.sortingOrder + 4; // 덮개 글자·테두리 위
+            bars.Add(sr);
+        }
+        Vector2 size = wMax - wMin;
+
+        float t = 0f, tick = 0f;
+        while (t < windowGlitchTime)
+        {
+            t += Time.deltaTime;
+            tick -= Time.deltaTime;
+            if (tick <= 0f)
+            {
+                tick = 0.05f;
+                float a = t / Mathf.Max(0.01f, windowGlitchTime);
+                // 갈수록 새 화면이 많이 보임. 창 조각이 옆으로 살짝 튐
+                if (piece != null)
+                {
+                    piece.sprite = Random.value < a ? afterPiece : beforePiece;
+                    piece.transform.localPosition = pieceLocal + background.transform.InverseTransformVector(new Vector3(Random.Range(-0.04f, 0.04f) * size.x, 0f, 0f));
+                }
+                for (int i = 0; i < bars.Count; i++)
+                {
+                    var sr = bars[i];
+                    sr.enabled = Random.value < 0.5f;
+                    if (!sr.enabled) continue;
+                    float h = size.y * Random.Range(0.01f, 0.06f);
+                    float w = size.x * Random.Range(0.3f, 1f);
+                    sr.transform.position = new Vector3(Random.Range(wMin.x + w * 0.5f, wMax.x - w * 0.5f), Random.Range(wMin.y + h * 0.5f, wMax.y - h * 0.5f), 0f);
+                    sr.transform.localScale = Vector3.one;
+                    sr.transform.localScale = new Vector3(w / sr.transform.lossyScale.x, h / sr.transform.lossyScale.y, 1f);
+                    Color c = i % 4 == 0 ? new Color(1f, 0.15f, 0.25f) : i % 4 == 1 ? new Color(0.2f, 0.9f, 1f) : i % 4 == 2 ? Color.white : Color.black;
+                    c.a = Random.Range(0.2f, 0.45f);
+                    sr.color = c;
+                }
+            }
+            yield return null;
+        }
+        Destroy(root.gameObject);
+    }
+
     IEnumerator ToBlack()
     {
         CutsceneLock.Lock(this);
         if (blackDelay > 0f) yield return new WaitForSeconds(blackDelay);
-        var cam = FindAnyObjectByType<CameraFollow>();
-        Vector3 camPos = cam != null ? cam.transform.position : Vector3.zero;
-        if (cam != null) cam.Shake(shakeTime, shakeMagnitude);
-        float t = 0f;
-        while (t < shakeTime)
-        {
-            t += Time.deltaTime;
-            if (background != null) background.color = Random.value < 0.25f ? new Color(0.6f, 0.6f, 0.6f) : Color.white; // 깜빡임
-            yield return null;
-        }
-        if (cam != null) cam.transform.position = camPos; // 고정 카메라라 흔들림 뒤 제자리로
+        // Project 창만 잠깐 지지직 (덮개 글자가 있어 조각은 안 덮고 줄무늬만) + ???Scene 깨짐
+        StartCoroutine(GlitchNames());
+        if (background != null) yield return WindowGlitch(background.sprite, background.sprite, false);
 
         // 캡쳐와 ???Scene 이 검게 사라짐
-        t = 0f;
+        float t = 0f;
         while (t < fadeTime)
         {
             t += Time.deltaTime;
@@ -320,6 +333,14 @@ public class ProjectWindowInteract : MonoBehaviour, IInteractable
         }
         nameRoot.SetActive(true);
         glitchTimer = Random.Range(glitchInterval.x, glitchInterval.y);
+    }
+
+    /// <summary>캡쳐에서 픽셀 사각형(왼쪽 위 기준)만 잘라낸 스프라이트 (가운데 피벗, 같은 ppu).</summary>
+    static Sprite Crop(Sprite src, float x0, float y0, float x1, float y1)
+    {
+        Rect tr = src.textureRect;
+        var r = new Rect(tr.x + x0, tr.y + (src.rect.height - y1), x1 - x0, y1 - y0);
+        return Sprite.Create(src.texture, r, new Vector2(0.5f, 0.5f), src.pixelsPerUnit);
     }
 
     /// <summary>캡쳐 픽셀 좌표(왼쪽 위 = 0,0) → 월드 좌표.</summary>
