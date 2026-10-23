@@ -47,6 +47,9 @@ public class BossFight : MonoBehaviour
 
     [Header("체력")]
     public int hearts = 3;
+    public Sprite[] healthFullFrames;
+    public Sprite[] healthEmptyFrames;
+    public Material afterimageMaterial;
     [Tooltip("맞은 뒤 무적 시간 (초)")]
     public float invulnTime = 1.5f;
     [Tooltip("§ 로 깎아야 하는 횟수")]
@@ -197,7 +200,7 @@ public class BossFight : MonoBehaviour
     Transform root, hazardRoot, bossAnchor;
     SpriteRenderer boss, floorLine;
     float bossScale = 1f;
-    readonly List<SpriteRenderer> heartIcons = new List<SpriteRenderer>();
+    BossHealthHud healthHud;
     readonly List<Hazard> hazards = new List<Hazard>();
     readonly List<BossOrb> orbs = new List<BossOrb>();
 
@@ -367,6 +370,7 @@ public class BossFight : MonoBehaviour
     {
         if (teaching || hitStopWas) { slowOn = false; Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt; }
         CutsceneLock.Unlock(this);
+        if (healthHud != null) Destroy(healthHud.gameObject);
         if (fr != null) { fr.Died -= OnDied; fr.Respawned -= OnRespawned; }
         if (player != null) { player.BossSkillUsed -= OnBossSkill; player.AttackSwung -= OnAttackSwung; player.bossSkillReady = false; player.combatOnly = false; }
     }
@@ -1013,9 +1017,10 @@ public class BossFight : MonoBehaviour
         var clones = new List<Hazard>();
         for (int i = 0; i < n; i++)
         {
-            var c = AddSprite(psr != null ? psr.sprite : Square(), PlayerVisualPos, 21, new Color(0.05f, 0.05f, 0.08f, 0f));
+            var c = AddSprite(psr != null ? psr.sprite : Square(), PlayerVisualPos, 21, new Color(1f, 1f, 1f, 0f));
             c.sr.transform.localScale = psr != null ? psr.transform.lossyScale : player.transform.lossyScale;
             c.hit = 0.6f;
+            if (afterimageMaterial != null) c.sr.sharedMaterial = afterimageMaterial;
             clones.Add(c);
         }
         float dur = cloneTime;
@@ -1032,7 +1037,7 @@ public class BossFight : MonoBehaviour
                 if (sp != null) c.sr.sprite = sp;
                 c.sr.flipX = flip;
                 float a = Mathf.Clamp01(t / 0.5f) * Mathf.Clamp01((dur - t) / 0.4f);
-                c.sr.color = new Color(0.05f, 0.05f, 0.08f, 0.9f * a);
+                c.sr.color = new Color(1f, 1f, 1f, 0.52f * a);
                 c.armed = t > 0.5f && t < dur - 0.3f;
                 if (Random.value < 0.25f) AddParticle(pos + (Vector3)Random.insideUnitCircle * 0.4f, Vector2.one * 0.12f, new Color(1f, 0.15f, 0.25f, 0.8f), Vector2.up * 1.5f, 0.3f, 0f, 0f, 22);
             }
@@ -1040,7 +1045,7 @@ public class BossFight : MonoBehaviour
         }
         foreach (var c in clones)
         {
-            if (c.sr != null) Dissolve(c.sr.transform.position, c.sr.bounds.size, new Color(0.1f, 0.1f, 0.12f), 14);
+            if (c.sr != null) Dissolve(c.sr.transform.position, c.sr.bounds.size, new Color(1f, 1f, 1f, 0.52f), 14);
             RemoveHazard(c);
         }
     }
@@ -1298,13 +1303,6 @@ public class BossFight : MonoBehaviour
         cam.transform.position = camPos + off;
         UpdateGlitch();
 
-        // 하트: 화면 왼쪽 위 (설정 버튼 오른쪽). 카메라를 빼도 화면에서 같은 크기
-        float h = cam.orthographicSize, w = h * cam.aspect, z = h / Mathf.Max(0.01f, baseOrtho);
-        for (int i = 0; i < heartIcons.Count; i++)
-        {
-            heartIcons[i].transform.localPosition = new Vector3(-w + (2.0f + i * 0.9f) * z, h - 0.8f * z, 10f);
-            heartIcons[i].transform.localScale = Vector3.one * 1.3f * z;
-        }
 
         // 보스 지지직
         if (boss != null && !defeated)
@@ -1531,7 +1529,7 @@ public class BossFight : MonoBehaviour
     void AfterImage(SpriteRenderer src)
     {
         if (src == null) return;
-        var c = src.color; c.a *= 0.35f;
+        var c = new Color(1f, 1f, 1f, 0.36f * src.color.a);
         AddParticle(src.transform.position, src.transform.localScale, c, Vector2.zero, 0.25f, 0f, 0f, src.sortingOrder - 1);
     }
 
@@ -1638,22 +1636,34 @@ public class BossFight : MonoBehaviour
 
     void BuildHearts()
     {
-        for (int i = 0; i < hearts; i++)
+        if (healthHud != null) return;
+        var menu = FindAnyObjectByType<PauseMenu>();
+        var settings = menu != null && menu.settingsButton != null ? menu.settingsButton.transform as RectTransform : null;
+        Transform parent = settings != null ? settings.parent : null;
+        if (parent == null)
         {
-            var sr = MakeSprite("Heart", cam.transform, Heart(), 1000, new Color(1f, 0.25f, 0.3f));
-            sr.gameObject.SetActive(false);
-            heartIcons.Add(sr);
+            var canvas = new GameObject("BossHealthCanvas", typeof(Canvas), typeof(UnityEngine.UI.CanvasScaler));
+            canvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            var scaler = canvas.GetComponent<UnityEngine.UI.CanvasScaler>();
+            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            parent = canvas.transform;
         }
+        var go = new GameObject("BossHealthHud", typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+        // Render behind the settings menu overlay, without intercepting clicks.
+        go.transform.SetAsFirstSibling();
+        healthHud = go.AddComponent<BossHealthHud>();
+        healthHud.Configure(healthFullFrames, healthEmptyFrames, hearts, settings);
+        go.SetActive(false);
     }
 
     void SetHearts(int n)
     {
-        heartsLeft = Mathf.Max(0, n);
-        for (int i = 0; i < heartIcons.Count; i++)
-        {
-            heartIcons[i].gameObject.SetActive(true);
-            heartIcons[i].color = i < heartsLeft ? new Color(1f, 0.25f, 0.3f) : new Color(0.4f, 0.4f, 0.4f, 0.35f);
-        }
+        heartsLeft = Mathf.Clamp(n, 0, hearts);
+        if (healthHud == null) return;
+        healthHud.gameObject.SetActive(true);
+        healthHud.SetHealth(heartsLeft);
     }
 
     // ───────────── 도우미 ─────────────

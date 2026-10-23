@@ -3777,9 +3777,9 @@ MonoBehaviour:
   pickupRange: 1.5
   interactRange: 2
   plantDistance: 0.75
-  plantPreviewColor: {r: 0.1, g: 0.1, b: 0.1, a: 0.75}
+  plantPreviewColor: {r: 1, g: 1, b: 1, a: 0.52}
   plantPreviewBlockedColor: {r: 1, g: 0.1, b: 0.1, a: 0.7}
-  movePreviewColor: {r: 0.1, g: 0.1, b: 0.1, a: 0.5}
+  movePreviewColor: {r: 1, g: 1, b: 1, a: 0.48}
   baseController: {fileID: 9100000, guid: 6b2e96df9d9520b429b402a2d2cc9192, type: 2}
   withBranchController: {fileID: 22100000, guid: f0daa731f4c254a43888d736daa55e4a, type: 2}
   attackDamage: 1

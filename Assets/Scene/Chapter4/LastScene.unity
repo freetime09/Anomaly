@@ -815,9 +815,9 @@ MonoBehaviour:
   pickupRange: 1.5
   interactRange: 2
   plantDistance: 0.75
-  plantPreviewColor: {r: 0.1, g: 0.1, b: 0.1, a: 0.75}
+  plantPreviewColor: {r: 1, g: 1, b: 1, a: 0.52}
   plantPreviewBlockedColor: {r: 1, g: 0.1, b: 0.1, a: 0.7}
-  movePreviewColor: {r: 0.1, g: 0.1, b: 0.1, a: 0.5}
+  movePreviewColor: {r: 1, g: 1, b: 1, a: 0.48}
   baseController: {fileID: 9100000, guid: 6b2e96df9d9520b429b402a2d2cc9192, type: 2}
   withBranchController: {fileID: 22100000, guid: f0daa731f4c254a43888d736daa55e4a, type: 2}
   attackDamage: 1
@@ -2339,6 +2339,15 @@ MonoBehaviour:
   bossSize: 8
   bossHeight: 13.5
   hearts: 3
+  healthFullFrames:
+  - {fileID: -8619046075498376970, guid: 39a3abc51ad0ac8489c398a5a60a3596, type: 3}
+  - {fileID: -1129074777737288347, guid: 39a3abc51ad0ac8489c398a5a60a3596, type: 3}
+  - {fileID: 3629383467889928113, guid: 39a3abc51ad0ac8489c398a5a60a3596, type: 3}
+  healthEmptyFrames:
+  - {fileID: 2531640255387819509, guid: d15db02574539224a927b10980405faa, type: 3}
+  - {fileID: 1531002272039280143, guid: d15db02574539224a927b10980405faa, type: 3}
+  - {fileID: -344213545212619210, guid: d15db02574539224a927b10980405faa, type: 3}
+  afterimageMaterial: {fileID: 2100000, guid: c45ecdebf8a32224489053c53c64acff, type: 2}
   invulnTime: 1.5
   bossPhases: 3
   reflectsToStun: 2
