@@ -1182,7 +1182,7 @@ public class BossFight : MonoBehaviour
         slowOn = false; hitStopLeft = 0f; hitStopWas = false;
         Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt;
         if (cam != null) cam.orthographicSize = baseOrtho;
-        foreach (var h in heartIcons) if (h != null) h.gameObject.SetActive(false);
+        if (healthHud != null) healthHud.gameObject.SetActive(false);
         foreach (var g in glitchBars) if (g != null) g.enabled = false;
         foreach (var g in bossGhosts) if (g != null) g.enabled = false;
         foreach (var p in particles) if (p.sr != null) Destroy(p.sr.gameObject);
