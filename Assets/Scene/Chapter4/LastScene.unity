@@ -2773,6 +2773,15 @@ MonoBehaviour:
   cameraBackground: {r: 0.113, g: 0.113, b: 0.113, a: 1}
   cameraStartOffset: {x: -24, y: 0}
   panTime: 0
+  driftSpeed: 0.4
+  panSlowDown: 1.5
+  monologue: {fileID: 11400000, guid: e11af9d89e4847b6860955a0068d5d0f, type: 2}
+  villagerLine: {fileID: 11400000, guid: 1538fba36ee646be8caf164416cb4aab, type: 2}
+  villager: {fileID: 2034749028}
+  villagerSpeakerId: Friend_B
+  villagerBubbleOffset: {x: 0, y: 2.45}
+  betweenLines: 0.6
+  afterVillager: 0.1
   startDelay: 0.6
   whiteInTime: 0.8
   whiteHold: 0.8

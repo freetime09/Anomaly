@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 보스전 뒤 엔딩: 하얀 빛 → 마을에 서 있는 메크로 → 화면이 지지직 깨지며 지워짐 → "게임이 삭제되었습니다" 오류창 → 게임 종료.
+/// 보스전 뒤 엔딩: 하얀 빛 → 마을에 서 있는 메크로 (메크로 독백 → 마을 사람 대사) → 화면이 지지직 깨지며 지워짐 → "게임이 삭제되었습니다" 오류창 → 게임 종료.
 /// BossFight.onDefeated → Play() 로 연결.
 /// </summary>
 [DefaultExecutionOrder(1200)] // 카메라 위치를 CameraFollow·CameraClampToSprite·BossFight 뒤에 정하도록
@@ -29,13 +29,31 @@ public class EndingSequence : MonoBehaviour
     public Vector2 cameraStartOffset = new Vector2(-16f, 0f);
     [Tooltip("출발 자리 → 카메라 자리까지 걸리는 시간 (0 = 하얀빛이 걷히는 시간 + 마을 비추는 시간)")]
     public float panTime = 0f;
+    [Tooltip("카메라 자리를 지난 뒤 천천히 계속 가는 속도 (units/초). 대사 동안 마을 밖으로 안 나가게")]
+    public float driftSpeed = 0.4f;
+    [Tooltip("카메라 자리를 지난 뒤 driftSpeed 까지 느려지는 정도 (units/초²)")]
+    public float panSlowDown = 1.5f;
+
+    [Header("마을 대사")]
+    [Tooltip("마을을 비춘 뒤 메크로 독백")]
+    public DialogueData monologue;
+    [Tooltip("지지직 직전 마을 사람 대사")]
+    public DialogueData villagerLine;
+    [Tooltip("마을 사람 대사를 할 엔딩 마을 NPC. DialogueSpeaker 가 없으면 엔딩 때 붙임")]
+    public Transform villager;
+    public string villagerSpeakerId = "Friend_B";
+    public Vector2 villagerBubbleOffset = new Vector2(0f, 2.45f);
+    [Tooltip("독백과 마을 사람 대사 사이 (초)")]
+    public float betweenLines = 0.6f;
+    [Tooltip("마을 사람 대사가 끝나고 지지직 시작까지 (초). 짧을수록 말이 끊기는 느낌")]
+    public float afterVillager = 0.1f;
 
     [Header("시간 (초)")]
     public float startDelay = 0.6f;
     public float whiteInTime = 0.8f;
     public float whiteHold = 0.8f;
     public float whiteOutTime = 1.8f;
-    [Tooltip("마을을 조용히 비추는 시간")]
+    [Tooltip("마을을 조용히 비추는 시간 (대사 전)")]
     public float villageHold = 3.5f;
     [Tooltip("지지직 깨지며 지워지는 시간")]
     public float glitchTime = 3f;
@@ -55,7 +73,7 @@ public class EndingSequence : MonoBehaviour
     readonly List<Image> bars = new List<Image>();
     readonly List<Image> holes = new List<Image>();
     Vector3 camPos, camFrom, camTo;
-    float panLeft, panDur;
+    float panLeft, panDur, panSpeed;
     bool camHeld;
     float shake;
     bool playing;
@@ -81,6 +99,7 @@ public class EndingSequence : MonoBehaviour
         // 하얀 동안 마을로
         if (bossFight != null) bossFight.EndFight();
         if (villageRoot != null) villageRoot.SetActive(true);
+        SetupVillager();
         var player = FindAnyObjectByType<PlayerController>();
         if (player != null && playerSpawn != null)
         {
@@ -109,8 +128,15 @@ public class EndingSequence : MonoBehaviour
         yield return new WaitForSeconds(whiteHold);
         yield return FadeImage(white, 1f, 0f, whiteOutTime);
 
-        // 조용한 마을
+        // 조용한 마을 → 메크로 독백 → 마을 사람이 알아봄 (말이 끝나기 전에 지지직)
         yield return new WaitForSeconds(villageHold);
+        if (monologue != null) yield return DialoguePlayer.Ensure().PlayAndWait(monologue);
+        if (villagerLine != null)
+        {
+            yield return new WaitForSeconds(betweenLines);
+            yield return DialoguePlayer.Ensure().PlayAndWait(villagerLine);
+            yield return new WaitForSeconds(afterVillager);
+        }
 
         // 지지직 → 구멍이 늘어나며 지워짐
         for (float t = 0f; t < glitchTime; t += Time.deltaTime)
@@ -159,7 +185,17 @@ public class EndingSequence : MonoBehaviour
         if (white.color.a < 1f)
         {
             panLeft += Time.deltaTime;
-            camPos = camFrom + (camTo - camFrom) * (panLeft / panDur);
+            if (panLeft <= panDur)
+            {
+                camPos = camFrom + (camTo - camFrom) * (panLeft / panDur);
+                panSpeed = (camTo - camFrom).magnitude / panDur;
+            }
+            else
+            {
+                // 지난 뒤엔 천천히 느려지며 계속 감 (멈추지 않음)
+                panSpeed = Mathf.MoveTowards(panSpeed, driftSpeed, panSlowDown * Time.deltaTime);
+                camPos += (camTo - camFrom).normalized * panSpeed * Time.deltaTime;
+            }
         }
         cam.transform.position = camPos + (Vector3)(Random.insideUnitCircle * shake);
     }
@@ -167,6 +203,20 @@ public class EndingSequence : MonoBehaviour
     void OnDestroy()
     {
         if (playing) CutsceneLock.Unlock(this);
+    }
+
+    /// <summary>엔딩 마을 NPC 는 스크립트를 빼고 복사해서, 말풍선(DialogueSpeaker)을 여기서 붙인다.</summary>
+    void SetupVillager()
+    {
+        if (villager == null || villagerLine == null || villager.GetComponent<DialogueSpeaker>() != null) return;
+        var go = villager.gameObject;
+        bool was = go.activeSelf;
+        go.SetActive(false); // Awake 전에 화자 값부터 넣으려고 잠깐 끔
+        var sp = go.AddComponent<DialogueSpeaker>();
+        sp.speakerId = villagerSpeakerId;
+        sp.bubbleOffset = villagerBubbleOffset;
+        sp.font = font;
+        go.SetActive(was);
     }
 
     static void Quit()

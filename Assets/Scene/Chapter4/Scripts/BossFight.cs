@@ -6,7 +6,7 @@ using UnityEngine.Events;
 /// <summary>
 /// 챕터 4 임시 보스전 (신). 피하기 위주 + 손목 부담이 적게: 패턴마다 예고가 길고, 피할 때 그림 한 번이면 되며, 패턴 사이에 쉬는 시간이 있다.
 ///  등장: 바닥 선 → 카메라가 뒤로 빠지며 거대한 신이 나타남 → 대사(introDialogue) → 시작.
-///  패턴 (차례로 돌아감, 2단계부터 가끔 두 패턴이 겹쳐 나옴)
+///  패턴 (섞어서 돌아가고 탄은 3·4번째마다 꼭 나옴, 2단계부터 가끔 두 패턴이 겹쳐 나옴)
 ///   - 지우개 기둥: 바닥에 빨간 예고 → 하얀 기둥. ㅡ 이동으로 비켜서기.
 ///   - 탄: 느린 탄. 피하거나, 나뭇가지 ㄱ 으로 되받아치면 보스에 금이 간다.
 ///   - 가로 지우기: 아래 줄은 ㅣ 점프, 위 줄은 ㄴ 슬라이드.
@@ -182,6 +182,16 @@ public class BossFight : MonoBehaviour
     [Tooltip("테스트용: 누르면 보스 바로 처치 (에디터·개발 빌드에서만)")]
     public KeyCode debugDefeatKey = KeyCode.F7;
 
+    [Header("보스 체력바")]
+    [Tooltip("화면 위 보스 체력바 크기 (1920x1080 기준 px)")]
+    public Vector2 bossBarSize = new Vector2(640f, 26f);
+    [Tooltip("화면 위 끝에서 체력바까지 (px)")]
+    public float bossBarTop = 40f;
+    public Color bossBarColor = new Color(1f, 0.25f, 0.25f);
+    [Tooltip("체력바 아래 실드 줄 높이 (px). 칸 수 = reflectsToStun, 되받아친 탄이 맞으면 한 칸씩 깎임")]
+    public float shieldBarHeight = 16f;
+    public Color shieldColor = Color.white;
+
     class Hazard
     {
         public SpriteRenderer sr; public bool armed;
@@ -204,6 +214,9 @@ public class BossFight : MonoBehaviour
     SpriteRenderer boss, floorLine;
     float bossScale = 1f;
     BossHealthHud healthHud;
+    GameObject bossBar;
+    readonly List<UnityEngine.UI.Image> bossBarCells = new List<UnityEngine.UI.Image>();
+    readonly List<UnityEngine.UI.Image> shieldCells = new List<UnityEngine.UI.Image>();
     readonly List<Hazard> hazards = new List<Hazard>();
     readonly List<BossOrb> orbs = new List<BossOrb>();
 
@@ -304,6 +317,7 @@ public class BossFight : MonoBehaviour
             Vector3 from = cam.transform.position;
             camPos = from; camLocked = true;
             BuildHearts();
+            BuildBossBar();
             yield return MoveCamera(from, CamPosFor(baseOrtho), baseOrtho, baseOrtho, 1f);
         }
 
@@ -323,6 +337,7 @@ public class BossFight : MonoBehaviour
         yield return new WaitForSeconds(0.4f);
 
         SetHearts(hearts);
+        SetBossBar();
         if (fr != null)
         {
             fr.TrySetCheckpoint(int.MaxValue, player.transform.position); // 죽으면 무대에서 부활
@@ -374,6 +389,7 @@ public class BossFight : MonoBehaviour
         if (teaching || hitStopWas) { slowOn = false; Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt; }
         CutsceneLock.Unlock(this);
         if (healthHud != null) Destroy(healthHud.gameObject);
+        if (bossBar != null) Destroy(bossBar);
         if (fr != null) { fr.Died -= OnDied; fr.Respawned -= OnRespawned; }
         if (player != null) { player.BossSkillUsed -= OnBossSkill; player.AttackSwung -= OnAttackSwung; player.bossSkillReady = false; player.combatOnly = false; }
     }
@@ -463,14 +479,22 @@ public class BossFight : MonoBehaviour
         List<Pattern> round = null;
         int ri = 0;
         Pattern? last = null;
+        // 탄이 안 나오면 틈이 안 생겨 진행이 안 되므로, 다른 패턴 2~3개 뒤(3·4번째)에 꼭 탄
+        int sinceOrbs = 0, orbsAfter = Random.Range(2, 4);
         yield return new WaitForSeconds(0.8f);
         while (!defeated)
         {
             float k = Mathf.Max(0.5f, 1f - phaseSpeedUp * phase);
             while (teaching) yield return null; // 튜토리얼 중엔 다음 패턴을 시작하지 않음
-            if (round == null || ri >= round.Count) { round = ShuffleRound(last); ri = 0; }
-            Pattern p = round[ri++];
-            last = p;
+            Pattern p;
+            if (sinceOrbs >= orbsAfter) { p = Pattern.Orbs; sinceOrbs = 0; orbsAfter = Random.Range(2, 4); }
+            else
+            {
+                if (round == null || ri >= round.Count) { round = ShuffleRound(last); ri = 0; }
+                p = round[ri++];
+                last = p;
+                sinceOrbs++;
+            }
             float chance = phase >= 2 ? comboChance.y : phase >= 1 ? comboChance.x : 0f;
             Pattern partner;
             if (TryPartner(p, out partner) && Random.value < chance)
@@ -685,6 +709,7 @@ public class BossFight : MonoBehaviour
             {
                 RemoveOrb(o);
                 cracks++;
+                SetBossBar();
                 StartCoroutine(BossFlash(new Color(1f, 0.4f, 0.4f), 0.15f));
                 Shake(0.15f, 0.2f);
                 HitStop(0.07f);
@@ -1083,10 +1108,10 @@ public class BossFight : MonoBehaviour
         }
     }
 
-    /// <summary>한 바퀴 순서를 섞는다: 탄은 꼭 두 번, 같은 패턴 연속 금지 (바퀴 사이도). 새 패턴은 두 번째 페이즈부터.</summary>
+    /// <summary>한 바퀴 순서를 섞는다 (탄은 Loop 가 따로 넣음): 같은 패턴 연속 금지 (바퀴 사이도). 새 패턴은 두 번째 페이즈부터.</summary>
     List<Pattern> ShuffleRound(Pattern? last)
     {
-        var pool = new List<Pattern> { Pattern.Cursor, Pattern.Slam, Pattern.Sweep, Pattern.Columns, Pattern.Orbs, Pattern.Orbs };
+        var pool = new List<Pattern> { Pattern.Cursor, Pattern.Slam, Pattern.Sweep, Pattern.Columns };
         if (phase >= 1) { pool.Add(Pattern.Rain); pool.Add(Pattern.Laser); pool.Add(Pattern.Clone); }
         for (int tries = 0; tries < 50; tries++)
         {
@@ -1106,6 +1131,7 @@ public class BossFight : MonoBehaviour
     IEnumerator Stun()
     {
         stunned = true; stunHit = false; cracks = 0;
+        SetBossBar(); // 틈 동안 실드는 0
         boss.color = stunColor;
         yield return MoveBoss(BossRest + Vector2.down * 3.5f, 0.5f);
         player.bossSkillReady = true;
@@ -1126,10 +1152,12 @@ public class BossFight : MonoBehaviour
             Burst(BossPosition, Color.white, 20, 12f, 0.3f, 6f);
             Burst(BossPosition, stunColor, 24, 9f, 0.35f, 6f);
             Shake(0.6f, 0.6f);
+            SetBossBar();
             yield return BossFlash(Color.white, 0.6f, true);
             if (phase >= bossPhases) { yield return Defeat(); yield break; }
         }
         else cracks = reflectsToStun - 1; // 놓쳐도 한 번만 더 받아치면 다시 틈
+        SetBossBar();
         boss.color = bossColor;
         yield return MoveBoss(BossRest, 0.6f);
     }
@@ -1183,6 +1211,7 @@ public class BossFight : MonoBehaviour
         Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt;
         if (cam != null) cam.orthographicSize = baseOrtho;
         if (healthHud != null) healthHud.gameObject.SetActive(false);
+        if (bossBar != null) bossBar.SetActive(false);
         foreach (var g in glitchBars) if (g != null) g.enabled = false;
         foreach (var g in bossGhosts) if (g != null) g.enabled = false;
         foreach (var p in particles) if (p.sr != null) Destroy(p.sr.gameObject);
@@ -1292,6 +1321,7 @@ public class BossFight : MonoBehaviour
         ClearHazards();
         phase = 0; cracks = 0;
         SetHearts(hearts);
+        SetBossBar();
         dying = false;
         invulnUntil = Time.time + 1.5f;
         StartCoroutine(Loop());
@@ -1692,6 +1722,70 @@ public class BossFight : MonoBehaviour
         if (healthHud == null) return;
         healthHud.gameObject.SetActive(true);
         healthHud.SetHealth(heartsLeft);
+    }
+
+    /// <summary>화면 위 가운데 보스 체력바 (칸 하나 = § 한 번) + 그 아래 하얀 실드 줄 (칸 하나 = 되받아친 탄 한 번).</summary>
+    void BuildBossBar()
+    {
+        if (bossBar != null) return;
+        bossBar = new GameObject("BossBarCanvas", typeof(Canvas), typeof(UnityEngine.UI.CanvasScaler));
+        var canvas = bossBar.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 50;
+        var scaler = bossBar.GetComponent<UnityEngine.UI.CanvasScaler>();
+        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        BuildBarRow("Health", bossBarTop, bossBarSize, bossPhases, bossBarColor, bossBarCells);
+        BuildBarRow("Shield", bossBarTop + bossBarSize.y + 18f, new Vector2(bossBarSize.x, shieldBarHeight), reflectsToStun, shieldColor, shieldCells);
+        bossBar.SetActive(false);
+    }
+
+    void BuildBarRow(string name, float top, Vector2 size, int count, Color color, List<UnityEngine.UI.Image> cells)
+    {
+        var frame = BarImage(name, bossBar.transform, Color.white, size + new Vector2(8f, 8f));
+        frame.rectTransform.anchoredPosition = new Vector2(0f, -top);
+        var back = BarImage("Back", frame.transform, Color.black, size);
+        back.rectTransform.anchorMin = back.rectTransform.anchorMax = back.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        back.rectTransform.anchoredPosition = Vector2.zero;
+
+        int n = Mathf.Max(1, count);
+        float gap = Mathf.Min(6f, size.y * 0.25f), w = (size.x - gap * (n + 1)) / n, h = size.y - gap * 2f;
+        cells.Clear();
+        for (int i = 0; i < n; i++)
+        {
+            var cell = BarImage("Cell" + i, back.transform, color, new Vector2(w, h));
+            var rt = cell.rectTransform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(gap + i * (w + gap), 0f);
+            cells.Add(cell);
+        }
+    }
+
+    static UnityEngine.UI.Image BarImage(string name, Transform parent, Color color, Vector2 size)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        go.transform.SetParent(parent, false);
+        var rt = (RectTransform)go.transform;
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 1f);
+        rt.sizeDelta = size;
+        var img = go.GetComponent<UnityEngine.UI.Image>();
+        img.color = color;
+        img.raycastTarget = false;
+        return img;
+    }
+
+    /// <summary>체력 = bossPhases - phase, 실드 = reflectsToStun - cracks (틈 동안은 0). 깎인 칸은 어둡게.</summary>
+    void SetBossBar()
+    {
+        if (bossBar == null) return;
+        bossBar.SetActive(true);
+        var empty = new Color(0.25f, 0.25f, 0.25f);
+        int left = bossPhases - phase;
+        for (int i = 0; i < bossBarCells.Count; i++) bossBarCells[i].color = i < left ? bossBarColor : empty;
+        int shield = stunned ? 0 : reflectsToStun - cracks;
+        for (int i = 0; i < shieldCells.Count; i++) shieldCells[i].color = i < shield ? shieldColor : empty;
     }
 
     // ───────────── 도우미 ─────────────

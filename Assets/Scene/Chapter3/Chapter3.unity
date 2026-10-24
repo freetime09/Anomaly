@@ -8180,7 +8180,7 @@ MonoBehaviour:
   useVortex: 1
   promptHeight: 2.2
   promptColor: {r: 1, g: 1, b: 1, a: 1}
-  openClip: {fileID: 0}
+  openClip: {fileID: 8300000, guid: ed9591252d7a6da40a86353bfad5effa, type: 3}
   openVolume: 1
   onEntered:
     m_PersistentCalls:
