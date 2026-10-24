@@ -1130,9 +1130,9 @@ MonoBehaviour:
   nameTextColor: {r: 0.82, g: 0.82, b: 0.82, a: 1}
   nameFontScale: 9.7
   glitchInterval: {x: 0.6, y: 1.8}
-  windowGlitchTime: 0.25
-  windowGlitchBars: 5
   blackDelay: 0.5
+  shakeTime: 0
+  shakeMagnitude: 0.25
   fadeTime: 0
   enableOnBlack: []
   disableOnBlack:
@@ -2414,7 +2414,6 @@ MonoBehaviour:
   onDefeated:
     m_PersistentCalls:
       m_Calls: []
-  debugDefeatKey: 288
 --- !u!4 &1587097420
 Transform:
   m_ObjectHideFlags: 0
