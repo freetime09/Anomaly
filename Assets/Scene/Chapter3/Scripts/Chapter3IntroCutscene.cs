@@ -16,6 +16,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     [Header("배경 깨짐")]
     [Tooltip("배경 깨짐 연출 컴포넌트 (비우면 자동으로 찾음)")]
     public GlitchBreakEffect glitch;
+    public HouseScreenGlitch screenGlitch;
     [Tooltip("깨짐이 0에서 최대까지 차오르는 데 걸리는 시간(초). Timeline 에서 '순간이동' 신호까지의 간격과 맞추면 자연스럽다")]
     [Min(0.1f)] public float glitchRampTime = 5f;
     [Tooltip("순간이동 직전 도달할 깨짐 세기 (0~1)")]
@@ -66,12 +67,18 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     public bool skipCutscene = false;
 
     float originalMoveSpeed;
+    bool openingPrepared;
+    Canvas openingCanvas;
+    UnityEngine.UI.Image openingImage;
+    [Min(0.1f)] public float openingFadeTime = 0.5f;
     bool running;   // 자동 달리기 중
 
     protected override void Awake()
     {
         base.Awake();
         if (glitch == null) glitch = FindAnyObjectByType<GlitchBreakEffect>();
+        if (screenGlitch == null) screenGlitch = FindAnyObjectByType<HouseScreenGlitch>();
+        if (!skipCutscene) BuildOpeningFade();
     }
 
     void Start()
@@ -88,6 +95,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         // 첫 신호(0.01초)를 기다리면 그 사이 한 프레임 동안 씬에 배치된 마을 장면이 비친다.
         // 그래서 시작 상태(검은 공간·조작 잠금)를 Start 에서 바로 만들고 Timeline 을 재생한다.
         BeginCutscene();
+        StartCoroutine(FadeOpening());
         Play(); // 씬 시작과 동시에 컷신 재생
     }
 
@@ -96,11 +104,45 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     /// <summary>[신호] 컷신 시작: 조작 잠금, 메크로를 검은 공간 시작점에 두고 배경을 검게.</summary>
     public void BeginCutscene()
     {
+        if (openingPrepared) return;
+        openingPrepared = true;
+        if (screenGlitch != null) screenGlitch.StopEffect();
         LockControl();
         MovePlayer(blackSpaceStart);
         player.Face(1);
         SetBackground(blackSpaceBackground);
         SetBlackSpaceDecor(true);
+        StartAutoRun();
+    }
+
+    void BuildOpeningFade()
+    {
+        var go = new GameObject("Chapter3OpeningFade", typeof(Canvas));
+        go.transform.SetParent(transform, false);
+        openingCanvas = go.GetComponent<Canvas>();
+        openingCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        openingCanvas.sortingOrder = 999;
+        var child = new GameObject("Black", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        child.transform.SetParent(go.transform, false);
+        openingImage = child.GetComponent<UnityEngine.UI.Image>();
+        openingImage.raycastTarget = false;
+        openingImage.color = Color.black;
+        var rt = openingImage.rectTransform;
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+    }
+
+    IEnumerator FadeOpening()
+    {
+        yield return null;
+        yield return new WaitForFixedUpdate();
+        for (float t = 0f; t < openingFadeTime; t += Time.unscaledDeltaTime)
+        {
+            if (openingImage == null) yield break;
+            openingImage.color = new Color(0f, 0f, 0f, 1f - Mathf.SmoothStep(0f, 1f, t / openingFadeTime));
+            yield return null;
+        }
+        if (openingCanvas != null) Destroy(openingCanvas.gameObject);
     }
 
     void SetBlackSpaceDecor(bool on)
@@ -112,9 +154,11 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     /// <summary>[신호] 오른쪽으로 계속 달리기 시작 (평소보다 빠르게).</summary>
     public void StartAutoRun()
     {
+        if (running || player == null) return;
         originalMoveSpeed = player.moveSpeed;
         player.moveSpeed = originalMoveSpeed * runSpeedMultiplier;
         running = true;
+        player.WalkToX(player.transform.position.x + 50f);
     }
 
     void Update()
@@ -127,7 +171,8 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     /// <summary>[신호] 배경 깨짐이 점점 심해지기 시작.</summary>
     public void StartGlitchRamp()
     {
-        if (glitch != null) glitch.RampTo(glitchPeak, glitchRampTime);
+        if (glitch != null) glitch.SetIntensity(0f);
+        if (screenGlitch != null) screenGlitch.BeginRamp(glitchRampTime, glitchPeak * 0.48f);
     }
 
     /// <summary>[신호] 하얗게 번쩍이는 순간 마을 입구로 순간이동.</summary>
@@ -145,6 +190,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     void ArriveAtVillage()
     {
         StopAutoRun();
+        if (screenGlitch != null) screenGlitch.StopEffect();
         if (glitch != null) glitch.SetIntensity(0f);
         MovePlayer(villageArrivalPoint);
         SetBackground(villageBackground);
@@ -196,6 +242,8 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     protected override void OnDisable()
     {
         StopAutoRun();
+        if (openingCanvas != null) Destroy(openingCanvas.gameObject);
+        if (screenGlitch != null) screenGlitch.StopEffect();
         base.OnDisable();
     }
 }

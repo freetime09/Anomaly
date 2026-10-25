@@ -26,6 +26,7 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
     [Header("분노 연출")]
     [Tooltip("배경 깨짐 연출 컴포넌트 (비우면 자동으로 찾음). 분노하는 순간 화면이 잠깐 지지직거린다")]
     public GlitchBreakEffect glitch;
+    public HouseScreenGlitch screenGlitch;
     [Tooltip("분노 순간 깨짐 세기 (0~1)")]
     [Range(0f, 1f)] public float angerGlitch = 0.45f;
     [Tooltip("깨짐이 다시 0으로 잦아드는 시간(초)")]
@@ -45,6 +46,7 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
     {
         base.Awake();
         if (glitch == null) glitch = FindAnyObjectByType<GlitchBreakEffect>();
+        if (screenGlitch == null) screenGlitch = GetComponent<HouseScreenGlitch>();
     }
 
     // ───────── Timeline 신호가 부르는 동작들 ─────────
@@ -52,6 +54,7 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
     /// <summary>[신호] 컷신 시작: 조작 잠금, 집 안 배경색.</summary>
     public void BeginCutscene()
     {
+        StopHouseGlitch();
         LockControl();
         SetBackground(interiorBackground);
         player.Face(1);
@@ -85,14 +88,20 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
     public void AngerBurst()
     {
         if (cam != null) cam.Shake(0.5f, angerShake);
-        if (glitch != null) StartCoroutine(AngerGlitchRoutine());
+        if (glitch != null) glitch.SetIntensity(0f);
+        if (screenGlitch != null) screenGlitch.PulseOnce(angerGlitch * 0.75f);
     }
 
-    IEnumerator AngerGlitchRoutine()
+    public void StopHouseGlitch()
     {
-        glitch.SetIntensity(angerGlitch);
-        yield return new WaitForSeconds(0.25f); // 확 튀었다가
-        glitch.RampTo(0f, angerFadeTime);       // 서서히 잦아듦
+        if (screenGlitch != null) screenGlitch.StopEffect();
+        if (glitch != null) glitch.SetIntensity(0f);
+    }
+
+    protected override void OnDisable()
+    {
+        StopHouseGlitch();
+        base.OnDisable();
     }
 
     /// <summary>[신호] 문 쪽으로 몸을 돌린다 (마을을 되돌리러 나서는 순간).</summary>
@@ -107,5 +116,7 @@ public class Chapter3HouseCutscene : Chapter3CutsceneBase
         ReleaseCamera();
         UnlockControl();
         if (activateOnEnd != null) activateOnEnd.SetActive(true);
+        if (glitch != null) glitch.SetIntensity(0f);
+        if (screenGlitch != null) screenGlitch.BeginRepeating();
     }
 }

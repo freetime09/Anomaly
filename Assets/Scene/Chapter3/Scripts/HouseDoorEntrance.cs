@@ -32,6 +32,10 @@ public class HouseDoorEntrance : MonoBehaviour, IInteractable
     [Tooltip("켜면 소용돌이 전환으로 화면을 가리고 이동. 끄면 전환 없이 바로 On Entered (예: 다음 챕터로 넘어가는 문은 자체 페이드를 씀)")]
     public bool useVortex = true;
 
+    [Header("문 애니메이션 (선택)")]
+    [Tooltip("연결된 문만 입장 대기 중 Open 트리거를 재생")]
+    public Animator doorAnimator;
+
     [Header("O 프롬프트")]
     [Tooltip("문 위로 O 를 띄우는 높이 (이 오브젝트 위치 기준, units)")]
     public float promptHeight = 2.2f;
@@ -122,6 +126,7 @@ public class HouseDoorEntrance : MonoBehaviour, IInteractable
             float dx = transform.position.x - player.transform.position.x;
             player.Face(Mathf.Abs(dx) > 0.1f ? (dx > 0f ? 1 : -1) : 1); // 문 쪽을 봄
         }
+        if (doorAnimator != null) doorAnimator.SetTrigger("Open");
         if (enterDelay > 0f) yield return new WaitForSeconds(enterDelay);
         if (openClip != null) sfx.PlayOneShot(openClip, openVolume);
 

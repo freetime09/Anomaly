@@ -72,6 +72,8 @@ public class GlitchBreakEffect : MonoBehaviour
     float refreshTimer;
     float shakeTimer;
     Coroutine rampCo;
+    bool visualsVisible;
+    [Range(0f, 1f)] public float visualOpacity = 1f;
 
     /// <summary>현재 세기.</summary>
     public float Intensity => intensity;
@@ -120,6 +122,7 @@ public class GlitchBreakEffect : MonoBehaviour
             yield return null;
         }
         intensity = target;
+        if (intensity <= 0f) HideAll();
         rampCo = null;
     }
 
@@ -152,7 +155,7 @@ public class GlitchBreakEffect : MonoBehaviour
 
     void Update()
     {
-        if (intensity <= 0f) return;
+        if (intensity <= 0f) { HideAll(); return; }
 
         // 줄무늬·조각은 refreshInterval 마다 새로 섞는다 (매 프레임 섞으면 너무 정신없음)
         refreshTimer -= Time.deltaTime;
@@ -211,6 +214,7 @@ public class GlitchBreakEffect : MonoBehaviour
 
     void ShuffleBars()
     {
+        visualsVisible = true;
         var area = (RectTransform)canvas.transform;
         float w = area.rect.width, h = area.rect.height;
         int count = Mathf.RoundToInt(maxBars * intensity);
@@ -224,6 +228,7 @@ public class GlitchBreakEffect : MonoBehaviour
             bars[i].anchoredPosition = new Vector2(Random.Range(-0.4f, 0.4f) * w, Random.Range(-0.5f, 0.5f) * h);
             Color c = RandomColor();
             c.a = Random.Range(0.35f, 0.95f) * Mathf.Lerp(0.5f, 1f, intensity);
+            c.a *= visualOpacity * Mathf.Clamp01(intensity * 2f);
             barImages[i].color = c;
         }
     }
@@ -246,6 +251,7 @@ public class GlitchBreakEffect : MonoBehaviour
 
     void ShuffleFragments()
     {
+        visualsVisible = true;
         if (view == null) return;
         Vector2 c = view.transform.position;
         float hh = view.orthographicSize, hw = hh * view.aspect;
@@ -260,6 +266,7 @@ public class GlitchBreakEffect : MonoBehaviour
             f.transform.localScale = new Vector3(Random.Range(fragmentWidth.x, fragmentWidth.y), Random.Range(fragmentHeight.x, fragmentHeight.y), 1f);
             Color col = RandomColor();
             col.a = Random.Range(0.4f, 1f);
+            col.a *= visualOpacity * Mathf.Clamp01(intensity * 2f);
             f.color = col;
         }
     }
@@ -269,8 +276,19 @@ public class GlitchBreakEffect : MonoBehaviour
         return palette != null && palette.Length > 0 ? palette[Random.Range(0, palette.Length)] : Color.white;
     }
 
+    void OnDisable()
+    {
+        StopAllCoroutines();
+        rampCo = null;
+        intensity = 0f;
+        HideAll();
+        if (flashImage != null) SetFlashAlpha(0f);
+    }
+
     void HideAll()
     {
+        if (!visualsVisible) return;
+        visualsVisible = false;
         if (bars != null) foreach (var b in bars) if (b != null) b.gameObject.SetActive(false);
         if (fragments != null) foreach (var f in fragments) if (f != null) f.enabled = false;
     }
