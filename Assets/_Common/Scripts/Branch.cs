@@ -65,9 +65,13 @@ public class Branch : MonoBehaviour
     [Tooltip("나뭇가지가 '던져져서' 바닥에 박히는 순간(Stick)에만 발생합니다. 9로 세워 꽂는 경우(Plant)에는 발동하지 않습니다.")]
     public UnityEvent OnStuck;
 
+    [Tooltip("박혀 있을 때 그림 순서. 바닥(0)·바닥 테두리(-1)보다 뒤로 보내 땅속에 묻힌 부분이 바닥에 가려지게")]
+    public int stuckSortingOrder = -2;
+
     Rigidbody2D rb;
     BoxCollider2D col;
     SpriteRenderer sr;
+    int baseSortingOrder;
     AudioSource loopSrc;    // 날아가는 소리(loop) 전용
     AudioSource sfxSrc;     // 부딪힘 소리(oneshot) 전용
     TrailRenderer trail;    // 날아가는 동안 잔상 궤적
@@ -98,6 +102,7 @@ public class Branch : MonoBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous; // 빠르게 날아갈 때 얇은 지형을 뚫고 박히는 것 방지
         col = GetComponent<BoxCollider2D>();
         sr = GetComponent<SpriteRenderer>();
+        if (sr != null) baseSortingOrder = sr.sortingOrder;
         terrainMask = 1 << gameObject.layer; // Ground 레이어만 막음 (플레이어는 다른 레이어라 안 막힘)
         loopSrc = gameObject.AddComponent<AudioSource>(); loopSrc.playOnAwake = false; loopSrc.loop = true;
         sfxSrc = gameObject.AddComponent<AudioSource>(); sfxSrc.playOnAwake = false;
@@ -123,6 +128,7 @@ public class Branch : MonoBehaviour
         rb.angularVelocity = -spinSpeed * Mathf.Sign(velocity.x); // 진행 방향으로 텀블링(회전)
         rb.linearVelocity = velocity;
         state = State.Flying;
+        SetBuried(false);
         if (flyingClip != null && loopSrc != null) { loopSrc.clip = flyingClip; loopSrc.volume = sfxVolume; loopSrc.Play(); }
         if (trail != null) { trail.Clear(); trail.emitting = true; } // 잔상 궤적 시작
         OnThrown?.Invoke(); // 던져지는 순간 외부에 알림 (Inspector에서 연결한 이벤트 실행)
@@ -245,6 +251,7 @@ public class Branch : MonoBehaviour
         if (stickClip != null && sfxSrc != null) sfxSrc.PlayOneShot(stickClip, sfxVolume); // 박히는 소리
         if (trail != null) trail.emitting = false; // 착지하며 잔상은 서서히 사라짐
         state = State.Stuck;
+        SetBuried(true);
         OnStuck?.Invoke(); // 바닥에 박힌 순간 외부에 알림
     }
 
@@ -265,6 +272,7 @@ public class Branch : MonoBehaviour
         rb.angularVelocity = 0f;
         if (stickClip != null && sfxSrc != null) sfxSrc.PlayOneShot(stickClip, sfxVolume); // 세워 박히는 소리
         state = State.Stuck; // 박힌 것과 동일 취급 (O로 회수)
+        SetBuried(true);
     }
 
     /// <summary>박혀 있던 나뭇가지를 회수해 다시 손에 든(숨김) 상태로 되돌린다.</summary>
@@ -293,6 +301,7 @@ public class Branch : MonoBehaviour
         if (trail != null) { trail.emitting = false; trail.Clear(); }
         if (prompt != null) prompt.SetActive(false);
         state = State.Returning;
+        SetBuried(false);
     }
 
     /// <summary>회수 가능 표시(O)를 켜고 끈다. 켜질 땐 나뭇가지 위에 똑바로 띄운다.</summary>
@@ -353,5 +362,12 @@ public class Branch : MonoBehaviour
         // 실제로 잡은 경우(날아가던/박힌/돌아오던 것 → 손)만 소리. 시작 시(Held→Held)는 제외.
         if (prev != State.Held && catchClip != null && sfxSrc != null) sfxSrc.PlayOneShot(catchClip, sfxVolume);
         state = State.Held;
+        SetBuried(false);
+    }
+
+    /// <summary>박혔을 때만 바닥 뒤로 그려 땅속 부분을 가린다.</summary>
+    void SetBuried(bool buried)
+    {
+        if (sr != null) sr.sortingOrder = buried ? stuckSortingOrder : baseSortingOrder;
     }
 }

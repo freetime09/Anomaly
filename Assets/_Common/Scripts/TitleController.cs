@@ -4,12 +4,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using DG.Tweening;
+using TMPro;
 
 /// <summary>
 /// 메인 타이틀. 흐름:
 ///  1) 시작하면 Title2 로고가 위에서 아래로 떨어지며 등장(DOTween).
 ///  2) 마우스로 궤적을 그리면 LineRenderer로 실시간 표시.
-///  3) 'O'(원)로 인식되면 화면 전체를 "색상 반전 + 글리치"로 연출한 뒤 게임(Tutorial) 씬 로드.
+///  3) 'O'(원)로 인식되면 줄무늬·검은 구멍으로 화면이 지지직 깨지고, 검은 화면에 "An§maly 실행 중..." 이 타자 치듯 나온 뒤 게임(Tutorial) 씬 로드.
 /// 제스처 인식은 게임과 동일한 UnistrokeRecognizer + 번들 'O(상호작용)' 템플릿을 재사용한다.
 /// </summary>
 public class TitleController : MonoBehaviour
@@ -27,12 +28,6 @@ public class TitleController : MonoBehaviour
     public float dropRestY = 120f;
     [Tooltip("낙하 시간(초)")]
     public float dropDuration = 1.0f;
-
-    [Header("로고 지직 교체")]
-    [Tooltip("O 인식 시 지직대며 바뀔 로고 (Title1)")]
-    public Sprite glitchLogo;
-    [Tooltip("로고가 지직대는 시간(초)")]
-    public float logoGlitchTime = 0.5f;
 
     [Header("안내문")]
     [Tooltip("깜빡일 안내문 (선택)")]
@@ -54,13 +49,28 @@ public class TitleController : MonoBehaviour
     [Tooltip("궤적 두께(월드 단위)")]
     public float trailWidth = 0.12f;
 
-    [Header("반전 글리치 연출")]
-    [Tooltip("글리치 연출 총 시간(초)")]
-    public float glitchDuration = 0.65f;
-    [Tooltip("마지막에 초록색으로 물드는 시간(초)")]
-    public float greenTime = 0.25f;
-    [Tooltip("초록 상태로 멈춰 있다 로드까지의 시간(초)")]
-    public float greenHold = 0.15f;
+    [Header("시작 연출")]
+    [Tooltip("O 를 그린 뒤 화면이 지지직 깨지는 시간(초). 줄무늬·검은 구멍이 점점 늘어남 (3챕터·엔딩과 같은 느낌)")]
+    public float breakTime = 1.0f;
+    [Tooltip("깨질 때 최대 줄무늬 수")]
+    public int breakBars = 16;
+    [Tooltip("다 깨진 뒤 글자가 나오기 전까지 검은 화면 시간(초)")]
+    public float blackHold = 0.3f;
+
+    [Header("실행 중 글자")]
+    [Tooltip("검은 화면에 타자 치듯 나오는 글자 (끝의 점은 따로 깜빡임). 비우면 글자 없이 바로 로드")]
+    public string bootText = "An§maly 실행 중";
+    public TMP_FontAsset bootFont;
+    public float bootFontSize = 40f;
+    public Color bootColor = new Color(0.85f, 0.85f, 0.85f);
+    [Tooltip("1초에 나오는 글자 수")]
+    public float bootCharsPerSecond = 14f;
+    [Tooltip("글자 뒤 점(. .. ...)이 도는 횟수")]
+    public int bootDotLoops = 2;
+    [Tooltip("점 하나가 늘어나는 간격(초)")]
+    public float bootDotInterval = 0.25f;
+    [Tooltip("다 나온 뒤 로드까지(초)")]
+    public float bootHold = 0.3f;
 
     [Header("배경 오류 깜빡임")]
     [Tooltip("배경이 오류처럼 천천히 깜빡이게")]
@@ -74,6 +84,8 @@ public class TitleController : MonoBehaviour
     Vector2 origin;
     bool drawing;
     bool starting;
+    /// <summary>O 를 인식해 시작 연출 중인가 (TitleDecor 가 꾸미기를 멈출 때 씀)</summary>
+    public bool Starting => starting;
 
     readonly List<UnistrokeRecognizer.Template> templates = new List<UnistrokeRecognizer.Template>();
 
@@ -81,17 +93,10 @@ public class TitleController : MonoBehaviour
     LineRenderer line;
     readonly List<Vector3> worldPts = new List<Vector3>();
 
-    Image logoImage;       // logo 의 Image (지직 교체용)
-    Sprite baseLogoSprite; // 원래 로고(Title2) — 지직 중 왕복 표시용
-
     Color bgBaseColor;     // 카메라 원래 배경색 (깜빡임 기준)
     float nextBlip;        // 다음 오류 블립 시각
     bool blipping;
     float blipEnd;
-
-    Material glitchMat;
-    RawImage glitchImg;
-    Canvas glitchCanvas;
 
     void Awake()
     {
@@ -100,13 +105,10 @@ public class TitleController : MonoBehaviour
         nextBlip = Random.Range(1.5f, 3f);
         if (logo != null)
         {
-            PromoteLogoToTopOverlay();   // 로고를 반전 글리치보다 위에 → 연출 내내 항상 보임
-            logoImage = logo.GetComponent<Image>();
-            if (logoImage != null) baseLogoSprite = logoImage.sprite;
+            PromoteLogoToTopOverlay();
         }
         LoadStartTemplates();
         BuildTrail();
-        BuildGlitchOverlay();
     }
 
     void Start()
@@ -211,95 +213,19 @@ public class TitleController : MonoBehaviour
         if (!starting) { line.positionCount = 0; worldPts.Clear(); }
     }
 
-    // 로고가 흔들리고 알파가 껌뻑이며 Title2 ↔ Title1 을 왕복하다 Title1 로 고정
-    IEnumerator LogoGlitchSwap()
-    {
-        if (logoImage == null) yield break;
-        var rt = logoImage.rectTransform;
-        Vector2 basePos = rt.anchoredPosition;
-        Color baseCol = logoImage.color;
-        float dur = logoGlitchTime;
-        float t = 0f;
-        while (t < dur)
-        {
-            t += Time.unscaledDeltaTime;
-            float k = t / dur;
-            float amp = 10f * (0.5f + k);
-            rt.anchoredPosition = basePos + new Vector2(Random.Range(-amp, amp), Random.Range(-amp, amp));
-            logoImage.color = new Color(1f, 1f, 1f, Random.Range(0.75f, 1f)); // 깜빡여도 안 사라지게
-            if (k > 0.35f && glitchLogo != null)
-                logoImage.sprite = (Random.value < 0.7f) ? glitchLogo : baseLogoSprite;
-            // 배경도 같이 번쩍 (정상 ↔ 반전색)
-            if (cam != null)
-                cam.backgroundColor = (Random.value < 0.5f)
-                    ? bgBaseColor
-                    : new Color(1f - bgBaseColor.r, 1f - bgBaseColor.g, 1f - bgBaseColor.b, 1f);
-            yield return null;
-        }
-        rt.anchoredPosition = basePos;
-        logoImage.color = baseCol;
-        if (cam != null) cam.backgroundColor = bgBaseColor;
-        if (glitchLogo != null) logoImage.sprite = glitchLogo; // 최종 Title1
-    }
-
-    // ── 반전 글리치 → 씬 로드 ──────────────────────────────
+    // ── 지지직 → 씬 로드 ──────────────────────────────
     IEnumerator GlitchAndLoad()
     {
         starting = true;
 
-        // 0) 로고가 지직대며 Title2 → Title1 로 교체
-        yield return LogoGlitchSwap();
-        Debug.Log("[타이틀] 1) 로고 교체 완료");
+        // 로고까지 덮는 줄무늬·검은 구멍이 점점 늘며 지지직 → 검은 화면 (페이드 없이 뚝)
+        yield return BreakScreen();
+        if (hint != null) hint.enabled = false;
+        line.positionCount = 0; worldPts.Clear();
 
-        // 1) 현재 화면을 RenderTexture로 스냅샷 (UI 포함 → SS-Camera 캔버스 사용)
-        yield return new WaitForEndOfFrame();
-        var rt = new RenderTexture(Screen.width, Screen.height, 16);
-        var prev = cam.targetTexture;
-        cam.targetTexture = rt;
-        yield return null;              // URP가 이 프레임을 rt에 렌더
-        cam.targetTexture = prev;       // 화면 렌더 복구
-        Debug.Log("[타이틀] 2) 스냅샷 완료 rt=" + rt.width + "x" + rt.height + " mat=" + (glitchMat != null) + " img=" + (glitchImg != null));
-
-        // 2) 스냅샷을 반전 글리치 오버레이에 띄움
-        glitchImg.texture = rt;
-        glitchCanvas.enabled = true;
-        glitchImg.enabled = true;
-
-        // 3) 글리치/반전 강도를 0→1로 올리며 연출 (중간에 몇 번 깜빡)
-        float t = 0f;
-        while (t < glitchDuration)
-        {
-            t += Time.unscaledDeltaTime;
-            float k = Mathf.Clamp01(t / glitchDuration);
-            glitchMat.SetFloat("_Glitch", k);
-            // 반전은 강하게 껌뻑이다 마지막엔 완전 반전으로 고정
-            float invert = (k < 0.75f) ? (Mathf.Sin(t * 45f) > 0f ? 1f : 0f) : 1f;
-            glitchMat.SetFloat("_Invert", invert);
-            yield return null;
-        }
-        glitchMat.SetFloat("_Glitch", 1f);
-        glitchMat.SetFloat("_Invert", 1f);
-
-        // 마지막: 배경을 초록으로, 로고(Title1)는 위에 계속 보이게.
-        // 반전 글리치 오버레이를 서서히 걷어내 → 뒤의 초록 배경 + 로고가 드러남.
-        Color green = new Color(0.13f, 0.9f, 0.25f, 1f);
-        if (cam != null) cam.backgroundColor = green;
-        if (hint != null) hint.enabled = false;      // 안내문 숨김
-        line.positionCount = 0; worldPts.Clear();      // 그린 궤적 정리
-        if (logoImage != null) logoImage.color = Color.white; // 로고 확실히 보이게
-        float g = 0f;
-        while (g < greenTime)
-        {
-            g += Time.unscaledDeltaTime;
-            var c = glitchImg.color;
-            c.a = Mathf.Lerp(1f, 0f, g / greenTime); // 오버레이 서서히 투명 → 초록+로고 드러남
-            glitchImg.color = c;
-            yield return null;
-        }
-        glitchCanvas.enabled = false;
-
-        yield return new WaitForSecondsRealtime(greenHold);
-        Debug.Log("[타이틀] 3) 씬 로드 → " + startScene);
+        yield return new WaitForSecondsRealtime(blackHold);
+        yield return BootText();
+        Debug.Log("[타이틀] 씬 로드 → " + startScene);
         SceneManager.LoadScene(startScene);
     }
 
@@ -378,23 +304,114 @@ public class TitleController : MonoBehaviour
         line.sortingOrder = 50;
     }
 
-    void BuildGlitchOverlay()
+    // 로고(1000) 위에서 화면이 깨지는 연출: 줄무늬가 지지직, 검은 구멍이 쌓이고, 로고가 흔들림.
+    IEnumerator BreakScreen()
     {
-        var canvasGO = new GameObject("GlitchOverlay");
-        glitchCanvas = canvasGO.AddComponent<Canvas>();
-        glitchCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        glitchCanvas.sortingOrder = 999;
-        canvasGO.AddComponent<CanvasScaler>();
-        glitchCanvas.enabled = false;
+        var go = new GameObject("BreakOverlay");
+        var canvas = go.AddComponent<Canvas>();
+        breakRoot = go.transform; // Canvas 를 붙이면 Transform 이 RectTransform 으로 바뀌므로 그 뒤에 잡음
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1100;
+        var sc = go.AddComponent<CanvasScaler>();
+        sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        sc.referenceResolution = new Vector2(1920f, 1080f);
+        sc.matchWidthOrHeight = 0.5f;
+        var area = (RectTransform)go.transform;
 
-        var imgGO = new GameObject("Snapshot");
-        imgGO.transform.SetParent(canvasGO.transform, false);
-        glitchImg = imgGO.AddComponent<RawImage>();
-        glitchMat = new Material(Shader.Find("UI/InvertGlitch"));
-        glitchImg.material = glitchMat;
-        glitchImg.enabled = false;
-        var rt = glitchImg.rectTransform;
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        Color[] palette = { Color.white, Color.black, new Color(0.2f, 1f, 1f), new Color(1f, 0.25f, 0.85f), new Color(0.6f, 0.6f, 0.65f) };
+        var bars = new List<Image>();
+        for (int i = 0; i < breakBars; i++) bars.Add(BreakImage(go.transform));
+        var black = BreakImage(go.transform);
+        black.color = Color.black;
+        var rtB = black.rectTransform;
+        rtB.anchorMin = Vector2.zero; rtB.anchorMax = Vector2.one; rtB.offsetMin = rtB.offsetMax = Vector2.zero;
+        black.transform.SetAsLastSibling();
+        black.gameObject.SetActive(false);
+
+        Vector2 logoPos = logo != null ? logo.anchoredPosition : Vector2.zero;
+        float t = 0f, tick = 0f;
+        while (t < breakTime)
+        {
+            t += Time.unscaledDeltaTime;
+            tick -= Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / breakTime);
+            if (tick <= 0f)
+            {
+                tick = 0.05f;
+                Vector2 size = area.rect.size;
+                int n = Mathf.RoundToInt(Mathf.Lerp(0.3f, 1f, k) * breakBars);
+                for (int i = 0; i < bars.Count; i++)
+                {
+                    bool on = i < n && Random.value < 0.8f;
+                    bars[i].gameObject.SetActive(on);
+                    if (!on) continue;
+                    var rt = bars[i].rectTransform;
+                    rt.sizeDelta = new Vector2(size.x * Random.Range(0.3f, 1.2f), Random.Range(4f, 40f) * (0.6f + k));
+                    rt.anchoredPosition = new Vector2(Random.Range(-0.4f, 0.4f) * size.x, Random.Range(-0.5f, 0.5f) * size.y);
+                    var c = palette[Random.Range(0, palette.Length)];
+                    c.a = Random.Range(0.5f, 1f);
+                    bars[i].color = c;
+                }
+                // 검은 구멍: 점점 자주, 점점 크게 쌓임 (지워지는 느낌)
+                if (Random.value < Mathf.Lerp(0.2f, 1f, k))
+                {
+                    var hole = BreakImage(go.transform);
+                    hole.color = Color.black;
+                    hole.gameObject.SetActive(true);
+                    var rt = hole.rectTransform;
+                    rt.sizeDelta = new Vector2(Random.Range(80f, 500f) * (0.5f + k), Random.Range(30f, 220f) * (0.5f + k));
+                    rt.anchoredPosition = new Vector2(Random.Range(-0.5f, 0.5f) * size.x, Random.Range(-0.5f, 0.5f) * size.y);
+                }
+                if (logo != null) logo.anchoredPosition = logoPos + Random.insideUnitCircle * Mathf.Lerp(4f, 24f, k);
+            }
+            yield return null;
+        }
+        if (logo != null) logo.anchoredPosition = logoPos;
+        black.gameObject.SetActive(true);
+        foreach (var b in bars) b.gameObject.SetActive(false);
+    }
+
+    Transform breakRoot;
+
+    // 검은 화면 가운데에 "An§maly 실행 중" 을 타자 치듯 쓰고, 뒤의 점을 . .. ... 로 돌린다
+    IEnumerator BootText()
+    {
+        if (string.IsNullOrEmpty(bootText) || breakRoot == null) yield break;
+        var go = new GameObject("BootText", typeof(RectTransform));
+        go.transform.SetParent(breakRoot, false);
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        if (bootFont != null) tmp.font = bootFont;
+        tmp.fontSize = bootFontSize;
+        tmp.color = bootColor;
+        tmp.alignment = TextAlignmentOptions.Left;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.raycastTarget = false;
+        // 다 쓴 글자 폭에 맞춰 가운데 두고 왼쪽부터 써 나감 → 쓰는 동안 글자가 옆으로 밀리지 않음
+        var rt = tmp.rectTransform;
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(tmp.GetPreferredValues(bootText + "...").x + 4f, 120f);
+        float cps = Mathf.Max(1f, bootCharsPerSecond);
+        for (int i = 1; i <= bootText.Length; i++)
+        {
+            tmp.text = bootText.Substring(0, i);
+            yield return new WaitForSecondsRealtime(1f / cps);
+        }
+        for (int loop = 0; loop < Mathf.Max(1, bootDotLoops); loop++)
+            for (int d = 0; d <= 3; d++)
+            {
+                tmp.text = bootText + new string('.', d);
+                yield return new WaitForSecondsRealtime(bootDotInterval);
+            }
+        tmp.text = bootText + "...";
+        yield return new WaitForSecondsRealtime(bootHold);
+    }
+
+    static Image BreakImage(Transform parent)
+    {
+        var img = new GameObject("Bar", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        img.transform.SetParent(parent, false);
+        img.raycastTarget = false;
+        img.gameObject.SetActive(false);
+        return img;
     }
 }

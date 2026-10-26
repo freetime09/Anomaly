@@ -523,6 +523,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1730737620}
   - component: {fileID: 1730737619}
+  - component: {fileID: 1730737621}
   m_Layer: 0
   m_Name: TitleController
   m_TagString: Untagged
@@ -547,8 +548,6 @@ MonoBehaviour:
   dropStartY: 720
   dropRestY: 120
   dropDuration: 1.8
-  glitchLogo: {fileID: -942905748608181876, guid: b7287288836baab4080aadcea3845e6f, type: 3}
-  logoGlitchTime: 0.5
   hint: {fileID: 1508905577}
   startTemplateName: "O(\uC0C1\uD638\uC791\uC6A9)"
   recognizeThreshold: 0.8
@@ -556,9 +555,17 @@ MonoBehaviour:
   minGap: 5
   trailColor: {r: 0.15, g: 0.15, b: 0.15, a: 0.95}
   trailWidth: 0.12
-  glitchDuration: 0.5
-  greenTime: 0.005
-  greenHold: 0.005
+  breakTime: 1
+  breakBars: 16
+  blackHold: 0.3
+  bootText: "An\xA7maly \uC2E4\uD589 \uC911"
+  bootFont: {fileID: 11400000, guid: a8470287b766003469c6c03d730a03fd, type: 2}
+  bootFontSize: 40
+  bootColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
+  bootCharsPerSecond: 14
+  bootDotLoops: 2
+  bootDotInterval: 0.25
+  bootHold: 0.3
   bgFlicker: 1
   bgBreatheAmp: 0.02
   bgBreatheSpeed: 1.1
@@ -577,6 +584,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1730737621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730737618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 384eed84a1d87eb488c2aa0f1f0934c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TitleDecor
+  title: {fileID: 1730737619}
+  grid: 1
+  gridCell: 0.5
+  gridColor: {r: 0.55, g: 0.48, b: 0.38, a: 0.13}
+  sparkles: 1
+  sparkleSpacing: 0.12
+  sparkleLife: 0.5
+  sparkleSize: {x: 0.06, y: 0.14}
+  sparkleColors:
+  - {r: 0.75, g: 0.2, b: 1, a: 1}
+  - {r: 1, g: 0.15, b: 0.15, a: 1}
+  - {r: 0, g: 0.85, b: 1, a: 1}
+  - {r: 0.1, g: 0.2, b: 1, a: 1}
+  - {r: 1, g: 0.85, b: 0, a: 1}
+  - {r: 0.1, g: 0.9, b: 0.2, a: 1}
+  - {r: 1, g: 0.55, b: 0.1, a: 1}
+  - {r: 1, g: 0.45, b: 0.75, a: 1}
+  doodles: 1
+  doodlesPerSide: 4
+  doodleSize: {x: 0.7, y: 1.1}
+  doodleWidth: 0.06
+  doodleAlpha: 0.45
+  doodleDrawTime: 0.5
+  doodleBob: 0.1
+  demo: 1
+  demoAbove: 1.35
+  demoRadius: 0.5
+  demoWidth: 0.07
+  demoColor: {r: 1, g: 0.72, b: 0.1, a: 1}
+  demoDrawTime: 1.1
+  demoHold: 0.4
+  demoFade: 0.4
+  demoPause: 1.2
+  logoGlitch: 1
+  glitchEvery: {x: 3, y: 6}
+  glitchTime: 0.25
+  glitchJitter: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
