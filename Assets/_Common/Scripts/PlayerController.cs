@@ -170,6 +170,7 @@ public class PlayerController : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        if (GetComponent<PlayerRunDust>() == null) gameObject.AddComponent<PlayerRunDust>();
         col = GetComponent<BoxCollider2D>();
         origColSize = col.size;
         origColOffset = col.offset;

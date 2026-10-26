@@ -1,0 +1,2 @@
+using UnityEngine;
+public sealed class RunDustFootContact : MonoBehaviour { PlayerRunDust dust; void Awake(){dust=GetComponentInParent<PlayerRunDust>();} public void HeelDustContact(){if(dust==null)dust=GetComponentInParent<PlayerRunDust>();if(dust!=null&&dust.isActiveAndEnabled)dust.FootContact();} }
