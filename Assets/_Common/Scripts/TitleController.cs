@@ -9,7 +9,7 @@ using TMPro;
 /// <summary>
 /// 메인 타이틀. 흐름:
 ///  1) 시작하면 Title2 로고가 위에서 아래로 떨어지며 등장(DOTween).
-///  2) 마우스로 궤적을 그리면 LineRenderer로 실시간 표시.
+///  2) 마우스로 그리는 궤적은 인게임과 같은 GestureTrail(붓)로 표시, 그리는 소리·인식음·실패음도 인게임과 같음.
 ///  3) 'O'(원)로 인식되면 줄무늬·검은 구멍으로 화면이 지지직 깨지고, 검은 화면에 "An§maly 실행 중..." 이 타자 치듯 나온 뒤 게임(Tutorial) 씬 로드.
 /// 제스처 인식은 게임과 동일한 UnistrokeRecognizer + 번들 'O(상호작용)' 템플릿을 재사용한다.
 /// </summary>
@@ -43,11 +43,22 @@ public class TitleController : MonoBehaviour
     [Tooltip("이 거리(px)보다 가까운 점은 버려 손떨림 제거")]
     public float minGap = 5f;
 
-    [Header("그리는 궤적")]
-    [Tooltip("궤적 선 색 (밝은 배경이라 어두운 색 권장)")]
-    public Color trailColor = new Color(0.15f, 0.15f, 0.15f, 0.95f);
-    [Tooltip("궤적 두께(월드 단위)")]
-    public float trailWidth = 0.12f;
+    [Header("그리는 궤적 (인게임과 같은 붓)")]
+    [Tooltip("씬의 GestureTrail. O 로 인식되면 이 색으로 물들고 번쩍임")]
+    public GestureTrail trail;
+    [Tooltip("O 인식 색 (인게임 GestureRecognizer.colorInteract 와 같게)")]
+    public Color colorInteract = new Color(1f, 0.9f, 0.25f);
+
+    [Header("사운드 (인게임 GestureRecognizer 와 같게)")]
+    [Tooltip("그리는 동안 루프")]
+    public AudioClip drawLoopClip;
+    [Range(0f, 1f)] public float drawVolume = 1f;
+    [Tooltip("O 인식음")]
+    public AudioClip sfxInteract;
+    [Range(0f, 1f)] public float recognizeVolume = 1f;
+    [Tooltip("인식 실패음")]
+    public AudioClip failClip;
+    [Range(0f, 1f)] public float failVolume = 1f;
 
     [Header("시작 연출")]
     [Tooltip("O 를 그린 뒤 화면이 지지직 깨지는 시간(초). 줄무늬·검은 구멍이 점점 늘어남 (3챕터·엔딩과 같은 느낌)")]
@@ -90,8 +101,8 @@ public class TitleController : MonoBehaviour
     readonly List<UnistrokeRecognizer.Template> templates = new List<UnistrokeRecognizer.Template>();
 
     Camera cam;
-    LineRenderer line;
-    readonly List<Vector3> worldPts = new List<Vector3>();
+    AudioSource sfx;     // 인식음·실패음
+    AudioSource drawSfx; // 그리는 동안 루프
 
     Color bgBaseColor;     // 카메라 원래 배경색 (깜빡임 기준)
     float nextBlip;        // 다음 오류 블립 시각
@@ -108,7 +119,11 @@ public class TitleController : MonoBehaviour
             PromoteLogoToTopOverlay();
         }
         LoadStartTemplates();
-        BuildTrail();
+        sfx = gameObject.AddComponent<AudioSource>();
+        sfx.playOnAwake = false;
+        drawSfx = gameObject.AddComponent<AudioSource>();
+        drawSfx.playOnAwake = false;
+        drawSfx.loop = true;
     }
 
     void Start()
@@ -164,53 +179,38 @@ public class TitleController : MonoBehaviour
         origin = Input.mousePosition;
         points.Clear();
         points.Add(Vector2.zero);
-        worldPts.Clear();
-        line.positionCount = 0;
-        AddWorldPoint();
+        if (drawLoopClip != null)
+        {
+            drawSfx.clip = drawLoopClip;
+            drawSfx.volume = drawVolume;
+            if (!drawSfx.isPlaying) drawSfx.Play();
+        }
     }
 
     void Add()
     {
         Vector2 rel = (Vector2)Input.mousePosition - origin;
         if (Vector2.Distance(rel, points[points.Count - 1]) >= minGap)
-        {
             points.Add(rel);
-            AddWorldPoint();
-        }
-    }
-
-    void AddWorldPoint()
-    {
-        if (cam == null) return;
-        Vector3 sp = Input.mousePosition;
-        sp.z = -cam.transform.position.z; // 카메라 → z=0 평면 거리
-        Vector3 wp = cam.ScreenToWorldPoint(sp);
-        wp.z = 0f;
-        worldPts.Add(wp);
-        line.positionCount = worldPts.Count;
-        line.SetPosition(worldPts.Count - 1, wp);
     }
 
     void End()
     {
         drawing = false;
+        if (drawSfx.isPlaying) drawSfx.Stop();
         var (name, score) = UnistrokeRecognizer.Recognize(points, templates);
         if (name != null && score >= recognizeThreshold)
         {
             Debug.Log($"[타이틀] 'O' 인식 (점수 {score:F2}) → {startScene} 시작");
+            if (trail != null) trail.SetStrokeColor(colorInteract);
+            if (sfxInteract != null) sfx.PlayOneShot(sfxInteract, recognizeVolume);
             StartCoroutine(GlitchAndLoad());
         }
         else
         {
             Debug.Log($"[타이틀] O 인식 실패 (best {name}, {score:F2}) — 더 둥글게 그려보세요");
-            StartCoroutine(ClearTrailSoon());
+            if (failClip != null) sfx.PlayOneShot(failClip, failVolume);
         }
-    }
-
-    IEnumerator ClearTrailSoon()
-    {
-        yield return new WaitForSeconds(0.15f);
-        if (!starting) { line.positionCount = 0; worldPts.Clear(); }
     }
 
     // ── 지지직 → 씬 로드 ──────────────────────────────
@@ -221,7 +221,6 @@ public class TitleController : MonoBehaviour
         // 로고까지 덮는 줄무늬·검은 구멍이 점점 늘며 지지직 → 검은 화면 (페이드 없이 뚝)
         yield return BreakScreen();
         if (hint != null) hint.enabled = false;
-        line.positionCount = 0; worldPts.Clear();
 
         yield return new WaitForSecondsRealtime(blackHold);
         yield return BootText();
@@ -286,22 +285,6 @@ public class TitleController : MonoBehaviour
         sc.referenceResolution = new Vector2(1920f, 1080f);
         sc.matchWidthOrHeight = 0.5f;
         logo.SetParent(lc.transform, false);
-    }
-
-    void BuildTrail()
-    {
-        var go = new GameObject("DrawTrail");
-        line = go.AddComponent<LineRenderer>();
-        line.useWorldSpace = true;
-        line.positionCount = 0;
-        line.numCornerVertices = 6;
-        line.numCapVertices = 6;
-        line.startWidth = trailWidth;
-        line.endWidth = trailWidth;
-        line.startColor = trailColor;
-        line.endColor = trailColor;
-        line.material = new Material(Shader.Find("Sprites/Default"));
-        line.sortingOrder = 50;
     }
 
     // 로고(1000) 위에서 화면이 깨지는 연출: 줄무늬가 지지직, 검은 구멍이 쌓이고, 로고가 흔들림.

@@ -128,6 +128,7 @@ public class TitleDecor : MonoBehaviour
             Vector3 p = cam.ScreenToWorldPoint(sp);
             p.z = 0f;
             if (!hasLast) { lastSparkPos = p; hasLast = true; }
+            if (Input.GetMouseButton(0)) lastSparkPos = p; // 그리는 중엔 붓 스파크만 (반짝이 안 뿌림)
             float d = Vector3.Distance(p, lastSparkPos);
             if (d >= sparkleSpacing)
             {
