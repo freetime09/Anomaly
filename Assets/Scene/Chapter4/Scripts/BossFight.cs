@@ -46,6 +46,10 @@ public class BossFight : MonoBehaviour
     [Header("보스 그림")]
     [Tooltip("보스 그림 (비우면 임시 눈 그림). 픽셀아트면 Filter Mode = Point 권장")]
     public Sprite bossSprite;
+    public Sprite[] bossIntroFrames, bossShootFrames;
+    public Sprite bossPupil;
+    public Material bossDistortion, bossAura;
+    BossEyePresentation eyePresentation;
     [Tooltip("보스 크기 (그림 높이, units)")]
     public float bossSize = 8f;
     [Tooltip("보스 중심 높이 (바닥 위 units)")]
@@ -360,6 +364,7 @@ public class BossFight : MonoBehaviour
         if (introDialogue != null) yield return DialoguePlayer.Ensure().PlayAndWait(introDialogue);
         yield return new WaitForSeconds(0.4f);
 
+        if (eyePresentation != null) eyePresentation.EnterCombat();
         SetHearts(hearts);
         SetBossBar();
         if (fr != null)
@@ -396,6 +401,7 @@ public class BossFight : MonoBehaviour
 
     IEnumerator BossAppear(float time)
     {
+        if (eyePresentation != null) { yield return eyePresentation.PlayIntro(); yield break; }
         for (float t = 0f; t < time; t += Time.deltaTime)
         {
             float k = t / time;
@@ -449,6 +455,14 @@ public class BossFight : MonoBehaviour
         boss.transform.localScale = Vector3.one * bossScale;
         boss.color = new Color(bossColor.r, bossColor.g, bossColor.b, 0f);
 
+        if (bossIntroFrames != null && bossIntroFrames.Length > 0 && bossPupil != null)
+        {
+            eyePresentation = boss.gameObject.AddComponent<BossEyePresentation>();
+            eyePresentation.introFrames = bossIntroFrames; eyePresentation.shootFrames = bossShootFrames;
+            eyePresentation.whiteSprite = bossSprite; eyePresentation.pupilSprite = bossPupil;
+            eyePresentation.distortionMaterial = bossDistortion; eyePresentation.auraMaterial = bossAura;
+            eyePresentation.Initialize(boss, player.transform, Shake);
+        }
         BuildGodSpeaker();
     }
 
@@ -457,7 +471,11 @@ public class BossFight : MonoBehaviour
     {
         if (!bossBackground || cam == null) return;
         if (cam.GetComponent<BackgroundHaze>() == null) bgHaze = cam.gameObject.AddComponent<BackgroundHaze>();
-        if (cam.GetComponent<BackgroundDecor>() == null) bgDecor = cam.gameObject.AddComponent<BackgroundDecor>();
+        if (cam.GetComponent<BackgroundDecor>() == null)
+        {
+            bgDecor = cam.gameObject.AddComponent<BackgroundDecor>();
+            bgDecor.enabled=false;bgDecor.dust=false;bgDecor.enabled=true;
+        }
     }
 
     /// <summary>신의 말풍선 (speakerId = God). 메크로 말풍선 설정을 가져와 크기만 키우고 색을 뒤집는다.</summary>
@@ -548,6 +566,7 @@ public class BossFight : MonoBehaviour
 
     IEnumerator Run(Pattern p, float k)
     {
+        if (eyePresentation != null) eyePresentation.AttackAura(telegraphTime * k + 1.4f);
         switch (p)
         {
             case Pattern.Columns: return Columns(k);
@@ -735,6 +754,7 @@ public class BossFight : MonoBehaviour
     /// <summary>BossOrb 가 매 프레임 호출: 플레이어/보스/바닥 판정.</summary>
     public void TickOrb(BossOrb o)
     {
+        if (o == null || !orbs.Contains(o) || dying || defeated || stunned) return;
         Vector2 p = o.transform.position;
         if (o.reflected)
         {
@@ -743,11 +763,17 @@ public class BossFight : MonoBehaviour
                 RemoveOrb(o);
                 cracks++;
                 SetBossBar();
-                StartCoroutine(BossFlash(new Color(1f, 0.4f, 0.4f), 0.15f));
+                if (eyePresentation != null) eyePresentation.HitResponse();
+                else StartCoroutine(BossFlash(Color.red, 0.18f, true));
                 Shake(0.15f, 0.2f);
                 HitStop(0.07f);
                 Glitch(0.15f, 0.5f);
-                Burst(p, reflectedColor, 14, 8f, 0.25f);
+                Burst(p, Color.red, 12, 8f, 0.25f);
+                if (cracks >= reflectsToStun)
+                {
+                    StopAllCoroutines();
+                    StartCoroutine(CounterBreak());
+                }
             }
             return;
         }
@@ -1226,11 +1252,19 @@ public class BossFight : MonoBehaviour
     }
 
     // 틈 → §
+    IEnumerator CounterBreak()
+    {
+        ClearHazards();
+        yield return Stun();
+        if (!defeated) yield return Loop();
+    }
+
     IEnumerator Stun()
     {
         stunned = true; stunHit = false; cracks = 0;
+        if (eyePresentation != null) eyePresentation.SetHurt(true);
         SetBossBar(); // 틈 동안 실드는 0
-        boss.color = stunColor;
+        boss.color = eyePresentation != null ? Color.white : stunColor;
         yield return MoveBoss(BossRest + Vector2.down * 3.5f, 0.5f);
         player.bossSkillReady = true;
         bool teach = tutorial && !skillTaught; // 첫 틈: 슬로우 모션 + § 를 그릴 때까지 기다림
@@ -1241,6 +1275,7 @@ public class BossFight : MonoBehaviour
         HideDemo();
         if (teach) { teaching = false; player.combatOnly = false; SetSlow(false); if (stunHit) skillTaught = true; }
         stunned = false;
+        if (eyePresentation != null) eyePresentation.SetHurt(false);
 
         if (stunHit)
         {
@@ -1304,6 +1339,7 @@ public class BossFight : MonoBehaviour
     /// <summary>엔딩으로 넘어갈 때: 카메라 고정·하트·지지직을 풀고 보스전을 끈다.</summary>
     public void EndFight()
     {
+        if (eyePresentation != null) eyePresentation.Finish();
         camLocked = false;
         slowOn = false; hitStopLeft = 0f; hitStopWas = false;
         Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt;
@@ -1420,6 +1456,7 @@ public class BossFight : MonoBehaviour
         StopAllCoroutines();
         ClearHazards();
         phase = 0; cracks = 0;
+        if (eyePresentation != null) eyePresentation.EnterCombat();
         SetHearts(hearts);
         SetBossBar();
         dying = false;
@@ -1434,6 +1471,7 @@ public class BossFight : MonoBehaviour
         foreach (var o in orbs) if (o != null) Destroy(o.gameObject);
         orbs.Clear();
         stunned = false; stunHit = false;
+        if (eyePresentation != null) eyePresentation.SetHurt(false);
         if (player != null) player.bossSkillReady = false;
         HideDemo();
         if (teaching) { teaching = false; SetSlow(false); }
@@ -1464,7 +1502,8 @@ public class BossFight : MonoBehaviour
 
 
         // 보스 지지직
-        if (boss != null && !defeated)
+        if (eyePresentation != null) eyePresentation.Tick(defeated);
+        if (boss != null && !defeated && eyePresentation == null)
         {
             if (stunned) boss.transform.localPosition = Random.insideUnitCircle * 0.15f;
             else

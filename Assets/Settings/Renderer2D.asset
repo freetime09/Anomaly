@@ -27,6 +27,7 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: 7739648315049245344}
   - {fileID: 2060192533974507255}
+  - {fileID: 2197854519822246967}
   m_RendererFeatureMap: a0faf5d822c1686bf75e76bc3146971c
   m_UseNativeRenderPass: 0
   m_LayerMask:
@@ -75,6 +76,26 @@ MonoBehaviour:
   fetchColorBuffer: 1
   requirements: 0
   passMaterial: {fileID: 2100000, guid: 6cbbd8cccd469c94abbbda7d4af9b3a1, type: 2}
+  passIndex: 0
+  bindDepthStencilAttachment: 0
+  m_Version: 1
+--- !u!114 &2197854519822246967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2de5599b341bc1c4793de57d2a2edbd3, type: 3}
+  m_Name: Boss Screen Wave
+  m_EditorClassIdentifier: Assembly-CSharp::BossScreenWaveFeature
+  m_Active: 1
+  injectionPoint: 600
+  fetchColorBuffer: 1
+  requirements: 0
+  passMaterial: {fileID: 2100000, guid: 59e22065e710dbd48b6a286b0d04c035, type: 2}
   passIndex: 0
   bindDepthStencilAttachment: 0
   m_Version: 1
