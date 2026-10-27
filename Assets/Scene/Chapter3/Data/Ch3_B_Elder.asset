@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   lines:
   - speakerId: Elder
-    text: "\uD5C8\uD5C8, \uCC98\uC74C \uBCF4\uB294 \uC5BC\uAD74\uC774\uAD6C\uBA3C.
+    text: "\uC544\uC774\uACE0, \uCC98\uC74C \uBCF4\uB294 \uC5BC\uAD74\uC774\uB124.
       \uC5B4\uB514\uC11C \uC654\uB204?"
     holdTime: 0
   - speakerId: Mecro
-    text: "\uD560\uC544\uBC84\uC9C0... \uC800 \uBA54\uD06C\uB85C\uC608\uC694. \uC815\uB9D0
+    text: "\uD560\uBA38\uB2C8... \uC800 \uBA54\uD06C\uB85C\uC608\uC694. \uC815\uB9D0
       \uAE30\uC5B5 \uC548 \uB098\uC138\uC694?"
     holdTime: 0
   - speakerId: Elder
     text: "\uC774 \uB9C8\uC744 \uC544\uC774\uB4E4 \uC774\uB984\uC740 \uB0B4\uAC00
-      \uB2E4 \uC544\uB294\uB370... <glitch>\uBA54\uD06C\uB85C</glitch>\uB77C\uB294
+      \uD558\uB098\uB3C4 \uBE60\uC9D0\uC5C6\uC774 \uC544\uB294\uB370... <glitch>\uBA54\uD06C\uB85C</glitch>\uB77C\uB294
       \uC544\uC774\uB294 \uC5C6\uB2E8\uB2E4."
     holdTime: 0

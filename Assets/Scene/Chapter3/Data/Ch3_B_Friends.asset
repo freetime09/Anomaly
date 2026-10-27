@@ -20,12 +20,14 @@ MonoBehaviour:
     text: "...\uB204\uAD6C?"
     holdTime: 0
   - speakerId: Friend_C
-    text: "\uC6B0\uB9AC \uB3D9\uB124 \uC560 \uC544\uB2CC \uAC83 \uAC19\uC740\uB370?"
+    text: "\uC6B0\uB9AC \uB3D9\uB124 \uC560\uB294 \uC544\uB2CC \uAC83 \uAC19\uC740\uB370?"
     holdTime: 0
   - speakerId: Mecro
     text: "\uC7A5\uB09C\uCE58\uC9C0 \uB9C8! \uC5B4\uC81C\uB3C4 \uAC19\uC774 \uB180\uC558\uC796\uC544!"
     holdTime: 0
   - speakerId: Friend_B
-    text: "<glitch>\uBA54\uD06C\uB85C</glitch>? \uADF8\uB7F0 \uC560\uB294 \uBAB0\uB77C.
-      \uAC00\uC790."
+    text: "<glitch>\uBA54\uD06C\uB85C</glitch>? \uADF8\uB7F0 \uC560\uB294 \uBAB0\uB77C."
+    holdTime: 0
+  - speakerId: Friend_C
+    text: "...\uC880 \uC774\uC0C1\uD55C \uC560\uB2E4."
     holdTime: 0

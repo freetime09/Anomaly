@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   lines:
   - speakerId: Mecro
-    text: "\uC758\uC790\uAC00... \uB450 \uAC1C\uBFD0\uC774\uC57C. \uB0B4 \uC758\uC790\uB294?"
+    text: "\uC758\uC790\uAC00 \uB450 \uAC1C\uBFD0\uC774\uC57C... \uB0B4 \uC790\uB9AC\uB294?"
     holdTime: 0

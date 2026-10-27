@@ -17,5 +17,6 @@ MonoBehaviour:
     text: "\uB9D0\uB3C4 \uC548 \uB3FC..."
     holdTime: 0
   - speakerId: Mecro
-    text: "\uC5C4\uB9C8... \uC544\uBE60...! \uC9D1\uC5D0 \uAC00 \uBD10\uC57C \uD574!"
+    text: "\uC5C4\uB9C8, \uC544\uBE60\uB77C\uBA74... \uB0A0 \uC54C\uC544\uBCFC \uAC70\uC57C.
+      \uC9D1\uC5D0 \uAC00 \uBD10\uC57C \uD574!"
     holdTime: 0
