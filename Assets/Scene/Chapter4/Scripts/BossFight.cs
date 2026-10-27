@@ -24,6 +24,8 @@ public class BossFight : MonoBehaviour
     public float arenaHalfWidth = 18.5f;
     [Tooltip("화면 아래 끝에서 바닥까지 거리 (units, 카메라 빼기 전 기준). 스킬 UI 자리")]
     public float floorMargin = 2.5f;
+    [Tooltip("바닥 하얀 선(FloorLine) 길이 (units)")]
+    public float floorLineLength = 40f;
 
     [Header("등장")]
     [Tooltip("보스가 나오기 전에 하는 대사 (신의 speakerId = God)")]
@@ -36,6 +38,10 @@ public class BossFight : MonoBehaviour
     public float godBubbleScale = 1.8f;
     [Tooltip("신 말풍선 오른쪽 끝과 신 사이 간격 (units)")]
     public float godBubbleGap = 0.8f;
+
+    [Header("배경 (2챕터와 똑같이)")]
+    [Tooltip("보스전 동안 카메라에 2챕터 배경(BackgroundDecor 숫자 비·격자·먼지 + BackgroundHaze 안개)을 붙인다")]
+    public bool bossBackground = true;
 
     [Header("보스 그림")]
     [Tooltip("보스 그림 (비우면 임시 눈 그림). 픽셀아트면 Filter Mode = Point 권장")]
@@ -141,6 +147,21 @@ public class BossFight : MonoBehaviour
     public float laserWidth = 1.1f;
     public float laserActiveTime = 0.35f;
 
+    [Header("4방향 회전 레이저 (두 번째 페이즈부터)")]
+    [Tooltip("보스가 위로 올라가는 높이 (units)")]
+    public float crossRise = 4f;
+    [Tooltip("카메라를 더 뒤로 빼는 배율 (지금 화면 기준)")]
+    public float crossZoom = 1.2f;
+    [Tooltip("보스가 올라가고 카메라가 빠지는 시간 (초)")]
+    public float crossMoveTime = 0.8f;
+    [Tooltip("조준선 예고 시간 (초)")]
+    public float crossAimTime = 1.3f;
+    [Tooltip("레이저가 도는 시간 (초)")]
+    public float crossSpinTime = 5f;
+    [Tooltip("도는 속도 (도/초). 세 번째 페이즈는 1.25배")]
+    public float crossSpinSpeed = 40f;
+    public float crossWidth = 0.9f;
+
     [Header("복붙 그림자 (두 번째 페이즈부터)")]
     [Tooltip("그림자가 따라오는 시간 (초)")]
     public float cloneTime = 6f;
@@ -200,7 +221,7 @@ public class BossFight : MonoBehaviour
     }
     struct TrailPoint { public float t; public Vector3 pos; public Sprite sprite; public bool flip; }
     class Particle { public SpriteRenderer sr; public Vector2 v; public float life, max, gravity, spin, a; }
-    enum Pattern { Columns, Orbs, Sweep, Cursor, Slam, Rain, Laser, Clone }
+    enum Pattern { Columns, Orbs, Sweep, Cursor, Slam, Rain, Laser, Clone, Cross }
 
     PlayerController player;
     BoxCollider2D pcol;
@@ -228,6 +249,8 @@ public class BossFight : MonoBehaviour
     float shakeLeft, shakeDur, shakeMag;
     float glitchTimer, glitchHold;
     DialogueSpeaker godSpeaker;
+    BackgroundDecor bgDecor;
+    BackgroundHaze bgHaze;
 
     // 튜토리얼
     enum Demo { None, AttackRight, AttackLeft, Section }
@@ -318,6 +341,7 @@ public class BossFight : MonoBehaviour
             camPos = from; camLocked = true;
             BuildHearts();
             BuildBossBar();
+            BuildBackground();
             yield return MoveCamera(from, CamPosFor(baseOrtho), baseOrtho, baseOrtho, 1f);
         }
 
@@ -413,7 +437,7 @@ public class BossFight : MonoBehaviour
 
         floorLine = MakeSprite("FloorLine", root, Square(), 0, Color.white);
         floorLine.transform.position = new Vector3(cx, floorTop - 0.03f, 0f);
-        floorLine.transform.localScale = new Vector3(arenaHalfWidth * 2f, 0.06f, 1f);
+        floorLine.transform.localScale = new Vector3(floorLineLength, 0.06f, 1f);
         floorLine.color = new Color(1f, 1f, 1f, 0f);
 
         bossAnchor = new GameObject("God").transform;
@@ -426,6 +450,14 @@ public class BossFight : MonoBehaviour
         boss.color = new Color(bossColor.r, bossColor.g, bossColor.b, 0f);
 
         BuildGodSpeaker();
+    }
+
+    /// <summary>보스전 배경: 카메라에 2챕터와 같은 배경(기본값 = 2챕터 값)을 붙인다.</summary>
+    void BuildBackground()
+    {
+        if (!bossBackground || cam == null) return;
+        if (cam.GetComponent<BackgroundHaze>() == null) bgHaze = cam.gameObject.AddComponent<BackgroundHaze>();
+        if (cam.GetComponent<BackgroundDecor>() == null) bgDecor = cam.gameObject.AddComponent<BackgroundDecor>();
     }
 
     /// <summary>신의 말풍선 (speakerId = God). 메크로 말풍선 설정을 가져와 크기만 키우고 색을 뒤집는다.</summary>
@@ -525,6 +557,7 @@ public class BossFight : MonoBehaviour
             case Pattern.Rain: return Rain(k);
             case Pattern.Laser: return Laser(k);
             case Pattern.Clone: return Clone(k);
+            case Pattern.Cross: return Cross(k);
             default: return Slam(k);
         }
     }
@@ -1031,6 +1064,71 @@ public class BossFight : MonoBehaviour
         return len;
     }
 
+    // 4방향 회전 레이저: 카메라를 살짝 더 빼고 신이 위로 올라가, 십자 레이저를 돌림 → 바닥을 쓸고 지나가는 줄기는 점프로 넘음
+    IEnumerator Cross(float k)
+    {
+        float restO = arenaCamSet ? arenaOrtho : (cam != null ? cam.orthographicSize : baseOrtho);
+        float bigO = restO * crossZoom;
+        Coroutine camMove = cam != null ? StartCoroutine(MoveCamera(camPos, CamPosFor(bigO), cam.orthographicSize, bigO, crossMoveTime)) : null;
+        yield return MoveBoss(BossRest + Vector2.up * crossRise, crossMoveTime);
+        if (camMove != null) yield return camMove;
+
+        float spin = (Random.value < 0.5f ? 1f : -1f) * crossSpinSpeed * (phase >= 2 ? 1.25f : 1f);
+        float ang = Random.Range(0f, 90f);
+        var beams = new List<Hazard>();
+        for (int i = 0; i < 4; i++) beams.Add(AddRect(BossPosition, Vector2.one, new Color(warnColor.r, warnColor.g, warnColor.b, 0.6f), 6));
+
+        // 예고: 가는 조준선이 천천히 돌며 깜빡이다 굵어짐
+        Glitch(0.15f, 0.5f);
+        float tAim = crossAimTime * k;
+        for (float t = 0f; t < tAim; t += Time.deltaTime)
+        {
+            float a = t / tAim;
+            ang += spin * 0.25f * Time.deltaTime;
+            float w = Mathf.Lerp(0.12f, crossWidth * 0.5f, a * a);
+            for (int i = 0; i < 4; i++)
+            {
+                PlaceCrossBeam(beams[i], ang + i * 90f, w);
+                var c = warnColor; c.a = Mathf.Lerp(0.5f, 0.85f, a) * (0.6f + 0.4f * Mathf.Sin(t * Mathf.Lerp(15f, 50f, a))); beams[i].sr.color = c;
+            }
+            yield return null;
+        }
+
+        // 발사 → 돌기
+        foreach (var b in beams) { b.sr.color = hazardColor; b.sr.sortingOrder = 20; b.armed = true; FlashRect(b.sr); }
+        Shake(0.3f, 0.35f);
+        HitStop(0.04f);
+        Glitch(0.25f, 0.8f);
+        for (float t = 0f; t < crossSpinTime; t += Time.deltaTime)
+        {
+            ang += spin * Mathf.Clamp01(t / 0.4f) * Time.deltaTime; // 처음엔 살짝 천천히 돌기 시작
+            for (int i = 0; i < 4; i++)
+            {
+                PlaceCrossBeam(beams[i], ang + i * 90f, crossWidth * (1f + 0.12f * Mathf.Sin(t * 60f + i)));
+                if (beams[i].beamTo.y <= floorTop + 0.1f && Random.value < 0.35f) Dust(beams[i].beamTo, 0, 1, hazardColor);
+            }
+            if (Random.value < 0.1f) Shake(0.08f, 0.08f);
+            yield return null;
+        }
+        foreach (var b in beams) b.armed = false;
+        yield return FadeOut(beams, 0.25f);
+
+        // 제자리로
+        camMove = cam != null && arenaCamSet ? StartCoroutine(MoveCamera(camPos, arenaCamPos, cam.orthographicSize, arenaOrtho, crossMoveTime)) : null;
+        yield return MoveBoss(BossRest, crossMoveTime);
+        if (camMove != null) yield return camMove;
+    }
+
+    /// <summary>신 가장자리에서 deg 방향으로 레이저를 놓고 판정도 맞춤. 길이를 돌려줌.</summary>
+    float PlaceCrossBeam(Hazard h, float deg, float width)
+    {
+        Vector2 dir = new Vector2(Mathf.Cos(deg * Mathf.Deg2Rad), Mathf.Sin(deg * Mathf.Deg2Rad));
+        Vector2 from = BossPosition + dir * BossRadius * 0.4f;
+        float len = PlaceBeam(h, from, dir, width);
+        h.beamFrom = from; h.beamTo = from + dir * len; h.beamHalf = crossWidth * 0.5f * 0.8f;
+        return len;
+    }
+
     // 복붙: 메크로를 복사한 검은 그림자가 메크로가 지나간 길을 늦게 따라옴 → 멈춰 있으면 잡힘
     IEnumerator Clone(float k)
     {
@@ -1112,7 +1210,7 @@ public class BossFight : MonoBehaviour
     List<Pattern> ShuffleRound(Pattern? last)
     {
         var pool = new List<Pattern> { Pattern.Cursor, Pattern.Slam, Pattern.Sweep, Pattern.Columns };
-        if (phase >= 1) { pool.Add(Pattern.Rain); pool.Add(Pattern.Laser); pool.Add(Pattern.Clone); }
+        if (phase >= 1) { pool.Add(Pattern.Rain); pool.Add(Pattern.Laser); pool.Add(Pattern.Clone); pool.Add(Pattern.Cross); }
         for (int tries = 0; tries < 50; tries++)
         {
             for (int i = pool.Count - 1; i > 0; i--)
@@ -1217,6 +1315,8 @@ public class BossFight : MonoBehaviour
         foreach (var p in particles) if (p.sr != null) Destroy(p.sr.gameObject);
         particles.Clear();
         if (floorLine != null) floorLine.enabled = false;
+        if (bgDecor != null) Destroy(bgDecor);
+        if (bgHaze != null) Destroy(bgHaze);
         enabled = false;
     }
 
@@ -1342,6 +1442,7 @@ public class BossFight : MonoBehaviour
         if (player != null) player.combatOnly = false;
         if (boss != null) { boss.color = bossColor; boss.transform.localPosition = Vector3.zero; boss.transform.localScale = Vector3.one * bossScale; }
         if (bossAnchor != null) bossAnchor.position = BossRest;
+        if (arenaCamSet && cam != null) { camPos = arenaCamPos; cam.orthographicSize = arenaOrtho; } // 4방향 레이저 중 뺀 카메라 되돌림
     }
 
     // ───────────── 카메라 / 하트 / 보스 흔들림 ─────────────

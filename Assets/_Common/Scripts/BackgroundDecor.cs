@@ -64,6 +64,7 @@ public class BackgroundDecor : MonoBehaviour
     Texture2D gridTex;
 
     float W, H; // 감쌀 영역 (화면 + 여유)
+    float builtOrtho; // 이 크기 화면까지 덮게 만들어 둠 (카메라를 더 빼면 다시 만듦)
 
     void OnEnable()
     {
@@ -88,7 +89,8 @@ public class BackgroundDecor : MonoBehaviour
     {
         root = new GameObject("BackgroundDecor").transform;
         root.gameObject.hideFlags = HideFlags.DontSave;
-        float h = cam.orthographicSize * 2f, w = h * cam.aspect;
+        builtOrtho = cam.orthographicSize * 1.3f; // 카메라를 조금 빼도 다시 안 만들게 여유
+        float h = builtOrtho * 2f, w = h * cam.aspect;
         W = w + 6f; H = h + 6f;
         var rnd = new System.Random(5);
 
@@ -193,6 +195,7 @@ public class BackgroundDecor : MonoBehaviour
     void LateUpdate()
     {
         if (root == null) return;
+        if (cam.orthographicSize > builtOrtho) { OnDisable(); Build(); } // 보스전처럼 카메라를 크게 빼면 넓게 다시 만듦
         Vector3 c = cam.transform.position;
         float t = Time.time;
 

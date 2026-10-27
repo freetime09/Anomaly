@@ -365,9 +365,39 @@ public class Branch : MonoBehaviour
         SetBuried(false);
     }
 
-    /// <summary>박혔을 때만 바닥 뒤로 그려 땅속 부분을 가린다.</summary>
+    /// <summary>박혔을 때만 바닥 뒤로 그려 땅속 부분을 가린다.
+    /// 바닥이 그림이 아닌 곳(4챕터처럼 배경 그림 + 안 보이는 콜라이더)도 있어서, 바닥 윗면 아래는 마스크로 잘라낸다.</summary>
     void SetBuried(bool buried)
     {
-        if (sr != null) sr.sortingOrder = buried ? stuckSortingOrder : baseSortingOrder;
+        if (sr == null) return;
+        sr.sortingOrder = buried ? stuckSortingOrder : baseSortingOrder;
+        sr.maskInteraction = buried ? SpriteMaskInteraction.VisibleInsideMask : SpriteMaskInteraction.None;
+        if (groundClip == null) BuildGroundClip();
+        groundClip.enabled = buried;
+        if (!buried) return;
+        // 밑동이 stickDepth 만큼 꽂혀 있으므로 바닥 윗면 = 밑동 + stickDepth. 그 위만 보이게 마스크를 놓음
+        float groundTop = transform.position.y - WorldHalfHeight + stickDepth;
+        const float size = 20f;
+        var mt = groundClip.transform;
+        mt.rotation = Quaternion.identity;
+        mt.position = new Vector3(transform.position.x, groundTop + size * 0.5f, transform.position.z);
+        Vector3 ls = transform.lossyScale;
+        mt.localScale = new Vector3(size / Mathf.Max(0.0001f, Mathf.Abs(ls.x)), size / Mathf.Max(0.0001f, Mathf.Abs(ls.y)), 1f);
+        groundClip.frontSortingLayerID = groundClip.backSortingLayerID = sr.sortingLayerID;
+        groundClip.frontSortingOrder = stuckSortingOrder;
+        groundClip.backSortingOrder = stuckSortingOrder - 1; // 이 순서(박힌 나뭇가지)에만 적용
+    }
+
+    SpriteMask groundClip;
+
+    void BuildGroundClip()
+    {
+        var go = new GameObject("GroundClip");
+        go.transform.SetParent(transform, false);
+        groundClip = go.AddComponent<SpriteMask>();
+        var tex = Texture2D.whiteTexture;
+        groundClip.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width); // 1x1 unit
+        groundClip.isCustomRangeActive = true;
+        groundClip.enabled = false;
     }
 }
