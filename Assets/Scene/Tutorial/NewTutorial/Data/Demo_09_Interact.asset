@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a48b645e26489949903a0bfcf0ac339, type: 3}
+  m_Name: Demo_09_Interact
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialDemoClip
+  title: "\uC0C1\uD638\uC791\uC6A9"
+  instruction: "\uB808\uBC84 \uC55E\uC5D0\uC11C O\uB97C \uADF8\uB824\n\uB808\uBC84\uB97C
+    \uB2F9\uAE30\uC138\uC694."
+  tip: "O\uB85C \uB808\uBC84\xB7\uBC84\uD2BC\uC744 \uC6C0\uC9C1\uC774\uACE0, \uC0C1\uC790\uB97C
+    \uC7A1\uAC70\uB098 \uB193\uC744 \uC218 \uC788\uC5B4\uC694."
+  puppetStart: {x: -4, y: 0}
+  startWithBranch: 1
+  branchStart: {x: 2, y: 0}
+  viewCenter: {x: 0, y: 1.6}
+  viewHeight: 6
+  drawArea: {x: 1.6, y: 1.7}
+  props:
+  - type: 0
+    rect:
+      serializedVersion: 2
+      x: -10
+      y: -2
+      width: 20
+      height: 2
+  - type: 2
+    rect:
+      serializedVersion: 2
+      x: -1.2
+      y: 0
+      width: 0.6
+      height: 1
+  - type: 3
+    rect:
+      serializedVersion: 2
+      x: 1.6
+      y: 0
+      width: 0.8
+      height: 4
+  steps:
+  - shape: 1
+    moveDistance: 2.6
+    waitBefore: 0.3
+    drawTime: 0.4
+    waitUntilIdle: 1
+  - shape: 9
+    moveDistance: 0.5
+    waitBefore: 0.3
+    drawTime: 0.6
+    waitUntilIdle: 1
+  - shape: 1
+    moveDistance: 4.5
+    waitBefore: 0.5
+    drawTime: 0.5
+    waitUntilIdle: 1
+  endPause: 1.2

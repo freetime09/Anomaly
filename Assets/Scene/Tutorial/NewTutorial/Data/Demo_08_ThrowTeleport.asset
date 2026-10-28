@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a48b645e26489949903a0bfcf0ac339, type: 3}
+  m_Name: Demo_08_ThrowTeleport
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialDemoClip
+  title: "\uB358\uC9C0\uACE0 \uC21C\uAC04\uC774\uB3D9"
+  instruction: "N\uC744 \uADF8\uB824 \uB098\uBB47\uAC00\uC9C0\uB97C \uB358\uC9C0\uACE0,\nX\uB97C
+    \uADF8\uB824 \uADF8\uACF3\uC73C\uB85C \uC21C\uAC04\uC774\uB3D9\uD558\uC138\uC694."
+  tip: "\uB098\uBB47\uAC00\uC9C0\uB294 \uC55E\uCABD \uC704\uB85C \uB0A0\uC544\uAC00
+    \uB545\uC5D0 \uAF42\uD600\uC694. \uC810\uD504\uB85C \uBABB \uAC74\uB108\uB294
+    \uB113\uC740 \uACF3\uC5D0 \uC4F0\uC138\uC694."
+  puppetStart: {x: -7.5, y: 0}
+  startWithBranch: 1
+  branchStart: {x: 2, y: 0}
+  viewCenter: {x: 0.5, y: 3}
+  viewHeight: 12
+  drawArea: {x: 0, y: 3}
+  props:
+  - type: 0
+    rect:
+      serializedVersion: 2
+      x: -12
+      y: -2
+      width: 6
+      height: 2
+  - type: 0
+    rect:
+      serializedVersion: 2
+      x: 6
+      y: -2
+      width: 8
+      height: 2
+  steps:
+  - shape: 6
+    moveDistance: 0.5
+    waitBefore: 0.4
+    drawTime: 0.6
+    waitUntilIdle: 1
+  - shape: 10
+    moveDistance: 0.5
+    waitBefore: 0.4
+    drawTime: 0.6
+    waitUntilIdle: 1
+  endPause: 1.2

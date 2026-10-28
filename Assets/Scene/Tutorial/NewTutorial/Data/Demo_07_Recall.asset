@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a48b645e26489949903a0bfcf0ac339, type: 3}
+  m_Name: Demo_07_Recall
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialDemoClip
+  title: "\uB098\uBB47\uAC00\uC9C0 \uD68C\uC218"
+  instruction: "S\uB97C \uADF8\uB9AC\uBA74 \uB098\uBB47\uAC00\uC9C0\uAC00\n\uC5B4\uB514\uC11C\uB4E0
+    \uB3CC\uC544\uC640\uC694."
+  tip: "\uB098\uBB47\uAC00\uC9C0 \uAC00\uAE4C\uC774 \uC788\uC744 \uB550 O\uB97C \uADF8\uB824
+    \uC8FC\uC6B8 \uC218\uB3C4 \uC788\uC5B4\uC694."
+  puppetStart: {x: 2.2, y: 0}
+  startWithBranch: 0
+  branchStart: {x: -2.6, y: 0}
+  viewCenter: {x: 0, y: 1.6}
+  viewHeight: 6
+  drawArea: {x: 1.6, y: 1.7}
+  props:
+  - type: 0
+    rect:
+      serializedVersion: 2
+      x: -10
+      y: -2
+      width: 20
+      height: 2
+  steps:
+  - shape: 8
+    moveDistance: 0.5
+    waitBefore: 0.4
+    drawTime: 0.6
+    waitUntilIdle: 1
+  endPause: 1.2
