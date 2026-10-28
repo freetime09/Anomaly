@@ -16,6 +16,10 @@ public class PauseMenu : MonoBehaviour
     /// <summary>메뉴가 열려 있는가 — 입력 스크립트들이 이걸 보고 그리기를 막는다.</summary>
     public static bool IsPaused { get; private set; }
 
+    /// <summary>다른 창이 ESC 를 쓰는 중이면 true 를 돌려주는 함수 (예: 튜토리얼 시범 창).
+    /// 등록되어 있고 true 면 ESC 로 메뉴를 열지 않는다 → 한 번의 ESC 가 두 창을 동시에 건드리지 않게.</summary>
+    public static System.Func<bool> EscapeBlocker;
+
     const string VolumeKey = "MasterVolume";
 
     [Header("UI 연결")]
@@ -72,7 +76,7 @@ public class PauseMenu : MonoBehaviour
     void Update()
     {
         // Update still runs at timeScale zero, so Escape can also resume the game.
-        if (instance == this && Input.GetKeyDown(KeyCode.Escape)) Toggle();
+        if (instance == this && Input.GetKeyDown(KeyCode.Escape) && !(EscapeBlocker != null && EscapeBlocker())) Toggle();
     }
 
     /// <summary>설정 아이콘 위를 누른 건지 — 입력 스크립트가 이 클릭을 제스처로 그리지 않게 확인한다.</summary>

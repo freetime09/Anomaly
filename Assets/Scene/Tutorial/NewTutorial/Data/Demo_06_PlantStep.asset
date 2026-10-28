@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a48b645e26489949903a0bfcf0ac339, type: 3}
+  m_Name: Demo_06_PlantStep
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialDemoClip
+  title: "\uB098\uBB47\uAC00\uC9C0 \uC138\uC6B0\uACE0 \uBC1F\uAE30"
+  instruction: "\uBCBD \uC55E\uC5D0\uC11C 9\uB97C \uADF8\uB824 \uB098\uBB47\uAC00\uC9C0\uB97C
+    \uC138\uC6B0\uACE0,\n\uB098\uBB47\uAC00\uC9C0\uB97C \uBC1F\uACE0 \uC62C\uB77C\uAC00\uC138\uC694."
+  tip: "\uADF8\uB9AC\uB294 \uB3D9\uC548 \uC138\uC6CC\uC9C8 \uC790\uB9AC\uAC00 \uBBF8\uB9AC
+    \uBCF4\uC5EC\uC694. \uBE68\uAC04\uC0C9\uC774\uBA74 \uC138\uC6B8 \uC218 \uC5C6\uB294
+    \uACF3\uC774\uC5D0\uC694."
+  puppetStart: {x: -2.8, y: 0}
+  startWithBranch: 1
+  branchStart: {x: 2, y: 0}
+  viewCenter: {x: 0.6, y: 2.6}
+  viewHeight: 7.5
+  drawArea: {x: -2.2, y: 1.8}
+  props:
+  - type: 0
+    rect:
+      serializedVersion: 2
+      x: -10
+      y: -2
+      width: 20
+      height: 2
+  - type: 0
+    rect:
+      serializedVersion: 2
+      x: 1.4
+      y: 0
+      width: 9
+      height: 4.6
+  steps:
+  - shape: 1
+    moveDistance: 2.3
+    waitBefore: 0.3
+    drawTime: 0.4
+    waitUntilIdle: 1
+  - shape: 7
+    moveDistance: 0.5
+    waitBefore: 0.3
+    drawTime: 0.6
+    waitUntilIdle: 1
+  - shape: 3
+    moveDistance: 0.5
+    waitBefore: 0.3
+    drawTime: 0.3
+    waitUntilIdle: 0
+  - shape: 1
+    moveDistance: 1
+    waitBefore: 0.05
+    drawTime: 0.25
+    waitUntilIdle: 1
+  - shape: 3
+    moveDistance: 0.5
+    waitBefore: 0.3
+    drawTime: 0.3
+    waitUntilIdle: 0
+  - shape: 1
+    moveDistance: 2
+    waitBefore: 0.06
+    drawTime: 0.3
+    waitUntilIdle: 1
+  endPause: 1.2
