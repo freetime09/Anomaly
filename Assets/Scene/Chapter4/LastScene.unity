@@ -24471,6 +24471,10 @@ MonoBehaviour:
   bossBarColor: {r: 1, g: 0.25, b: 0.25, a: 1}
   shieldBarHeight: 16
   shieldColor: {r: 1, g: 1, b: 1, a: 1}
+  bossGaugeFrame: {fileID: -8534279229687778229, guid: 8a711d3512f663241895888d52975002, type: 3}
+  bossGaugeGreen: {fileID: 2800000, guid: 51460582455932a4fb6c0913e2d33eac, type: 3}
+  bossGaugeRed: {fileID: 2800000, guid: eb57b2109e87c0a48a5040046d4330d2, type: 3}
+  bossGaugeMaterial: {fileID: 2100000, guid: 4437acf887209ce4fab23719329f495b, type: 2}
 --- !u!4 &1587097420
 Transform:
   m_ObjectHideFlags: 0

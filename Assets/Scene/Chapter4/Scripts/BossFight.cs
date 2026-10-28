@@ -260,6 +260,10 @@ public class BossFight : MonoBehaviour
     float bossScale = 1f;
     BossHealthHud healthHud;
     GameObject bossBar;
+    BossDualGauge dualGauge;
+    public Sprite bossGaugeFrame;
+    public Texture bossGaugeGreen, bossGaugeRed;
+    public Material bossGaugeMaterial;
     readonly List<UnityEngine.UI.Image> bossBarCells = new List<UnityEngine.UI.Image>();
     readonly List<UnityEngine.UI.Image> shieldCells = new List<UnityEngine.UI.Image>();
     readonly List<Hazard> hazards = new List<Hazard>();
@@ -2012,6 +2016,12 @@ public class BossFight : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight = 0.5f;
 
+        if(bossGaugeFrame!=null&&bossGaugeGreen!=null&&bossGaugeRed!=null&&bossGaugeMaterial!=null)
+        {
+            var go=new GameObject("BossDualGauge",typeof(RectTransform));go.transform.SetParent(bossBar.transform,false);
+            dualGauge=go.AddComponent<BossDualGauge>();dualGauge.Configure(bossGaugeFrame,bossGaugeGreen,bossGaugeRed,bossGaugeMaterial,bossBarSize.x,bossBarTop);
+            bossBar.SetActive(false);return;
+        }
         BuildBarRow("Health", bossBarTop, bossBarSize, bossPhases, bossBarColor, bossBarCells);
         BuildBarRow("Shield", bossBarTop + bossBarSize.y + 18f, new Vector2(bossBarSize.x, shieldBarHeight), reflectsToStun, shieldColor, shieldCells);
         bossBar.SetActive(false);
@@ -2056,6 +2066,7 @@ public class BossFight : MonoBehaviour
     {
         if (bossBar == null) return;
         bossBar.SetActive(true);
+        if(dualGauge!=null){dualGauge.SetValues((bossPhases-phase)/(float)Mathf.Max(1,bossPhases),stunned?0:(reflectsToStun-cracks)/(float)Mathf.Max(1,reflectsToStun));return;}
         var empty = new Color(0.25f, 0.25f, 0.25f);
         int left = bossPhases - phase;
         for (int i = 0; i < bossBarCells.Count; i++) bossBarCells[i].color = i < left ? bossBarColor : empty;
