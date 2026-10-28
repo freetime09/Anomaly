@@ -42,6 +42,13 @@ public class BossFight : MonoBehaviour
     [Header("배경 (2챕터와 똑같이)")]
     [Tooltip("보스전 동안 카메라에 2챕터 배경(BackgroundDecor 숫자 비·격자·먼지 + BackgroundHaze 안개)을 붙인다")]
     public bool bossBackground = true;
+    [Tooltip("검게 바뀐 뒤(쿵) 배경·바닥이 나오기 전까지 검은 화면 시간 (초). 카메라가 무대로 가는 1초 뒤에 더해짐")]
+    public float arenaBlackHold = 0.3f;
+    [Tooltip("배경(숫자·격자·안개)과 바닥 선이 같이 서서히 나타나는 시간 (초)")]
+    public float arenaFadeTime = 1.6f;
+    [Tooltip("보스전으로 넘어가며 검게 바뀌는 순간 소리 (쿵). 비우면 흔들림만")]
+    public AudioClip arenaThumpClip;
+    [Range(0f, 1f)] public float arenaThumpVolume = 1f;
 
     [Header("보스 그림")]
     [Tooltip("보스 그림 (비우면 임시 눈 그림). 픽셀아트면 Filter Mode = Point 권장")]
@@ -163,7 +170,7 @@ public class BossFight : MonoBehaviour
     [Tooltip("레이저가 도는 시간 (초)")]
     public float crossSpinTime = 5f;
     [Tooltip("도는 속도 (도/초). 세 번째 페이즈는 1.25배")]
-    public float crossSpinSpeed = 40f;
+    public float crossSpinSpeed = 20f;
     public float crossWidth = 0.9f;
 
     [Header("복붙 그림자 (두 번째 페이즈부터)")]
@@ -200,8 +207,18 @@ public class BossFight : MonoBehaviour
     public bool hitStopOn = true;
     [Tooltip("공격 예고·내려찍기·페이즈 전환 때 화면 지지직")]
     public bool glitchOn = true;
+    [Tooltip("눈 등장 애니 동안 지지직·부들거림 최대 세기 (0~1)")]
+    [Range(0f, 1f)] public float introGlitchPower = 1f;
+    [Tooltip("눈 등장 애니 동안 화면 파동 세기 (평소 파동 0.018)")]
+    public float introWaveStrength = 0.035f;
+    [Tooltip("눈 등장 애니 동안 화면 파동 간격 (초, 최소~최대)")]
+    public Vector2 introWaveInterval = new Vector2(0.6f, 1.1f);
+    [Tooltip("죽을 때 지지직이 점점 세지는 시간 (초)")]
+    public float defeatGlitchTime = 2.2f;
+    [Tooltip("죽을 때 사라지며 지지직이 천천히 잦아드는 시간 (초)")]
+    public float defeatFadeTime = 1.6f;
 
-    [Tooltip("보스를 쓰러뜨렸을 때")]
+    [Tooltip("보스가 쓰러지기 시작할 때 (죽는 연출과 동시에 시작 — 엔딩의 하얀 빛이 연출 동안 차오름)")]
     public UnityEvent onDefeated;
 
     [Tooltip("테스트용: 누르면 보스 바로 처치 (에디터·개발 빌드에서만)")]
@@ -255,6 +272,7 @@ public class BossFight : MonoBehaviour
     DialogueSpeaker godSpeaker;
     BackgroundDecor bgDecor;
     BackgroundHaze bgHaze;
+    Color bgDigit, bgDust, bgGrid, bgHazeColor; // 배경 원래 색 (서서히 나타날 때 목표)
 
     // 튜토리얼
     enum Demo { None, AttackRight, AttackLeft, Section }
@@ -346,18 +364,37 @@ public class BossFight : MonoBehaviour
             BuildHearts();
             BuildBossBar();
             BuildBackground();
+            // 쿵: 검게 바뀌는 순간 화면이 크게 울림
+            Shake(0.35f, 0.7f);
+            Glitch(0.12f, 0.8f);
+            if (arenaThumpClip != null) { var a = gameObject.AddComponent<AudioSource>(); a.playOnAwake = false; a.PlayOneShot(arenaThumpClip, arenaThumpVolume); }
             yield return MoveCamera(from, CamPosFor(baseOrtho), baseOrtho, baseOrtho, 1f);
         }
+        if (arenaBlackHold > 0f) yield return new WaitForSeconds(arenaBlackHold);
 
-        yield return Fade(floorLine, 0f, 1f, 0.5f);
+        // 검은 화면에서 배경과 바닥 선이 같이 서서히 나타남
+        for (float t = 0f; t < arenaFadeTime; t += Time.deltaTime)
+        {
+            SetArenaAlpha(Mathf.SmoothStep(0f, 1f, t / arenaFadeTime));
+            yield return null;
+        }
+        SetArenaAlpha(1f);
         yield return new WaitForSeconds(0.3f);
 
         // 등장: 땅이 울리며 카메라가 뒤로 빠지고, 신이 커지며 나타난다
         float big = baseOrtho * zoomOut;
-        StartCoroutine(BossAppear(zoomTime));
-        if (cam != null) yield return MoveCamera(camPos, CamPosFor(big), baseOrtho, big, zoomTime);
+        // 눈 등장 애니는 평소 눈보다 훨씬 커서, 애니가 끝날 때까지 다 담게 카메라를 더 뺐다가 돌아옴
+        float introO = big;
+        if (eyePresentation != null) introO = Mathf.Max(big, OrthoToShow(BossRest.y + eyePresentation.IntroTopOffset() + 0.8f));
+        var appear = StartCoroutine(BossAppear(zoomTime));
+        if (cam != null) yield return MoveCamera(camPos, CamPosFor(introO), baseOrtho, introO, zoomTime);
         else yield return new WaitForSeconds(zoomTime);
         Shake(0.4f, 0.5f);
+        if (eyePresentation != null)
+        {
+            yield return appear; // 애니 끝까지 기다림
+            if (cam != null && introO > big) yield return MoveCamera(camPos, CamPosFor(big), introO, big, 0.9f);
+        }
         arenaCamPos = camPos; arenaOrtho = cam != null ? cam.orthographicSize : big; arenaCamSet = cam != null;
         yield return new WaitForSeconds(0.8f);
 
@@ -378,6 +415,12 @@ public class BossFight : MonoBehaviour
 
         CutsceneLock.Unlock(this);
         StartCoroutine(Loop());
+    }
+
+    /// <summary>화면 위 끝이 topY 까지 오게 하는 카메라 크기 (바닥 위치는 CamPosFor 와 같게 유지).</summary>
+    float OrthoToShow(float topY)
+    {
+        return (topY - floorTop) / Mathf.Max(0.1f, 2f - floorMargin / baseOrtho);
     }
 
     Vector3 CamPosFor(float ortho)
@@ -401,7 +444,14 @@ public class BossFight : MonoBehaviour
 
     IEnumerator BossAppear(float time)
     {
-        if (eyePresentation != null) { yield return eyePresentation.PlayIntro(); yield break; }
+        if (eyePresentation != null)
+        {
+            introPlaying = true;
+            StartCoroutine(IntroFx());
+            yield return eyePresentation.PlayIntro();
+            introPlaying = false;
+            yield break;
+        }
         for (float t = 0f; t < time; t += Time.deltaTime)
         {
             float k = t / time;
@@ -412,6 +462,29 @@ public class BossFight : MonoBehaviour
         }
         boss.color = bossColor;
         boss.transform.localScale = Vector3.one * bossScale;
+    }
+
+    bool introPlaying;
+
+    /// <summary>눈 등장 애니 동안: 눈이 부들부들 떨리고, 눈·화면이 계속 지지직, 화면 파동이 반복. 점점 세짐.</summary>
+    IEnumerator IntroFx()
+    {
+        float t = 0f, nextWave = 0.2f;
+        while (introPlaying)
+        {
+            t += Time.deltaTime;
+            float p = introGlitchPower * Mathf.Lerp(0.4f, 1f, Mathf.Clamp01(t / 3.5f));
+            boss.transform.localPosition = Random.insideUnitCircle * 0.3f * p; // 부들부들
+            eyePresentation.forceGlitch = Random.value < 0.65f ? p : p * 0.25f; // 눈이 깜빡이듯 일그러짐
+            if (glitchOn) { glitchLeft = Mathf.Max(glitchLeft, 0.08f); glitchPower = p * Random.Range(0.5f, 1f); }
+            Shake(0.1f, 0.1f + 0.25f * p);
+            if (Random.value < 0.08f * p) Burst(BossPosition + Random.insideUnitCircle * BossRadius * 1.3f, Random.value < 0.5f ? Color.white : stunColor, 4, 6f, 0.2f, 0f);
+            nextWave -= Time.deltaTime;
+            if (nextWave <= 0f) { eyePresentation.Pulse(introWaveStrength * Mathf.Lerp(0.6f, 1f, p)); nextWave = Random.Range(introWaveInterval.x, introWaveInterval.y); }
+            yield return null;
+        }
+        boss.transform.localPosition = Vector3.zero;
+        eyePresentation.forceGlitch = 0f;
     }
 
     void OnDestroy()
@@ -476,7 +549,25 @@ public class BossFight : MonoBehaviour
             bgDecor = cam.gameObject.AddComponent<BackgroundDecor>();
             bgDecor.enabled=false;bgDecor.dust=false;bgDecor.enabled=true;
         }
+        if (bgDecor != null) { bgDigit = bgDecor.digitColor; bgDust = bgDecor.dustColor; bgGrid = bgDecor.gridColor; }
+        if (bgHaze != null) bgHazeColor = bgHaze.color;
+        SetArenaAlpha(0f); // 처음엔 검은 화면 (Intro 에서 서서히 나타남)
     }
+
+    /// <summary>보스전 배경(숫자·먼지·격자·안개)과 바닥 선의 진하기 (0 = 안 보임, 1 = 원래).</summary>
+    void SetArenaAlpha(float k)
+    {
+        if (bgDecor != null)
+        {
+            bgDecor.digitColor = WithAlpha(bgDigit, bgDigit.a * k);
+            bgDecor.dustColor = WithAlpha(bgDust, bgDust.a * k);
+            bgDecor.gridColor = WithAlpha(bgGrid, bgGrid.a * k);
+        }
+        if (bgHaze != null) bgHaze.color = WithAlpha(bgHazeColor, bgHazeColor.a * k);
+        if (floorLine != null) floorLine.color = WithAlpha(floorLine.color, k);
+    }
+
+    static Color WithAlpha(Color c, float a) { c.a = a; return c; }
 
     /// <summary>신의 말풍선 (speakerId = God). 메크로 말풍선 설정을 가져와 크기만 키우고 색을 뒤집는다.</summary>
     void BuildGodSpeaker()
@@ -500,6 +591,7 @@ public class BossFight : MonoBehaviour
             sp.glitchJitter = src.glitchJitter * godBubbleScale;
             sp.sortingOrder = src.sortingOrder;
         }
+        sp.tailRight = true; // 꼬리가 오른쪽(신)을 가리킴
         sp.backgroundColor = Color.black;
         sp.borderColor = Color.white;
         sp.textColor = Color.white;
@@ -1317,23 +1409,46 @@ public class BossFight : MonoBehaviour
     {
         defeated = true;
         ClearHazards();
-        for (float t = 0f; t < 1.5f; t += Time.deltaTime)
+        onDefeated.Invoke(); // 엔딩 시작 → 이 연출 동안 하얀 빛이 차오름 (DefeatDuration)
+        // 1) 지지직이 점점 세짐 (흔들림·색 번쩍·화면 줄무늬·눈 일그러짐)
+        for (float t = 0f; t < defeatGlitchTime; t += Time.deltaTime)
         {
-            boss.transform.localPosition = Random.insideUnitCircle * 0.6f;
-            boss.color = Random.value < 0.5f ? stunColor : reflectedColor;
-            Shake(0.1f, 0.3f);
-            Glitch(0.1f, 1f);
-            if (Random.value < 0.3f) Burst(BossPosition + Random.insideUnitCircle * BossRadius, Random.value < 0.5f ? Color.white : stunColor, 6, 8f, 0.3f, 4f);
+            float a = t / defeatGlitchTime;
+            DefeatGlitch(Mathf.Lerp(0.45f, 1f, a), 1f);
+            Shake(0.1f, Mathf.Lerp(0.15f, 0.45f, a));
+            if (Random.value < Mathf.Lerp(0.15f, 0.45f, a)) Burst(BossPosition + Random.insideUnitCircle * BossRadius, Random.value < 0.5f ? Color.white : stunColor, 6, 8f, 0.3f, 4f);
             yield return null;
         }
-        boss.transform.localPosition = Vector3.zero;
-        boss.color = bossColor;
         HitStop(0.25f);
         Dissolve(BossPosition, Vector2.one * bossSize * 0.8f, Color.white, 60);
-        yield return Fade(boss, 1f, 0f, 1f);
+        // 2) 사라지면서 지지직이 천천히 잦아듦 (뚝 끊기지 않게)
+        for (float t = 0f; t < defeatFadeTime; t += Time.deltaTime)
+        {
+            float k = 1f - t / defeatFadeTime;
+            DefeatGlitch(k, k);
+            Shake(0.1f, 0.4f * k);
+            if (Random.value < 0.3f * k) Dissolve(BossPosition + Random.insideUnitCircle * BossRadius * 0.6f, Vector2.one * bossSize * 0.3f, Color.white, 4);
+            yield return null;
+        }
+        DefeatGlitch(0f, 0f);
+        glitchLeft = 0f;
+        boss.transform.localPosition = Vector3.zero;
         bossAnchor.gameObject.SetActive(false);
         Debug.Log("[보스] 쓰러짐");
-        onDefeated.Invoke();
+    }
+
+    /// <summary>죽는 연출 전체 시간 (게임 시간). 엔딩이 이 동안 하얀 빛을 채움.</summary>
+    public float DefeatDuration => defeatGlitchTime + defeatFadeTime;
+
+    /// <summary>죽는 연출 한 프레임: power = 지지직 세기(0~1), alpha = 보스 투명도.</summary>
+    void DefeatGlitch(float power, float alpha)
+    {
+        boss.transform.localPosition = Random.insideUnitCircle * 0.9f * power;
+        Color c = Random.value < power * 0.7f ? (Random.value < 0.5f ? stunColor : reflectedColor) : bossColor;
+        c.a = alpha;
+        boss.color = c;
+        if (glitchOn && power > 0f) { glitchLeft = Mathf.Max(glitchLeft, 0.1f); glitchPower = power; }
+        if (eyePresentation != null) eyePresentation.forceGlitch = power;
     }
 
     /// <summary>엔딩으로 넘어갈 때: 카메라 고정·하트·지지직을 풀고 보스전을 끈다.</summary>
@@ -1786,7 +1901,7 @@ public class BossFight : MonoBehaviour
         if (bossGhosts.Count == 0 && on && boss != null)
             for (int i = 0; i < 2; i++)
             {
-                var sr = MakeSprite("BossGhost", bossAnchor, boss.sprite, boss.sortingOrder - 1, Color.clear);
+                var sr = MakeSprite("BossGhost", bossAnchor, GhostSource().sprite, boss.sortingOrder - 1, Color.clear);
                 bossGhosts.Add(sr);
             }
 
@@ -1814,16 +1929,19 @@ public class BossFight : MonoBehaviour
             if (g == null) continue;
             if (!on || boss == null || defeated && !bossAnchor.gameObject.activeSelf) { g.enabled = false; continue; }
             g.enabled = true;
-            g.sprite = boss.sprite;
-            g.transform.localScale = boss.transform.localScale;
+            var src = GhostSource();
+            g.sprite = src.sprite; // 눈 연출이면 지금 그려지는 눈 그림 (등장 애니 중엔 그 프레임)
+            g.transform.localScale = src.transform.lossyScale;
             if (reroll)
             {
                 float off = (i == 0 ? -1f : 1f) * Random.Range(0.15f, 0.6f) * glitchPower;
-                g.transform.localPosition = boss.transform.localPosition + new Vector3(off, Random.Range(-0.1f, 0.1f), 0f);
+                g.transform.position = src.transform.position + new Vector3(off, Random.Range(-0.1f, 0.1f), 0f);
             }
             g.color = i == 0 ? new Color(1f, 0.15f, 0.25f, 0.55f * boss.color.a) : new Color(0.2f, 0.9f, 1f, 0.55f * boss.color.a);
         }
     }
+
+    SpriteRenderer GhostSource() { return eyePresentation != null && eyePresentation.Art != null ? eyePresentation.Art : boss; }
 
     void Shake(float duration, float magnitude)
     {

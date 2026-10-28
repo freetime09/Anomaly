@@ -91,10 +91,16 @@ public class EndingSequence : MonoBehaviour
         CutsceneLock.Lock(this);
         cam = Camera.main;
         BuildCanvas();
-        yield return new WaitForSeconds(startDelay);
-
-        // 하얀 빛
-        yield return FadeImage(white, 0f, 1f, whiteInTime);
+        if (bossFight != null)
+        {
+            // 보스가 죽기 시작할 때 불림 → 죽는 연출 동안 하얀 빛이 차오르고, 끝나자마자 마을로 (빈틈 없음)
+            yield return FadeImage(white, 0f, 1f, Mathf.Max(0.01f, bossFight.DefeatDuration));
+        }
+        else
+        {
+            yield return new WaitForSeconds(startDelay);
+            yield return FadeImage(white, 0f, 1f, whiteInTime);
+        }
 
         // 하얀 동안 마을로
         if (bossFight != null) bossFight.EndFight();
@@ -123,6 +129,7 @@ public class EndingSequence : MonoBehaviour
             camPos = camFrom;
             if (cameraSize > 0f) cam.orthographicSize = cameraSize;
             if (cameraBackground.a > 0f) cam.backgroundColor = cameraBackground;
+            cam.transform.position = camPos; // 마을 해·원경이 첫 프레임부터 이 자리를 기준으로 잡히게 바로 옮김
             camHeld = true;
         }
         yield return new WaitForSeconds(whiteHold);

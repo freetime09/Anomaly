@@ -17,7 +17,7 @@ public class SpeechBubble : MonoBehaviour
     TextMeshPro text;
     SpriteRenderer border, background, tailBorder, tail;
     float alpha;            // 현재 투명도 (0 = 숨김, 1 = 완전 표시)
-    float centerLift;       // 앵커(꼬리 끝)에서 말풍선 중심까지의 높이 — 대사마다 다시 계산
+    Vector2 centerLift;     // 앵커(꼬리 끝)에서 말풍선 중심까지 — 대사마다 다시 계산
     Coroutine fadeCo;
     AudioSource voice;
 
@@ -180,15 +180,24 @@ public class SpeechBubble : MonoBehaviour
         background.transform.localScale = new Vector3(w + p * 2f, h + p * 2f, 1f);
         border.transform.localScale = new Vector3(w + (p + b) * 2f, h + (p + b) * 2f, 1f);
 
+        float tailTip = t * 0.7071f + b; // 45° 회전한 정사각형의 반대각선 길이
+        tail.transform.localScale = new Vector3(t, t, 1f);
+        tailBorder.transform.localScale = new Vector3(t + b * 2f, t + b * 2f, 1f);
+        if (owner.tailRight)
+        {
+            // 오른쪽 변 가운데에 꼬리 → 오른쪽 꼭짓점(꼬리 끝)이 앵커에 오도록 말풍선을 왼쪽으로
+            float right = w * 0.5f + p;
+            tail.transform.localPosition = new Vector3(right, 0f, 0f);
+            tailBorder.transform.localPosition = new Vector3(right + b, 0f, 0f);
+            centerLift = new Vector2(-(right + tailTip), 0f);
+            return;
+        }
         float bottom = -(h * 0.5f + p);           // 배경 아래 변의 높이
         tail.transform.localPosition = new Vector3(0f, bottom, 0f);
-        tail.transform.localScale = new Vector3(t, t, 1f);
         tailBorder.transform.localPosition = new Vector3(0f, bottom - b, 0f);
-        tailBorder.transform.localScale = new Vector3(t + b * 2f, t + b * 2f, 1f);
 
         // 마름모 아래 꼭짓점(꼬리 끝)이 앵커에 오도록 말풍선 중심을 들어 올린다
-        float tailTip = t * 0.7071f + b; // 45° 회전한 정사각형의 반대각선 길이
-        centerLift = -bottom + tailTip;
+        centerLift = new Vector2(0f, -bottom + tailTip);
     }
 
     /// <summary>띄어쓰기 단위로 단어를 이어 붙이다가 maxWidth 를 넘기 직전에 줄을 바꾼다.
@@ -219,7 +228,7 @@ public class SpeechBubble : MonoBehaviour
     void LateUpdate()
     {
         if (owner == null) { Destroy(gameObject); return; }
-        transform.position = owner.BubbleAnchor + Vector3.up * centerLift;
+        transform.position = owner.BubbleAnchor + (Vector3)centerLift;
         transform.rotation = Quaternion.identity;
         if (hasGlitch && alpha > 0f) ApplyGlitch();
     }

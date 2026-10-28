@@ -9,6 +9,20 @@ public sealed class BossEyePresentation : MonoBehaviour
     public Sprite[] introFrames, shootFrames;
     public Sprite whiteSprite, pupilSprite;
     public Material distortionMaterial, auraMaterial;
+    /// <summary>밖에서 강제로 주는 눈 지지직 세기 (0~1). 등장·죽는 연출 때 BossFight 가 올렸다 내림</summary>
+    [NonSerialized] public float forceGlitch;
+    float waveStrength=.018f;
+    /// <summary>지금 그려지는 눈 그림 (지지직 잔상이 같은 그림을 쓰게)</summary>
+    public SpriteRenderer Art { get { return art; } }
+    /// <summary>화면 파동 한 번 (세기 = 일그러짐 정도)</summary>
+    public void Pulse(float strength){pulse=0;waveStrength=strength;}
+    /// <summary>등장 애니 중 가장 높은 그림 윗끝까지의 높이 (월드, 눈 중심 기준). 카메라가 다 담도록</summary>
+    public float IntroTopOffset()
+    {
+        float best=0;
+        foreach(var f in introFrames){if(f==null)continue;float s=whiteSprite.bounds.size.x/f.bounds.size.x*1.075f;best=Mathf.Max(best,f.bounds.max.y*s);}
+        return best*body.transform.lossyScale.y;
+    }
     SpriteRenderer body, art, pupil;
     Transform player, visual;
     Material noise, pupilNoise;
@@ -70,7 +84,7 @@ public sealed class BossEyePresentation : MonoBehaviour
         {
             CurrentFrame=i;art.sprite=introFrames[i];
             visual.localScale=Vector3.one*(whiteSprite.bounds.size.x/art.sprite.bounds.size.x*1.075f);
-            if(i==10){pulse=0;shake(.38f,.16f);var ep=new ParticleSystem.EmitParams();ep.startColor=new Color(1f,1f,1f,.65f);ep.startSize=.15f;ep.startLifetime=.8f;aura.Emit(ep,22);}
+            if(i==10){pulse=0;waveStrength=.018f;shake(.38f,.16f);var ep=new ParticleSystem.EmitParams();ep.startColor=new Color(1f,1f,1f,.65f);ep.startSize=.15f;ep.startLifetime=.8f;aura.Emit(ep,22);}
             if(i==23){shake(.55f,.32f);glitchLeft=.16f;vignette.intensity.value=.38f;}
             float wait=i<10?.12f:i<21?.10f:.14f;
             if(i==11)wait=.45f;if(i==22)wait=.35f;
@@ -120,6 +134,7 @@ public sealed class BossEyePresentation : MonoBehaviour
         glitchLeft=Mathf.Max(0,glitchLeft-fxDt);
         float amount=glitchLeft>0?(hurt?.7f:.45f):0;
         if(hurt&&Mathf.Repeat(clock,.8f)<.12f)amount=.6f;
+        amount=Mathf.Max(amount,forceGlitch);
         if(noise!=null){noise.SetFloat("_Amount",amount);noise.SetFloat("_Phase",Mathf.Floor(clock*24));}
         if(pupilNoise!=null){pupilNoise.SetFloat("_Amount",amount);pupilNoise.SetFloat("_Phase",Mathf.Floor(clock*24));
             Vector2 shift=(Vector2)pupil.transform.localPosition*whiteSprite.pixelsPerUnit+whiteSprite.pivot-pupilSprite.rect.position-pupilSprite.pivot;
@@ -135,10 +150,10 @@ public sealed class BossEyePresentation : MonoBehaviour
         if(pulse>=0 && waveCamera!=null)
         {
             pulse+=fxDt;
-            if(pulse<.9f){BossScreenWaveFeature.Target=waveCamera;BossScreenWaveFeature.Strength=.018f;
+            if(pulse<.9f){BossScreenWaveFeature.Target=waveCamera;BossScreenWaveFeature.Strength=waveStrength;
                 Vector3 center=waveCamera.WorldToViewportPoint(body.transform.position);
                 Shader.SetGlobalVector("_BossWaveCenter",new Vector4(center.x,center.y,0,0));
-                Shader.SetGlobalVector("_BossWaveParams",new Vector4(pulse/.9f,.018f,waveCamera.aspect,0));}
+                Shader.SetGlobalVector("_BossWaveParams",new Vector4(pulse/.9f,waveStrength,waveCamera.aspect,0));}
             else {pulse=-1;ResetWave();}
         }
     }

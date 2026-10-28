@@ -39,6 +39,8 @@ public class DialogueSpeaker : MonoBehaviour
     public float borderWidth = 0.06f;
     [Tooltip("아래 꼬리(마름모) 한 변의 길이 (유닛)")]
     public float tailSize = 0.3f;
+    [Tooltip("꼬리를 아래 대신 오른쪽 변 가운데에 붙임 (말풍선 오른쪽에 있는 화자를 가리킬 때). 이때 Bubble Offset 은 꼬리 끝 = 말풍선 오른쪽 끝")]
+    public bool tailRight;
     [Tooltip("말풍선 배경색")]
     public Color backgroundColor = Color.white;
     [Tooltip("말풍선 테두리색")]
