@@ -24289,6 +24289,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1587097420}
   - component: {fileID: 1587097419}
+  - component: {fileID: 1587097421}
   m_Layer: 0
   m_Name: BossFight
   m_TagString: Untagged
@@ -24361,6 +24362,7 @@ MonoBehaviour:
   bossPupil: {fileID: 5418540842398859327, guid: 52944b92bb9925349ad20f5bc5e564e3, type: 3}
   bossDistortion: {fileID: 2100000, guid: 3205d46e123968f48948880681f9dbc2, type: 2}
   bossAura: {fileID: 2100000, guid: 67de8d9d714ecfc4dacf1cd35f72b4f5, type: 2}
+  attackShakeStrength: 1
   bossSize: 8
   bossHeight: 13.5
   hearts: 3
@@ -24469,6 +24471,10 @@ MonoBehaviour:
   bossBarColor: {r: 1, g: 0.25, b: 0.25, a: 1}
   shieldBarHeight: 16
   shieldColor: {r: 1, g: 1, b: 1, a: 1}
+  bossGaugeFrame: {fileID: -8534279229687778229, guid: 8a711d3512f663241895888d52975002, type: 3}
+  bossGaugeGreen: {fileID: 2800000, guid: 51460582455932a4fb6c0913e2d33eac, type: 3}
+  bossGaugeRed: {fileID: 2800000, guid: eb57b2109e87c0a48a5040046d4330d2, type: 3}
+  bossGaugeMaterial: {fileID: 2100000, guid: 4437acf887209ce4fab23719329f495b, type: 2}
 --- !u!4 &1587097420
 Transform:
   m_ObjectHideFlags: 0
@@ -24484,6 +24490,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1587097421
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587097418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f7c17e6fe37529459c890abf986a720, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossAttackSigils
+  sprites:
+  - {fileID: -7327314211930588462, guid: ce060ab8d6bf3a640b216201ee385590, type: 3}
+  - {fileID: -4052371288862303762, guid: d4a8c0fab86f2d9418dd18e32fc72ac9, type: 3}
+  - {fileID: -5504424964230351521, guid: acee14577d6d5284aafc1a67a742ce7e, type: 3}
+  - {fileID: -611205166282365924, guid: 6574c654d915ad1468241c6f336b1c76, type: 3}
+  effectMaterial: {fileID: 2100000, guid: 018ecfa04662a34448e2d449c9efa739, type: 2}
+  originalColorMaterial: {fileID: 2100000, guid: ee4d79cdac9ad3042ad808493d8147b5, type: 2}
+  opacity: 0.8
+  maxVisible: 8
 --- !u!1 &1618898498
 GameObject:
   m_ObjectHideFlags: 0

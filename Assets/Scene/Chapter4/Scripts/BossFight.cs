@@ -57,6 +57,9 @@ public class BossFight : MonoBehaviour
     public Sprite bossPupil;
     public Material bossDistortion, bossAura;
     BossEyePresentation eyePresentation;
+    BossAttackSigils attackSigils;
+    float windupUntil, windupPower;
+    [Range(0f, 1.5f)] public float attackShakeStrength = 1f;
     [Tooltip("보스 크기 (그림 높이, units)")]
     public float bossSize = 8f;
     [Tooltip("보스 중심 높이 (바닥 위 units)")]
@@ -257,6 +260,10 @@ public class BossFight : MonoBehaviour
     float bossScale = 1f;
     BossHealthHud healthHud;
     GameObject bossBar;
+    BossDualGauge dualGauge;
+    public Sprite bossGaugeFrame;
+    public Texture bossGaugeGreen, bossGaugeRed;
+    public Material bossGaugeMaterial;
     readonly List<UnityEngine.UI.Image> bossBarCells = new List<UnityEngine.UI.Image>();
     readonly List<UnityEngine.UI.Image> shieldCells = new List<UnityEngine.UI.Image>();
     readonly List<Hazard> hazards = new List<Hazard>();
@@ -537,6 +544,8 @@ public class BossFight : MonoBehaviour
             eyePresentation.Initialize(boss, player.transform, Shake);
         }
         BuildGodSpeaker();
+        attackSigils=GetComponent<BossAttackSigils>();
+        if(attackSigils!=null)attackSigils.Initialize(bossAnchor,boss);
     }
 
     /// <summary>보스전 배경: 카메라에 2챕터와 같은 배경(기본값 = 2챕터 값)을 붙인다.</summary>
@@ -658,6 +667,7 @@ public class BossFight : MonoBehaviour
 
     IEnumerator Run(Pattern p, float k)
     {
+        if(attackSigils!=null)attackSigils.Prepare();
         if (eyePresentation != null) eyePresentation.AttackAura(telegraphTime * k + 1.4f);
         switch (p)
         {
@@ -707,7 +717,8 @@ public class BossFight : MonoBehaviour
                 h.sr.color = hazardColor; h.sr.sortingOrder = 20; h.armed = true;
                 Dust(new Vector2(h.sr.transform.position.x, floorTop), 0, 10, hazardColor);
             }
-            Shake(0.12f, 0.1f);
+            Shake(0.28f, 0.28f * attackShakeStrength);
+            if(attackSigils!=null)attackSigils.Impact();
             yield return new WaitForSeconds(columnActiveTime);
             foreach (var h in list)
             {
@@ -1016,7 +1027,8 @@ public class BossFight : MonoBehaviour
                 er.sr.transform.position = new Vector3(x, y, 0f);
                 yield return null;
             }
-            Shake(0.4f, 0.4f);
+            Shake(0.5f, 0.55f * attackShakeStrength);
+            if(attackSigils!=null)attackSigils.Impact();
             HitStop(0.05f);
             Glitch(0.25f, 0.8f);
             Dust(new Vector2(x - halfW, floorTop), -1, 12, Color.white);
@@ -1143,6 +1155,7 @@ public class BossFight : MonoBehaviour
             for (float t = 0f; t < tLock; t += Time.deltaTime)
             {
                 float a = t / tLock;
+                ChargeRumble(a);
                 PlaceBeam(aim, from, dir, Mathf.Lerp(0.1f, laserWidth * 0.6f, a));
                 var c = warnColor; c.a = Mathf.Lerp(0.6f, 0.85f, a) * (0.6f + 0.4f * Mathf.Sin(t * 50f)); aim.sr.color = c;
                 yield return null;
@@ -1153,7 +1166,8 @@ public class BossFight : MonoBehaviour
             float len = PlaceBeam(beam, from, dir, laserWidth);
             beam.beamFrom = from; beam.beamTo = from + dir * len; beam.beamHalf = laserWidth * 0.5f * 0.8f;
             beam.armed = true;
-            Shake(0.3f, 0.35f);
+            Shake(0.45f, 0.5f * attackShakeStrength);
+            if(attackSigils!=null)attackSigils.Impact();
             HitStop(0.04f);
             Glitch(0.25f, 0.8f);
             Dust(beam.beamTo, 0, 16, hazardColor);
@@ -1202,6 +1216,7 @@ public class BossFight : MonoBehaviour
         for (float t = 0f; t < tAim; t += Time.deltaTime)
         {
             float a = t / tAim;
+            ChargeRumble(a);
             ang += spin * 0.25f * Time.deltaTime;
             float w = Mathf.Lerp(0.12f, crossWidth * 0.5f, a * a);
             for (int i = 0; i < 4; i++)
@@ -1214,7 +1229,8 @@ public class BossFight : MonoBehaviour
 
         // 발사 → 돌기
         foreach (var b in beams) { b.sr.color = hazardColor; b.sr.sortingOrder = 20; b.armed = true; FlashRect(b.sr); }
-        Shake(0.3f, 0.35f);
+        Shake(0.45f, 0.5f * attackShakeStrength);
+            if(attackSigils!=null)attackSigils.Impact();
         HitStop(0.04f);
         Glitch(0.25f, 0.8f);
         for (float t = 0f; t < crossSpinTime; t += Time.deltaTime)
@@ -1455,6 +1471,7 @@ public class BossFight : MonoBehaviour
     public void EndFight()
     {
         if (eyePresentation != null) eyePresentation.Finish();
+        if(attackSigils!=null)attackSigils.Clear();
         camLocked = false;
         slowOn = false; hitStopLeft = 0f; hitStopWas = false;
         Time.timeScale = 1f; Time.fixedDeltaTime = baseFixedDt;
@@ -1581,6 +1598,7 @@ public class BossFight : MonoBehaviour
 
     void ClearHazards()
     {
+        if(attackSigils!=null)attackSigils.Clear();
         foreach (var h in hazards) if (h.sr != null) Destroy(h.sr.gameObject);
         hazards.Clear();
         foreach (var o in orbs) if (o != null) Destroy(o.gameObject);
@@ -1612,7 +1630,8 @@ public class BossFight : MonoBehaviour
             off = (Vector3)(Random.insideUnitCircle * shakeMag * Mathf.Clamp01(shakeLeft / Mathf.Max(0.01f, shakeDur)));
             if (shakeLeft <= 0f) shakeMag = 0f;
         }
-        cam.transform.position = camPos + off;
+        if(Time.time<windupUntil&&!teaching)off+=new Vector3(Mathf.Sin(Time.time*41f),Mathf.Sin(Time.time*53f)*.55f,0)*windupPower;
+        cam.transform.position = camPos + Vector3.ClampMagnitude(off,.65f);
         UpdateGlitch();
 
 
@@ -1943,6 +1962,8 @@ public class BossFight : MonoBehaviour
 
     SpriteRenderer GhostSource() { return eyePresentation != null && eyePresentation.Art != null ? eyePresentation.Art : boss; }
 
+    void ChargeRumble(float progress) { if(attackSigils!=null)attackSigils.Prepare(); windupPower=Mathf.Lerp(.015f,.09f,Mathf.Clamp01(progress))*attackShakeStrength;windupUntil=Time.time+.08f; }
+
     void Shake(float duration, float magnitude)
     {
         shakeDur = duration;
@@ -1995,6 +2016,12 @@ public class BossFight : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight = 0.5f;
 
+        if(bossGaugeFrame!=null&&bossGaugeGreen!=null&&bossGaugeRed!=null&&bossGaugeMaterial!=null)
+        {
+            var go=new GameObject("BossDualGauge",typeof(RectTransform));go.transform.SetParent(bossBar.transform,false);
+            dualGauge=go.AddComponent<BossDualGauge>();dualGauge.Configure(bossGaugeFrame,bossGaugeGreen,bossGaugeRed,bossGaugeMaterial,bossBarSize.x,bossBarTop);
+            bossBar.SetActive(false);return;
+        }
         BuildBarRow("Health", bossBarTop, bossBarSize, bossPhases, bossBarColor, bossBarCells);
         BuildBarRow("Shield", bossBarTop + bossBarSize.y + 18f, new Vector2(bossBarSize.x, shieldBarHeight), reflectsToStun, shieldColor, shieldCells);
         bossBar.SetActive(false);
@@ -2039,6 +2066,7 @@ public class BossFight : MonoBehaviour
     {
         if (bossBar == null) return;
         bossBar.SetActive(true);
+        if(dualGauge!=null){dualGauge.SetValues((bossPhases-phase)/(float)Mathf.Max(1,bossPhases),stunned?0:(reflectsToStun-cracks)/(float)Mathf.Max(1,reflectsToStun));return;}
         var empty = new Color(0.25f, 0.25f, 0.25f);
         int left = bossPhases - phase;
         for (int i = 0; i < bossBarCells.Count; i++) bossBarCells[i].color = i < left ? bossBarColor : empty;
@@ -2081,6 +2109,7 @@ public class BossFight : MonoBehaviour
         for (float t = 0f; t < time; t += Time.deltaTime)
         {
             float a = t / Mathf.Max(0.01f, time);
+            ChargeRumble(a);
             phaseAcc += Time.deltaTime * Mathf.Lerp(8f, 55f, a * a); // 점점 빨라지는 깜빡임
             float m = Mathf.Lerp(0.55f, 0.8f, a) + Mathf.Lerp(0.45f, 0.2f, a) * Mathf.Sin(phaseAcc);
             for (int i = 0; i < list.Count; i++)
