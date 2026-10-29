@@ -262,8 +262,8 @@ public class BossFight : MonoBehaviour
     public AudioClip rewindClip;
     [Tooltip("되감기가 끝나 다시 태어날 때")]
     public AudioClip respawnClip;
-    [Tooltip("보스가 죽을 때 (글리치 + 삐- 이명). 이때 배경음은 꺼짐")]
-    public AudioClip bossDeathClip;
+    [Tooltip("보스가 죽을 때 (글리치 + 삐- 이명). 여러 개면 동시에 같이 나옴. 이때 배경음은 꺼짐")]
+    public AudioClip[] bossDeathClips;
     [Range(0f, 1f)] public float sfxVolume = 1f;
 
     [Tooltip("보스가 쓰러지기 시작할 때 (죽는 연출과 동시에 시작 — 엔딩의 하얀 빛이 연출 동안 차오름)")]
@@ -667,6 +667,9 @@ public class BossFight : MonoBehaviour
             sp.tailSize = src.tailSize * godBubbleScale;
             sp.glitchJitter = src.glitchJitter * godBubbleScale;
             sp.sortingOrder = src.sortingOrder;
+            sp.voiceClip = src.voiceClip; // 말소리도 메크로와 같게
+            sp.voiceVolume = src.voiceVolume;
+            sp.voicePitch = src.voicePitch;
         }
         sp.tailRight = true; // 꼬리가 오른쪽(신)을 가리킴
         sp.backgroundColor = Color.black;
@@ -1504,7 +1507,7 @@ public class BossFight : MonoBehaviour
         defeated = true;
         ClearHazards();
         bgmTarget = 0f; // 배경음 꺼지고 글리치·이명만
-        PlaySfx(bossDeathClip);
+        if (bossDeathClips != null) foreach (var c in bossDeathClips) PlaySfx(c);
         onDefeated.Invoke(); // 엔딩 시작 → 이 연출 동안 하얀 빛이 차오름 (DefeatDuration)
         // 1) 지지직이 점점 세짐 (흔들림·색 번쩍·화면 줄무늬·눈 일그러짐)
         for (float t = 0f; t < defeatGlitchTime; t += Time.deltaTime)

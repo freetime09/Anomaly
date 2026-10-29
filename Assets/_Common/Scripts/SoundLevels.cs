@@ -119,10 +119,18 @@ public class SoundLevels : ScriptableObject
         if (src.loadState != AudioDataLoadState.Loaded) src.LoadAudioData();
         var data = new float[src.samples * src.channels];
         if (src.loadState != AudioDataLoadState.Loaded || !src.GetData(data, 0)) return src; // 못 읽으면 원본 그대로
-        for (int i = 0; i < data.Length; i++) data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
+        for (int i = 0; i < data.Length; i++) data[i] = SoftClip(data[i] * gain);
         var c = AudioClip.Create(src.name, src.samples, src.channels, src.frequency, false);
         c.SetData(data, 0);
         return c;
+    }
+
+    /// <summary>0.8 까지는 그대로, 그 위는 1 을 넘지 않게 부드럽게 눌러 찢어지는 소리를 막는다.</summary>
+    static float SoftClip(float x)
+    {
+        float a = Math.Abs(x);
+        if (a <= 0.8f) return x;
+        return Math.Sign(x) * (0.8f + 0.2f * (float)Math.Tanh((a - 0.8f) / 0.2f));
     }
 
     static FieldInfo[] ClipFields(Type t)
@@ -158,7 +166,7 @@ public class SoundLevels : ScriptableObject
             if (!Measure(e.clip, out float loud, out float peak)) { Debug.LogWarning("[음량표] 못 읽음: " + e.clip.name, e.clip); continue; }
             e.measuredDb = Round(loud);
             float want = TargetFor(e.kind) - loud;
-            e.autoDb = Round(Mathf.Min(want, peakCeiling - peak - e.extraDb));
+            e.autoDb = Round(Mathf.Min(want, peakCeiling - peak)); // 추가 조절은 이 제한 밖 (넘치면 Scaled 에서 부드럽게 눌림)
         }
         entries.Sort((a, b) => a.kind != b.kind ? a.kind.CompareTo(b.kind) : string.Compare(a.clip.name, b.clip.name, StringComparison.Ordinal));
         UnityEditor.EditorUtility.SetDirty(this);

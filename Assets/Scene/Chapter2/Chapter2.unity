@@ -12572,6 +12572,8 @@ MonoBehaviour:
   landShakeTime: 0.4
   landShakeMagnitude: 0.7
   landLockTime: 0.5
+  fallClip: {fileID: 8300000, guid: 0ed0c72b25b75784e86578e020f2920b, type: 3}
+  fallVolume: 1
   dialogue: {fileID: 11400000, guid: e9c11b6ac8057ec458e27a5341ad4e3a, type: 2}
 --- !u!4 &1735158636
 Transform:

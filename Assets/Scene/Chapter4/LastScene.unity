@@ -344,19 +344,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaptureSkillBar
   icons:
-  - skill: 5
-    pixelRect: {x: 529, y: 1000, z: 30, w: 30}
   - skill: 2
-    pixelRect: {x: 566, y: 1000, z: 30, w: 30}
+    pixelRect: {x: 529, y: 1000, z: 30, w: 30}
   - skill: 4
-    pixelRect: {x: 604, y: 1000, z: 30, w: 30}
+    pixelRect: {x: 566, y: 1000, z: 30, w: 30}
   - skill: 6
+    pixelRect: {x: 604, y: 1000, z: 30, w: 30}
+  - skill: 0
     pixelRect: {x: 642, y: 1000, z: 30, w: 30}
   - skill: 1
     pixelRect: {x: 680, y: 1000, z: 30, w: 30}
   - skill: 3
     pixelRect: {x: 717, y: 1000, z: 30, w: 30}
-  - skill: 0
+  - skill: 5
     pixelRect: {x: 755, y: 1000, z: 30, w: 30}
   player: {fileID: 0}
   overlayColor: {r: 0, g: 0, b: 0, a: 0.6}
@@ -374,6 +374,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CaptureSettingsButton
   pixelRect: {x: 179, y: 750, z: 37, w: 37}
+  hoverDegrees: 180
+  hoverScale: 1.1
+  pressedScale: 0.94
+  pressedOpacity: 0.65
+  rotationSmoothTime: 0.14
+  scaleSmoothTime: 0.09
+  pressSmoothTime: 0.045
+  orderOffset: 4
 --- !u!1 &47033536
 GameObject:
   m_ObjectHideFlags: 0
@@ -624,7 +632,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1 &90064257
@@ -14212,7 +14219,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1 &556681739
@@ -16060,6 +16066,10 @@ MonoBehaviour:
   glitchTime: 3
   blackHold: 1.2
   autoQuitTime: 0
+  glitchClip: {fileID: 8300000, guid: 33bc35a9c9e499c49aaac44cc70046d0, type: 3}
+  glitchVolume: 1
+  glitchClipLength: 3
+  glitchSilenceDb: -45
   font: {fileID: 11400000, guid: a8470287b766003469c6c03d730a03fd, type: 2}
   dialogTitle: "An\xA7maly"
   dialogMessage: "\uAC8C\uC784\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
@@ -16410,7 +16420,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1 &1036750008
@@ -24489,7 +24498,10 @@ MonoBehaviour:
   playerHitClip: {fileID: 8300000, guid: 2107218b0b40c0344b9a67481875e8bb, type: 3}
   rewindClip: {fileID: 8300000, guid: f3b0e63fa84af3a4bb5f4c445b8c67f4, type: 3}
   respawnClip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
-  bossDeathClip: {fileID: 8300000, guid: 91dfcdf8200212b419755cefddd56cca, type: 3}
+  bossDeathClips:
+  - {fileID: 8300000, guid: 099c40f0a3e9ac94e8e115fa1fd59f31, type: 3}
+  - {fileID: 8300000, guid: 91dfcdf8200212b419755cefddd56cca, type: 3}
+  - {fileID: 8300000, guid: ec11e1375a8ab654fa6be3af911bc8bf, type: 3}
   sfxVolume: 1
   onDefeated:
     m_PersistentCalls:
@@ -25404,7 +25416,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1 &1810144553
@@ -61804,7 +61815,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1 &2071263800

@@ -17,6 +17,11 @@ MonoBehaviour:
   softTarget: -26
   peakCeiling: -1
   entries:
+  - clip: {fileID: 8300000, guid: 0ed0c72b25b75784e86578e020f2920b, type: 3}
+    kind: 0
+    measuredDb: -17.1
+    autoDb: -0.9
+    extraDb: 0
   - clip: {fileID: 8300000, guid: a6b20f86010fabc41a2d3210df75dbad, type: 3}
     kind: 0
     measuredDb: -22.8
@@ -82,6 +87,11 @@ MonoBehaviour:
     measuredDb: -10.3
     autoDb: -7.7
     extraDb: 0
+  - clip: {fileID: 8300000, guid: 33bc35a9c9e499c49aaac44cc70046d0, type: 3}
+    kind: 0
+    measuredDb: -17.4
+    autoDb: -0.6
+    extraDb: 0
   - clip: {fileID: 8300000, guid: 7ad241c5b57757d42b4b13d1fdffb46c, type: 3}
     kind: 0
     measuredDb: -9.2
@@ -111,6 +121,11 @@ MonoBehaviour:
     kind: 0
     measuredDb: -15.7
     autoDb: -2.3
+    extraDb: 6
+  - clip: {fileID: 8300000, guid: acec4a201530e274ba29b9c08abc96c4, type: 3}
+    kind: 0
+    measuredDb: -5.5
+    autoDb: -12.5
     extraDb: 0
   - clip: {fileID: 8300000, guid: 6438cf87dc699314e84b24c7caf92c66, type: 3}
     kind: 0
@@ -187,10 +202,20 @@ MonoBehaviour:
     measuredDb: -18.5
     autoDb: 0.5
     extraDb: 0
+  - clip: {fileID: 8300000, guid: 099c40f0a3e9ac94e8e115fa1fd59f31, type: 3}
+    kind: 0
+    measuredDb: -16.5
+    autoDb: -1.5
+    extraDb: 0
   - clip: {fileID: 8300000, guid: 91dfcdf8200212b419755cefddd56cca, type: 3}
     kind: 0
     measuredDb: -22
     autoDb: 4
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: ec11e1375a8ab654fa6be3af911bc8bf, type: 3}
+    kind: 0
+    measuredDb: -3.3
+    autoDb: -14.7
     extraDb: 0
   - clip: {fileID: 8300000, guid: 3c8b941ee1f4c6f43954c321e25a0626, type: 3}
     kind: 1
@@ -226,11 +251,6 @@ MonoBehaviour:
     kind: 2
     measuredDb: -34
     autoDb: 8
-    extraDb: 0
-  - clip: {fileID: 8300000, guid: acec4a201530e274ba29b9c08abc96c4, type: 3}
-    kind: 2
-    measuredDb: -5.5
-    autoDb: -20.5
     extraDb: 0
   - clip: {fileID: 8300000, guid: f1f649c4b72ec924ca181880090e8b2b, type: 3}
     kind: 2
