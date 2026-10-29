@@ -403,6 +403,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>제스처 인식 결과를 실제 동작으로 실행.</summary>
     public void ExecuteCommand(Command cmd)
     {
+        if (cmd == Command.Interact && InteractDrawn != null) InteractDrawn(); // 보스전 되감기 대기 등에서 O 를 기다림
         if (combatOnly && cmd != Command.AttackLeft && cmd != Command.AttackRight && cmd != Command.Boss) return;
         switch (cmd)
         {
@@ -431,6 +432,8 @@ public class PlayerController : MonoBehaviour
     public event System.Action BossSkillUsed;
     /// <summary>ㄱ 공격 판정이 나는 순간 (인자 = 휘두른 방향 +1/-1). 보스전에서 위에서 오는 탄도 받게 쓴다.</summary>
     public event System.Action<int> AttackSwung;
+    /// <summary>O(상호작용)을 그렸을 때 (combatOnly 와 상관없이 항상 호출)</summary>
+    public event System.Action InteractDrawn;
 
     void UseBossSkill()
     {

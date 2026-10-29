@@ -20,6 +20,9 @@ public class PauseMenu : MonoBehaviour
     /// 등록되어 있고 true 면 ESC 로 메뉴를 열지 않는다 → 한 번의 ESC 가 두 창을 동시에 건드리지 않게.</summary>
     public static System.Func<bool> EscapeBlocker;
 
+    /// <summary>톱니 아이콘 대신 설정을 여는 다른 자리 (예: 4챕터 캡쳐 그림 속 톱니). 그 위 클릭도 그리기로 치지 않는다.</summary>
+    public static System.Func<Vector2, bool> ExtraSettingsArea;
+
     const string VolumeKey = "MasterVolume";
 
     [Header("UI 연결")]
@@ -82,6 +85,7 @@ public class PauseMenu : MonoBehaviour
     /// <summary>설정 아이콘 위를 누른 건지 — 입력 스크립트가 이 클릭을 제스처로 그리지 않게 확인한다.</summary>
     public static bool IsPointerOnSettingsButton(Vector2 screenPos)
     {
+        if (ExtraSettingsArea != null && ExtraSettingsArea(screenPos)) return true;
         if (instance == null || instance.settingsButton == null || !instance.settingsButton.gameObject.activeInHierarchy) return false;
         var rt = (RectTransform)instance.settingsButton.transform;
         return RectTransformUtility.RectangleContainsScreenPoint(rt, screenPos, null); // Overlay 캔버스라 카메라 null

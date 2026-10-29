@@ -65,6 +65,9 @@ public class EndingSequence : MonoBehaviour
     public TMP_FontAsset font;
     public string dialogTitle = "An§maly";
     public string dialogMessage = "게임이 삭제되었습니다.";
+    [Tooltip("오류창이 뜰 때 소리 (윈도우 오류음)")]
+    public AudioClip errorClip;
+    [Range(0f, 1f)] public float errorVolume = 1f;
 
     Camera cam;
     Canvas canvas;
@@ -168,6 +171,7 @@ public class EndingSequence : MonoBehaviour
         RectTransform okButton, closeButton;
         Image okImage;
         BuildDialog(out okButton, out okImage, out closeButton);
+        if (errorClip != null) gameObject.AddComponent<AudioSource>().PlayOneShot(errorClip, errorVolume);
         Color okColor = okImage.color, okHover = Color.Lerp(okColor, Color.white, 0.15f);
         float waited = 0f;
         while (true)

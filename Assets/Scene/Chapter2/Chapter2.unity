@@ -981,6 +981,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaccineChaseIntro
   player: {fileID: 0}
+  chaseBgmClip: {fileID: 8300000, guid: d22b8b9548d53d540b195d301b5c6023, type: 3}
   strangeSound: {fileID: 0}
   soundVolume: 0.8
   beforeTurnTime: 0.9
@@ -1377,7 +1378,7 @@ PrefabInstance:
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: returnClip
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 8300000, guid: 0748b13f3254c2146aaf7adbe1379b57, type: 3}
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: stickDepth
       value: 0.32
@@ -2214,6 +2215,8 @@ MonoBehaviour:
   moveSpeed: 6
   returnWhenOff: 1
   returnSpeed: 0.5
+  moveClip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+  sfxVolume: 1
   activated: 0
 --- !u!50 &317345958
 Rigidbody2D:
@@ -3683,6 +3686,10 @@ MonoBehaviour:
   blackHoldTime: 0.2
   fadeInTime: 0.3
   fadeColor: {r: 0, g: 0, b: 0, a: 1}
+  respawnClip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
+  respawnVolume: 1
+  fadeBgmOnDeath: 1
+  bgmFadeTime: 0.4
 --- !u!114 &452279638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3979,6 +3986,7 @@ MonoBehaviour:
   padding: 0.25
   borderWidth: 0.06
   tailSize: 0.3
+  tailRight: 0
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   borderColor: {r: 0, g: 0, b: 0, a: 1}
   textColor: {r: 0, g: 0, b: 0, a: 1}
@@ -3990,8 +3998,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
-  voiceEveryNChars: 2
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1001 &461772060
@@ -4539,6 +4546,8 @@ MonoBehaviour:
   moveSpeed: 6
   returnWhenOff: 1
   returnSpeed: 6
+  moveClip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+  sfxVolume: 1
   activated: 0
 --- !u!50 &512590542
 Rigidbody2D:
@@ -7185,6 +7194,8 @@ MonoBehaviour:
   moveSpeed: 6
   returnWhenOff: 1
   returnSpeed: 6
+  moveClip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+  sfxVolume: 1
   activated: 0
 --- !u!50 &839662533
 Rigidbody2D:
@@ -8676,6 +8687,8 @@ MonoBehaviour:
   moveSpeed: 6
   returnWhenOff: 1
   returnSpeed: 0.5
+  moveClip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+  sfxVolume: 1
   activated: 0
 --- !u!50 &1186089858
 Rigidbody2D:
@@ -9053,7 +9066,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: c4236f5ec00f77e41a2bf8cea40cdeb9, type: 3}
+  m_Resource: {fileID: 8300000, guid: 3c8b941ee1f4c6f43954c321e25a0626, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
@@ -10795,7 +10808,7 @@ MonoBehaviour:
   vignetteReach: 0.45
   heartRate: {x: 1.1, y: 2.6}
   heartAmount: 0.35
-  loopClip: {fileID: 0}
+  loopClip: {fileID: 8300000, guid: f8bca2af7d872cb4bb6485093cafa158, type: 3}
   volume: {x: 0.15, y: 0.9}
   pitch: {x: 0.9, y: 1.25}
 --- !u!1 &1496213679
@@ -12244,6 +12257,8 @@ MonoBehaviour:
   moveSpeed: 4
   returnWhenOff: 0
   returnSpeed: 0
+  moveClip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+  sfxVolume: 1
   activated: 0
 --- !u!50 &1728524069
 Rigidbody2D:
@@ -13653,6 +13668,8 @@ MonoBehaviour:
   moveSpeed: 4
   returnWhenOff: 0
   returnSpeed: 0
+  moveClip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+  sfxVolume: 1
   activated: 0
 --- !u!50 &1970747689
 Rigidbody2D:

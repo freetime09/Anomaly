@@ -222,6 +222,7 @@ GameObject:
   - component: {fileID: 21440608}
   - component: {fileID: 21440610}
   - component: {fileID: 21440611}
+  - component: {fileID: 21440612}
   m_Layer: 0
   m_Name: EditorCapture
   m_TagString: Untagged
@@ -344,22 +345,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CaptureSkillBar
   icons:
   - skill: 5
-    pixelRect: {x: 536, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 529, y: 1000, z: 30, w: 30}
   - skill: 2
-    pixelRect: {x: 571, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 566, y: 1000, z: 30, w: 30}
   - skill: 4
-    pixelRect: {x: 606, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 604, y: 1000, z: 30, w: 30}
   - skill: 6
-    pixelRect: {x: 641, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 642, y: 1000, z: 30, w: 30}
   - skill: 1
-    pixelRect: {x: 676, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 680, y: 1000, z: 30, w: 30}
   - skill: 3
-    pixelRect: {x: 711, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 717, y: 1000, z: 30, w: 30}
   - skill: 0
-    pixelRect: {x: 746, y: 1007, z: 29, w: 29}
+    pixelRect: {x: 755, y: 1000, z: 30, w: 30}
   player: {fileID: 0}
   overlayColor: {r: 0, g: 0, b: 0, a: 0.6}
   orderOffset: 4
+--- !u!114 &21440612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 21440607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 998089c5bfca2904bb3217da3f4d8a6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CaptureSettingsButton
+  pixelRect: {x: 179, y: 750, z: 37, w: 37}
 --- !u!1 &47033536
 GameObject:
   m_ObjectHideFlags: 0
@@ -609,7 +623,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -13885,6 +13899,10 @@ MonoBehaviour:
   blackHoldTime: 0.2
   fadeInTime: 0.3
   fadeColor: {r: 0, g: 0, b: 0, a: 1}
+  respawnClip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
+  respawnVolume: 1
+  fadeBgmOnDeath: 1
+  bgmFadeTime: 0.4
 --- !u!114 &543411988
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14193,7 +14211,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -16045,6 +16063,8 @@ MonoBehaviour:
   font: {fileID: 11400000, guid: a8470287b766003469c6c03d730a03fd, type: 2}
   dialogTitle: "An\xA7maly"
   dialogMessage: "\uAC8C\uC784\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+  errorClip: {fileID: 8300000, guid: c640fa2a373dc63449dbf4336bc9194c, type: 3}
+  errorVolume: 1
 --- !u!4 &949747619
 Transform:
   m_ObjectHideFlags: 0
@@ -16389,7 +16409,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -24450,6 +24470,27 @@ MonoBehaviour:
   introWaveInterval: {x: 0.6, y: 1.1}
   defeatGlitchTime: 2.2
   defeatFadeTime: 1.6
+  rewindOnDeath: 1
+  rewindSeconds: 4
+  rewindTime: 1.6
+  rewindSnapTime: 0.35
+  rewindBlackIn: 0.35
+  rewindBlackHold: 0.35
+  bgmFadeTime: 0.4
+  bossBgmClip: {fileID: 8300000, guid: 93c83c4778ad4a548a8d098f743f06e6, type: 3}
+  bossIntroClip: {fileID: 8300000, guid: a208b727da5b76b44bc1fd4efd6d2f04, type: 3}
+  cursorClickClip: {fileID: 8300000, guid: a60b47a7a10da2a45a1d114fe6998076, type: 3}
+  slamClip: {fileID: 8300000, guid: a5672c5caf6fdfd4182d578f5ca0ee08, type: 3}
+  rainClip: {fileID: 8300000, guid: f1f649c4b72ec924ca181880090e8b2b, type: 3}
+  laserClip: {fileID: 8300000, guid: 2a709b7f6013f9f42a2623de7d9d1812, type: 3}
+  laserSpinClip: {fileID: 8300000, guid: acec4a201530e274ba29b9c08abc96c4, type: 3}
+  stunClip: {fileID: 8300000, guid: 54b65ca60d0e8d240814dc0b104236c8, type: 3}
+  bossHitClip: {fileID: 8300000, guid: 3933e1268dc80a1448c3ae98e5c79b8b, type: 3}
+  playerHitClip: {fileID: 8300000, guid: 2107218b0b40c0344b9a67481875e8bb, type: 3}
+  rewindClip: {fileID: 8300000, guid: f3b0e63fa84af3a4bb5f4c445b8c67f4, type: 3}
+  respawnClip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
+  bossDeathClip: {fileID: 8300000, guid: 91dfcdf8200212b419755cefddd56cca, type: 3}
+  sfxVolume: 1
   onDefeated:
     m_PersistentCalls:
       m_Calls:
@@ -25362,7 +25403,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -61495,7 +61536,7 @@ PrefabInstance:
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: returnClip
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 8300000, guid: 0748b13f3254c2146aaf7adbe1379b57, type: 3}
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: stickDepth
       value: 0.32
@@ -61762,7 +61803,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1

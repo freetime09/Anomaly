@@ -1,0 +1,264 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14b6f989fb33ab24ab65ff3d69b89b3a, type: 3}
+  m_Name: SoundLevels
+  m_EditorClassIdentifier: Assembly-CSharp::SoundLevels
+  sfxTarget: -18
+  bgmTarget: -24
+  softTarget: -26
+  peakCeiling: -1
+  entries:
+  - clip: {fileID: 8300000, guid: a6b20f86010fabc41a2d3210df75dbad, type: 3}
+    kind: 0
+    measuredDb: -22.8
+    autoDb: 4.8
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 2d8d7fac45aaa33478ec7a5f8ac55629, type: 3}
+    kind: 0
+    measuredDb: -19.1
+    autoDb: 1.1
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 5288d250352097444a21d7bc61b031a0, type: 3}
+    kind: 0
+    measuredDb: -11.1
+    autoDb: -6.9
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 3933e1268dc80a1448c3ae98e5c79b8b, type: 3}
+    kind: 0
+    measuredDb: -13.3
+    autoDb: -4.7
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: a208b727da5b76b44bc1fd4efd6d2f04, type: 3}
+    kind: 0
+    measuredDb: -8.3
+    autoDb: -9.7
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 54b65ca60d0e8d240814dc0b104236c8, type: 3}
+    kind: 0
+    measuredDb: -8.3
+    autoDb: -9.7
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: a5672c5caf6fdfd4182d578f5ca0ee08, type: 3}
+    kind: 0
+    measuredDb: -8.4
+    autoDb: -9.6
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 8f6106736c9f36b4eb29ea1ce19a0fe8, type: 3}
+    kind: 0
+    measuredDb: -26.8
+    autoDb: 4.4
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 04088ea3854972e46940cc6573888ae1, type: 3}
+    kind: 0
+    measuredDb: -27.1
+    autoDb: 5.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 3639da52e855a9a439b074422573896a, type: 3}
+    kind: 0
+    measuredDb: -23.4
+    autoDb: 5.4
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 9bf3f391a23c16648b0e214bae4d8286, type: 3}
+    kind: 0
+    measuredDb: -14.2
+    autoDb: -3.8
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 6474a0a3b09a6604ba3c6b8669752a14, type: 3}
+    kind: 0
+    measuredDb: -26.2
+    autoDb: 0.1
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: c640fa2a373dc63449dbf4336bc9194c, type: 3}
+    kind: 0
+    measuredDb: -10.3
+    autoDb: -7.7
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 7ad241c5b57757d42b4b13d1fdffb46c, type: 3}
+    kind: 0
+    measuredDb: -9.2
+    autoDb: -8.8
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 066b418b8ec8d154e9e07b999b0d975b, type: 3}
+    kind: 0
+    measuredDb: -13.7
+    autoDb: -4.3
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 59268a2e40be7fb428b530fd83defd54, type: 3}
+    kind: 0
+    measuredDb: -20.2
+    autoDb: -0.3
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: c0b17282efd7bb94f914d453f5c075c3, type: 3}
+    kind: 0
+    measuredDb: -23.2
+    autoDb: 5.2
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 4814d363e9846f048a5c40f507ead2d0, type: 3}
+    kind: 0
+    measuredDb: -15.4
+    autoDb: -2.6
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 2a709b7f6013f9f42a2623de7d9d1812, type: 3}
+    kind: 0
+    measuredDb: -15.7
+    autoDb: -2.3
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 6438cf87dc699314e84b24c7caf92c66, type: 3}
+    kind: 0
+    measuredDb: -18.3
+    autoDb: -0.9
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: a60b47a7a10da2a45a1d114fe6998076, type: 3}
+    kind: 0
+    measuredDb: -26.9
+    autoDb: 4.4
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: ec8770200cde5644bbb3ffe05fceefdc, type: 3}
+    kind: 0
+    measuredDb: -27.9
+    autoDb: 9.9
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 833fff46840134c4ca2baddf1ccbc855, type: 3}
+    kind: 0
+    measuredDb: -19.8
+    autoDb: 1.8
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 78309a851d57c054aa7f5f06494a0ce2, type: 3}
+    kind: 0
+    measuredDb: -30.1
+    autoDb: 6.9
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 2107218b0b40c0344b9a67481875e8bb, type: 3}
+    kind: 0
+    measuredDb: -13.8
+    autoDb: -4.2
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: f5bbb53e7a9d5914aa285a1104994c3d, type: 3}
+    kind: 0
+    measuredDb: -22
+    autoDb: 2.9
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
+    kind: 0
+    measuredDb: -12
+    autoDb: -6
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 95c4d4694db47ba4c80ff5ab8f555614, type: 3}
+    kind: 0
+    measuredDb: -16.3
+    autoDb: -1.7
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 1e65a4ce8222a4a4b83c71e01c08a04f, type: 3}
+    kind: 0
+    measuredDb: -20.2
+    autoDb: 2.2
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: f3b0e63fa84af3a4bb5f4c445b8c67f4, type: 3}
+    kind: 0
+    measuredDb: -18.1
+    autoDb: -0.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: ed9591252d7a6da40a86353bfad5effa, type: 3}
+    kind: 0
+    measuredDb: -6.7
+    autoDb: -11.3
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 43a9c5e61917e1c438fb7bc5d7e65fe9, type: 3}
+    kind: 0
+    measuredDb: -21.5
+    autoDb: 3.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: ce8cdeaee3f05004caf64d89fce45c07, type: 3}
+    kind: 0
+    measuredDb: -18.1
+    autoDb: 0.1
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: e40e9ce5d2feb7446966233dad3e2599, type: 3}
+    kind: 0
+    measuredDb: -18.5
+    autoDb: 0.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 91dfcdf8200212b419755cefddd56cca, type: 3}
+    kind: 0
+    measuredDb: -22
+    autoDb: 4
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 3c8b941ee1f4c6f43954c321e25a0626, type: 3}
+    kind: 1
+    measuredDb: -15.6
+    autoDb: -8.4
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: d22b8b9548d53d540b195d301b5c6023, type: 3}
+    kind: 1
+    measuredDb: -17.2
+    autoDb: -6.8
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: ac02d338d6422294aac24f1c4a018ebd, type: 3}
+    kind: 1
+    measuredDb: -32.5
+    autoDb: 8.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 93c83c4778ad4a548a8d098f743f06e6, type: 3}
+    kind: 1
+    measuredDb: -17.9
+    autoDb: -6.1
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: c4236f5ec00f77e41a2bf8cea40cdeb9, type: 3}
+    kind: 1
+    measuredDb: -8.1
+    autoDb: -15.9
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 4002d4abfa735c14b9ccfc3395ff9e78, type: 3}
+    kind: 2
+    measuredDb: -42.6
+    autoDb: 16.6
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 16141af5c5073744db59a4017105546e, type: 3}
+    kind: 2
+    measuredDb: -34
+    autoDb: 8
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: acec4a201530e274ba29b9c08abc96c4, type: 3}
+    kind: 2
+    measuredDb: -5.5
+    autoDb: -20.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: f1f649c4b72ec924ca181880090e8b2b, type: 3}
+    kind: 2
+    measuredDb: -20.4
+    autoDb: -5.6
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 5e5006bf4af2cdb4bafaa60c4403769b, type: 3}
+    kind: 2
+    measuredDb: -31.4
+    autoDb: 4.2
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: aba4d6653d71df24794e196d86309133, type: 3}
+    kind: 2
+    measuredDb: -26.6
+    autoDb: 0.6
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
+    kind: 2
+    measuredDb: -39.2
+    autoDb: 12
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: 0748b13f3254c2146aaf7adbe1379b57, type: 3}
+    kind: 2
+    measuredDb: -14.5
+    autoDb: -11.5
+    extraDb: 0
+  - clip: {fileID: 8300000, guid: f8bca2af7d872cb4bb6485093cafa158, type: 3}
+    kind: 2
+    measuredDb: -11.6
+    autoDb: -14.4
+    extraDb: 0

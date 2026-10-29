@@ -736,7 +736,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &132880981
 GameObject:
@@ -949,7 +949,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &159190437
 GameObject:
@@ -1206,7 +1206,7 @@ PrefabInstance:
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: returnClip
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 8300000, guid: 0748b13f3254c2146aaf7adbe1379b57, type: 3}
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: stickDepth
       value: 0.32
@@ -2198,7 +2198,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &313911513
 GameObject:
@@ -2328,6 +2328,7 @@ MonoBehaviour:
   padding: 0.25
   borderWidth: 0.06
   tailSize: 0.3
+  tailRight: 0
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   borderColor: {r: 0, g: 0, b: 0, a: 1}
   textColor: {r: 0, g: 0, b: 0, a: 1}
@@ -2339,7 +2340,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -2763,7 +2764,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &384809057
 GameObject:
@@ -3326,6 +3327,10 @@ MonoBehaviour:
   blackHoldTime: 0.2
   fadeInTime: 0.3
   fadeColor: {r: 0, g: 0, b: 0, a: 1}
+  respawnClip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
+  respawnVolume: 1
+  fadeBgmOnDeath: 1
+  bgmFadeTime: 0.4
 --- !u!114 &452279638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3622,6 +3627,7 @@ MonoBehaviour:
   padding: 0.25
   borderWidth: 0.06
   tailSize: 0.3
+  tailRight: 0
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   borderColor: {r: 0, g: 0, b: 0, a: 1}
   textColor: {r: 0, g: 0, b: 0, a: 1}
@@ -3633,7 +3639,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -39846,7 +39852,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &544348292
 GameObject:
@@ -39937,7 +39943,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &545815834
 GameObject:
@@ -45902,7 +45908,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &825155106
 GameObject:
@@ -46125,7 +46131,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &863144091
 GameObject:
@@ -46930,7 +46936,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &940822568
 GameObject:
@@ -47250,7 +47256,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &981834532
 GameObject:
@@ -47688,7 +47694,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1052975168
 GameObject:
@@ -48012,6 +48018,7 @@ MonoBehaviour:
   padding: 0.25
   borderWidth: 0.06
   tailSize: 0.3
+  tailRight: 0
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   borderColor: {r: 0, g: 0, b: 0, a: 1}
   textColor: {r: 0, g: 0, b: 0, a: 1}
@@ -48023,7 +48030,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -48700,7 +48707,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: c4236f5ec00f77e41a2bf8cea40cdeb9, type: 3}
+  m_Resource: {fileID: 8300000, guid: ac02d338d6422294aac24f1c4a018ebd, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
@@ -53957,7 +53964,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1247600073
 GameObject:
@@ -54048,7 +54055,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1266759090
 GameObject:
@@ -54362,7 +54369,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1312594086
 GameObject:
@@ -54487,7 +54494,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1328895450
 GameObject:
@@ -55272,7 +55279,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1435863501
 GameObject:
@@ -55660,7 +55667,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1511119186
 GameObject:
@@ -55897,7 +55904,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1535224847
 GameObject:
@@ -55988,7 +55995,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1535481590
 GameObject:
@@ -56079,7 +56086,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1541963026
 GameObject:
@@ -58744,7 +58751,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1660722418
 GameObject:
@@ -63976,7 +63983,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1712498684
 GameObject:
@@ -64106,6 +64113,7 @@ MonoBehaviour:
   padding: 0.25
   borderWidth: 0.06
   tailSize: 0.3
+  tailRight: 0
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   borderColor: {r: 0, g: 0, b: 0, a: 1}
   textColor: {r: 0, g: 0, b: 0, a: 1}
@@ -64117,7 +64125,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -69177,7 +69185,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1740148532
 GameObject:
@@ -69553,7 +69561,7 @@ MonoBehaviour:
   - {fileID: 1208530625}
   - {fileID: 1208530624}
   villageArrivalPoint: {fileID: 1750821221}
-  villageBackground: {r: 0.62, g: 0.82, b: 0.95, a: 1}
+  villageBackground: {r: 0.19215687, g: 0.21568628, b: 0.09803922, a: 1}
   arrivalShake: 0.3
   lookCount: 3
   lookInterval: 0.4
@@ -69562,6 +69570,9 @@ MonoBehaviour:
   arrivalMonologue: {fileID: 11400000, guid: 996273ff38928df499174533a4fc4964, type: 2}
   memoryMonologue: {fileID: 11400000, guid: 0b2f89d0494f0b04285c4f78b6feef66, type: 2}
   walkInDistance: 3
+  riserClip: {fileID: 8300000, guid: 95c4d4694db47ba4c80ff5ab8f555614, type: 3}
+  riserVolume: 1
+  riserTail: 0.15
   skipCutscene: 0
   openingFadeTime: 0.5
 --- !u!114 &1761218908
@@ -69867,7 +69878,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1794674761
 GameObject:
@@ -70049,7 +70060,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1816241975
 GameObject:
@@ -70500,7 +70511,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &1934337212
 GameObject:
@@ -71070,6 +71081,7 @@ MonoBehaviour:
   padding: 0.25
   borderWidth: 0.06
   tailSize: 0.3
+  tailRight: 0
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   borderColor: {r: 0, g: 0, b: 0, a: 1}
   textColor: {r: 0, g: 0, b: 0, a: 1}
@@ -71081,7 +71093,7 @@ MonoBehaviour:
   - {r: 0.1, g: 0.85, b: 0.9, a: 1}
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
   voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
@@ -71191,7 +71203,7 @@ SpriteRenderer:
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!1 &2071326507
 GameObject:

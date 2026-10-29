@@ -28,6 +28,17 @@ public class FallRespawn : MonoBehaviour
     [Tooltip("페이드 색 (기본 검정)")]
     public Color fadeColor = Color.black;
 
+    [Header("소리")]
+    [Tooltip("부활할 때 (다시 밝아지기 시작할 때) 소리")]
+    public AudioClip respawnClip;
+    [Range(0f, 1f)] public float respawnVolume = 1f;
+
+    [Header("배경음")]
+    [Tooltip("죽으면 배경음(카메라의 AudioSource)이 꺼졌다가 부활하며 멈춘 곳부터 다시 커짐")]
+    public bool fadeBgmOnDeath = true;
+    [Tooltip("배경음이 꺼지는 시간 (초). 다시 켜질 때는 화면이 밝아지는 시간과 같이")]
+    public float bgmFadeTime = 0.4f;
+
     PlayerController player;
     Rigidbody2D rb;
     GestureRecognizer input;
@@ -39,6 +50,11 @@ public class FallRespawn : MonoBehaviour
     bool respawning;
 
     CanvasGroup fadeGroup; // 알파로 페이드
+
+    AudioSource bgm;          // 끈 배경음
+    float bgmVolume = -1f;    // 원래 음량
+    bool bgmPaused;           // 여기서 일시정지했는가 (다시 켤 때만 UnPause)
+    Coroutine bgmFade;
 
     readonly PuzzleSnapshot puzzles = new PuzzleSnapshot(); // 죽으면 되돌릴 퍼즐 상태 (시작/체크포인트 때 저장)
 
@@ -91,6 +107,7 @@ public class FallRespawn : MonoBehaviour
     {
         respawning = true;
         if (Died != null) Died();
+        if (fadeBgmOnDeath) StartBgmFade(0f, bgmFadeTime); // 배경음 꺼짐
 
         // 조작만 잠금 — 물리/관성은 그대로 두어 죽는 동안에도 관성대로 계속 움직인다.
         if (input != null) input.enabled = false;
@@ -113,6 +130,8 @@ public class FallRespawn : MonoBehaviour
 
         if (blackHoldTime > 0f) yield return new WaitForSeconds(blackHoldTime);
 
+        if (respawnClip != null) AudioSource.PlayClipAtPoint(respawnClip, Camera.main != null ? Camera.main.transform.position : transform.position, respawnVolume); // 다시 태어나는 소리
+        StartBgmFade(1f, fadeInTime); // 배경음 다시
         yield return Fade(1f, 0f, fadeInTime); // 다시 밝게
 
         if (input != null) input.enabled = true;
@@ -210,6 +229,40 @@ public class FallRespawn : MonoBehaviour
             yield return null;
         }
         fadeGroup.alpha = to;
+    }
+
+    void StartBgmFade(float to, float time)
+    {
+        if (to <= 0f)
+        {
+            var c = Camera.main;
+            bgm = c != null ? c.GetComponent<AudioSource>() : null;
+            if (bgm == null || !bgm.isPlaying) { bgm = null; return; }
+            if (bgmVolume < 0f) bgmVolume = bgm.volume;
+        }
+        else if (bgm == null) return; // 꺼 둔 게 없음
+        if (bgmFade != null) StopCoroutine(bgmFade);
+        bgmFade = StartCoroutine(FadeBgm(to, time));
+    }
+
+    /// <summary>배경음을 to(0 = 꺼짐, 1 = 원래 음량)까지 서서히. 0 에 닿으면 일시정지, 다시 켤 땐 멈춘 곳부터.</summary>
+    IEnumerator FadeBgm(float to, float time)
+    {
+        if (to > 0f && bgmPaused) { bgm.UnPause(); bgmPaused = false; }
+        float from = bgmVolume > 0f ? bgm.volume / bgmVolume : 0f;
+        for (float t = 0f; t < time; t += Time.unscaledDeltaTime)
+        {
+            if (bgm == null) yield break;
+            bgm.volume = bgmVolume * Mathf.Lerp(from, to, t / time);
+            yield return null;
+        }
+        if (bgm != null)
+        {
+            bgm.volume = bgmVolume * to;
+            if (to <= 0f) { bgm.Pause(); bgmPaused = true; }
+            else bgm = null;
+        }
+        bgmFade = null;
     }
 
     /// <summary>페이드용 풀스크린 검은 오버레이(캔버스+이미지)를 코드로 생성한다.</summary>
