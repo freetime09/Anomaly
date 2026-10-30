@@ -16,6 +16,7 @@ MonoBehaviour:
   bgmTarget: -24
   softTarget: -26
   peakCeiling: -1
+  masterDb: -2.5
   entries:
   - clip: {fileID: 8300000, guid: 0ed0c72b25b75784e86578e020f2920b, type: 3}
     kind: 0
@@ -71,7 +72,7 @@ MonoBehaviour:
     kind: 0
     measuredDb: -23.4
     autoDb: 5.4
-    extraDb: 0
+    extraDb: -6
   - clip: {fileID: 8300000, guid: 9bf3f391a23c16648b0e214bae4d8286, type: 3}
     kind: 0
     measuredDb: -14.2
@@ -246,7 +247,7 @@ MonoBehaviour:
     kind: 2
     measuredDb: -42.6
     autoDb: 16.6
-    extraDb: 0
+    extraDb: -6
   - clip: {fileID: 8300000, guid: 16141af5c5073744db59a4017105546e, type: 3}
     kind: 2
     measuredDb: -34

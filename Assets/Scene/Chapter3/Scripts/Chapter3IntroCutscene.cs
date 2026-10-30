@@ -64,11 +64,13 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     [Min(0f)] public float walkInDistance = 3f;
 
     [Header("소리")]
-    [Tooltip("마을로 넘어가는 '피잉~' 소리. 소리가 끝나기 직전에 마을에 도착하도록 시작 시각을 맞춤")]
+    [Tooltip("마을로 넘어가는 '피잉~' 소리. 소리가 치솟다 꺼지는 순간(뒤 여운 제외)에 마을에 도착하도록 시작 시각을 맞춤")]
     public AudioClip riserClip;
     [Range(0f, 1f)] public float riserVolume = 1f;
-    [Tooltip("마을 도착 뒤 소리가 더 이어지는 시간 (초). 0 이면 소리가 끝나는 순간 도착")]
+    [Tooltip("마을 도착 뒤 크게 치솟는 소리가 더 이어지는 시간 (초). 0 이면 치솟던 소리가 꺼지는 순간 도착")]
     [Min(0f)] public float riserTail = 0.15f;
+    [Tooltip("마을 배경음악. 검은 공간에서 도망칠 때는 꺼 두고, 마을에 도착하는 순간 처음부터 튼다 (비우면 Main Camera 의 소리)")]
+    public AudioSource villageBgm;
 
     [Header("개발용")]
     [Tooltip("켜면 컷신을 건너뛰고 바로 마을 입구에서 시작 (마을 작업·테스트용). 빌드 전에 꼭 끌 것")]
@@ -86,7 +88,17 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         base.Awake();
         if (glitch == null) glitch = FindAnyObjectByType<GlitchBreakEffect>();
         if (screenGlitch == null) screenGlitch = FindAnyObjectByType<HouseScreenGlitch>();
-        if (!skipCutscene) BuildOpeningFade();
+        if (villageBgm == null && Camera.main != null) villageBgm = Camera.main.GetComponent<AudioSource>();
+        if (!skipCutscene)
+        {
+            BuildOpeningFade();
+            if (villageBgm != null) { villageBgm.playOnAwake = false; villageBgm.Stop(); } // 도망치는 동안은 배경음악 없음
+        }
+    }
+
+    void PlayVillageBgm()
+    {
+        if (villageBgm != null && !villageBgm.isPlaying) villageBgm.Play();
     }
 
     void Start()
@@ -98,6 +110,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
             MovePlayer(villageArrivalPoint);
             SetBackground(villageBackground);
             SetBlackSpaceDecor(false);
+            PlayVillageBgm();
             return;
         }
         // 첫 신호(0.01초)를 기다리면 그 사이 한 프레임 동안 씬에 배치된 마을 장면이 비친다.
@@ -129,7 +142,8 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         if (arrive < 0) yield break;
         if (glitch != null) arrive += glitch.flashInTime;
 
-        double start = arrive + riserTail - riserClip.length;
+        // 소리 파일 끝이 아니라 '크게 치솟는 부분'이 끝나는 시각을 도착에 맞춤 (이 소리는 뒤에 4초쯤 사그라드는 여운이 붙어 있음)
+        double start = arrive + riserTail - SoundLevels.LoudEndTime(riserClip);
         while (director.time < start) yield return null;
         var src = gameObject.AddComponent<AudioSource>();
         src.playOnAwake = false;
@@ -242,6 +256,7 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         MovePlayer(villageArrivalPoint);
         SetBackground(villageBackground);
         SetBlackSpaceDecor(false);
+        PlayVillageBgm();
         if (cam != null) cam.Shake(0.3f, arrivalShake);
     }
 

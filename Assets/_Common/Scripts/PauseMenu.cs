@@ -65,6 +65,13 @@ public class PauseMenu : MonoBehaviour
         if (titleButton != null)      titleButton.onClick.AddListener(GoToTitle);
         if (quitButton != null)       quitButton.onClick.AddListener(QuitGame);
 
+        // 타이틀에선 '체크포인트에서 다시'·'타이틀로' 가 뜻이 없어 숨긴다
+        if (SceneManager.GetActiveScene().name == titleScene)
+        {
+            if (checkpointButton != null) checkpointButton.gameObject.SetActive(false);
+            if (titleButton != null) titleButton.gameObject.SetActive(false);
+        }
+
         if (root != null) root.SetActive(false);
         IsPaused = false;
 

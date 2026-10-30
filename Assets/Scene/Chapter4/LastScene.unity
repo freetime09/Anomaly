@@ -24495,6 +24495,7 @@ MonoBehaviour:
   slamClip: {fileID: 8300000, guid: a5672c5caf6fdfd4182d578f5ca0ee08, type: 3}
   rainClip: {fileID: 8300000, guid: f1f649c4b72ec924ca181880090e8b2b, type: 3}
   laserClip: {fileID: 8300000, guid: 2a709b7f6013f9f42a2623de7d9d1812, type: 3}
+  columnClip: {fileID: 8300000, guid: 2a709b7f6013f9f42a2623de7d9d1812, type: 3}
   laserSpinClip: {fileID: 8300000, guid: acec4a201530e274ba29b9c08abc96c4, type: 3}
   stunClip: {fileID: 8300000, guid: 54b65ca60d0e8d240814dc0b104236c8, type: 3}
   bossHitClip: {fileID: 8300000, guid: 3933e1268dc80a1448c3ae98e5c79b8b, type: 3}

@@ -36,7 +36,7 @@ public class TutorialDemoStage : MonoBehaviour
     public Color strokeColor = new Color(0.12f, 0.12f, 0.16f);
     [Tooltip("그리기를 마친 순간 선이 바뀌는 색 (인식됨 표시)")]
     public Color strokeDoneColor = new Color(0.2f, 0.65f, 1f);
-    [Tooltip("그린 선 두께 (칸)")]
+    [Tooltip("그린 선 두께 (칸, 화면 높이 6칸 기준). 씬에 플레이어 그리기 궤적(GestureTrail)이 있으면 안 쓰고, 플레이어가 그리는 선과 화면에서 같은 두께로 맞춘다")]
     [Min(0.01f)] public float strokeWidth = 0.11f;
     public Color cursorColor = new Color(1f, 0.45f, 0.35f);
 
@@ -409,7 +409,7 @@ public class TutorialDemoStage : MonoBehaviour
         float viewW = cam.orthographicSize * 2f * cam.aspect;
         // 무대를 멀리서 비추는 시범(화면이 넓은 시범)에서도 선·손가락이 같은 크기로 보이도록 화면 높이에 비례시킨다 (기준: 높이 6칸)
         float k = cam.orthographicSize * 2f / 6f;
-        stroke.widthMultiplier = strokeWidth * k;
+        stroke.widthMultiplier = StrokeWorldWidth(k);
         List<Vector2> pts = ShapePoints(step, viewW, k);
         Vector2 anchor = clip.viewCenter + clip.drawArea;
         // 모양의 가운데를 그리는 자리에 맞춤
@@ -447,6 +447,18 @@ public class TutorialDemoStage : MonoBehaviour
         for (int i = 0; i < pts.Count; i++) stroke.SetPosition(i, pts[i]);
         cursor.enabled = false;
         StartCoroutine(FadeStroke());
+    }
+
+    /// <summary>그린 선 두께 (무대 단위). 플레이어가 실제로 그리는 선(GestureTrail)과 화면에서 같은 두께가 되게 환산한다.</summary>
+    float StrokeWorldWidth(float k)
+    {
+        var trail = FindAnyObjectByType<GestureTrail>();
+        var main = Camera.main;
+        var window = GetComponent<TutorialDemoWindow>();
+        if (trail == null || main == null || !main.orthographic || window == null || window.videoSize.y <= 0f) return strokeWidth * k;
+        // 게임 화면 높이 대비 두께 = 플레이어 선 두께 / 게임 카메라 높이. 영상은 화면(1080 기준)보다 작게 보이므로 그만큼 키운다
+        float screenFraction = trail.width / (main.orthographicSize * 2f);
+        return screenFraction * (1080f / window.videoSize.y) * cam.orthographicSize * 2f;
     }
 
     IEnumerator FadeStroke()

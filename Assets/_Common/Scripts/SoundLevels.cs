@@ -45,6 +45,10 @@ public class SoundLevels : ScriptableObject
     [Tooltip("키울 때 이 크기(dB)를 넘는 봉우리는 생기지 않게 보정을 줄인다 (찢어지는 소리 방지)")]
     public float peakCeiling = -1f;
 
+    [Header("전체")]
+    [Tooltip("모든 소리에 똑같이 더하는 값 (dB). -2.5 ≈ 3/4 크기, -6 ≈ 절반, +6 ≈ 2배")]
+    public float masterDb = 0f;
+
     public List<Entry> entries = new List<Entry>();
 
     public float TargetFor(Kind k) => k == Kind.Bgm ? bgmTarget : k == Kind.Soft ? softTarget : sfxTarget;
@@ -108,7 +112,8 @@ public class SoundLevels : ScriptableObject
         if (cache.TryGetValue(clip, out var done)) return done;
         AudioClip result = clip;
         var e = table.entries.Find(x => x.clip == clip);
-        if (e != null && Mathf.Abs(e.GainDb) >= 0.1f) result = Scaled(clip, Mathf.Pow(10f, e.GainDb / 20f));
+        float db = (e != null ? e.GainDb : 0f) + table.masterDb; // 표에 없는 소리도 전체 값은 받음
+        if (Mathf.Abs(db) >= 0.1f) result = Scaled(clip, Mathf.Pow(10f, db / 20f));
         cache[clip] = result;
         cache[result] = result;
         return result;
@@ -131,6 +136,33 @@ public class SoundLevels : ScriptableObject
         float a = Math.Abs(x);
         if (a <= 0.8f) return x;
         return Math.Sign(x) * (0.8f + 0.2f * (float)Math.Tanh((a - 0.8f) / 0.2f));
+    }
+
+    /// <summary>
+    /// 소리가 '크게 나는 부분'이 끝나는 시각 (초): 가장 큰 0.1초 구간보다 withinDb 이내로 큰 마지막 구간의 끝.
+    /// 뒤에 길게 사그라드는 여운은 빼고, 소리가 클라이맥스를 찍고 꺼지는 순간을 장면에 맞출 때 쓴다.
+    /// </summary>
+    public static float LoudEndTime(AudioClip clip, float withinDb = 10f)
+    {
+        if (clip.loadState != AudioDataLoadState.Loaded) clip.LoadAudioData();
+        var data = new float[clip.samples * clip.channels];
+        if (clip.loadState != AudioDataLoadState.Loaded || !clip.GetData(data, 0)) return clip.length;
+        int win = Mathf.Max(1, clip.frequency / 10) * clip.channels;
+        int count = (data.Length + win - 1) / win;
+        var power = new double[count];
+        double best = 0;
+        for (int w = 0; w < count; w++)
+        {
+            int st = w * win, n = Mathf.Min(win, data.Length - st);
+            double sum = 0;
+            for (int i = 0; i < n; i++) sum += data[st + i] * data[st + i];
+            power[w] = sum / n;
+            if (power[w] > best) best = power[w];
+        }
+        double limit = best * Math.Pow(10.0, -withinDb / 10.0);
+        for (int w = count - 1; w >= 0; w--)
+            if (power[w] >= limit) return Mathf.Min(clip.length, (w + 1) * win / clip.channels / (float)clip.frequency);
+        return clip.length;
     }
 
     static FieldInfo[] ClipFields(Type t)

@@ -63,6 +63,11 @@ public class TitleController : MonoBehaviour
     [Header("시작 연출")]
     [Tooltip("O 를 그린 뒤 화면이 지지직 깨지는 시간(초). 줄무늬·검은 구멍이 점점 늘어남 (3챕터·엔딩과 같은 느낌)")]
     public float breakTime = 1.0f;
+    [Tooltip("깨지는 동안 나는 소리 (엔딩 글리치와 같은 소리). 검은 화면이 되면 멈춤")]
+    public AudioClip glitchClip;
+    [Range(0f, 1f)] public float glitchVolume = 1f;
+    [Tooltip("소리 앞부분을 이만큼(초) 잘라내고 그 뒤부터 재생")]
+    public float glitchStartTime = 1f;
     [Tooltip("깨질 때 최대 줄무늬 수")]
     public int breakBars = 16;
     [Tooltip("다 깨진 뒤 글자가 나오기 전까지 검은 화면 시간(초)")]
@@ -144,7 +149,16 @@ public class TitleController : MonoBehaviour
     {
         if (bgFlicker && !starting) UpdateBgFlicker();
         if (starting) return;
-        if (Input.GetMouseButtonDown(0)) Begin();
+        // 설정 메뉴가 열려 있으면 그리기 막음 (그리던 획은 취소)
+        if (PauseMenu.IsPaused)
+        {
+            if (drawing) { drawing = false; points.Clear(); if (drawSfx.isPlaying) drawSfx.Stop(); }
+            return;
+        }
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!PauseMenu.IsPointerOnSettingsButton(Input.mousePosition)) Begin(); // 설정 아이콘 클릭은 그리기 아님
+        }
         else if (Input.GetMouseButton(0) && drawing) Add();
         else if (Input.GetMouseButtonUp(0) && drawing) End();
     }
@@ -312,6 +326,16 @@ public class TitleController : MonoBehaviour
         black.transform.SetAsLastSibling();
         black.gameObject.SetActive(false);
 
+        AudioSource glitchSrc = null;
+        if (glitchClip != null)
+        {
+            glitchSrc = gameObject.AddComponent<AudioSource>();
+            glitchSrc.clip = glitchClip;
+            glitchSrc.volume = glitchVolume;
+            glitchSrc.time = Mathf.Clamp(glitchStartTime, 0f, glitchClip.length - 0.01f);
+            glitchSrc.Play();
+        }
+
         Vector2 logoPos = logo != null ? logo.anchoredPosition : Vector2.zero;
         float t = 0f, tick = 0f;
         while (t < breakTime)
@@ -351,6 +375,7 @@ public class TitleController : MonoBehaviour
             yield return null;
         }
         if (logo != null) logo.anchoredPosition = logoPos;
+        if (glitchSrc != null) glitchSrc.Stop(); // 검은 화면과 함께 뚝 끊김
         black.gameObject.SetActive(true);
         foreach (var b in bars) b.gameObject.SetActive(false);
     }
