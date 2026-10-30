@@ -74,9 +74,11 @@ public class ChapterTransitionTrigger : MonoBehaviour
             CutsceneLock.Lock(this);
             var group = BuildOverlay(color);
 
-            yield return Fade(group, 0f, 1f, outTime);
-
+            SceneMusicBridge.Begin();
             var load = SceneManager.LoadSceneAsync(scene);
+            load.allowSceneActivation = false;
+            yield return Fade(group, 0f, 1f, outTime);
+            load.allowSceneActivation = true;
             while (!load.isDone) yield return null;
             yield return null; // 새 씬의 Start(컷신 잠금 등)가 한 번 돈 뒤에
 

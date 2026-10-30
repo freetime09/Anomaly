@@ -134,7 +134,8 @@ public class PauseMenu : MonoBehaviour
     public void GoToTitle()
     {
         Resume();
-        SceneManager.LoadScene(titleScene);
+        SceneMusicBridge.Begin();
+        SceneManager.LoadSceneAsync(titleScene);
     }
 
     public void QuitGame()

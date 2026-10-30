@@ -15,7 +15,9 @@ public sealed class BossEyePresentation : MonoBehaviour
     /// <summary>지금 그려지는 눈 그림 (지지직 잔상이 같은 그림을 쓰게)</summary>
     public SpriteRenderer Art { get { return art; } }
     /// <summary>화면 파동 한 번 (세기 = 일그러짐 정도)</summary>
-    public void Pulse(float strength){pulse=0;waveStrength=strength;}
+    Vector3? pulseOrigin;
+    public void Pulse(float strength){pulseOrigin=null;pulse=0;waveStrength=strength;}
+    public void PulseAt(Vector3 origin,float strength){pulseOrigin=origin;pulse=0;waveStrength=strength;}
     /// <summary>등장 애니 중 가장 높은 그림 윗끝까지의 높이 (월드, 눈 중심 기준). 카메라가 다 담도록</summary>
     public float IntroTopOffset()
     {
@@ -151,7 +153,7 @@ public sealed class BossEyePresentation : MonoBehaviour
         {
             pulse+=fxDt;
             if(pulse<.9f){BossScreenWaveFeature.Target=waveCamera;BossScreenWaveFeature.Strength=waveStrength;
-                Vector3 center=waveCamera.WorldToViewportPoint(body.transform.position);
+                Vector3 center=waveCamera.WorldToViewportPoint(pulseOrigin.HasValue ? pulseOrigin.Value : body.transform.position);
                 Shader.SetGlobalVector("_BossWaveCenter",new Vector4(center.x,center.y,0,0));
                 Shader.SetGlobalVector("_BossWaveParams",new Vector4(pulse/.9f,waveStrength,waveCamera.aspect,0));}
             else {pulse=-1;ResetWave();}

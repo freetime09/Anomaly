@@ -24389,6 +24389,9 @@ MonoBehaviour:
   - {fileID: 6001570587773738963, guid: 129ffedb9ed77f146ac86c2d28b1d14f, type: 3}
   - {fileID: 3832410617891865815, guid: 129ffedb9ed77f146ac86c2d28b1d14f, type: 3}
   bossPupil: {fileID: 5418540842398859327, guid: 52944b92bb9925349ad20f5bc5e564e3, type: 3}
+  attackCursorSprite: {fileID: -8373488174658048603, guid: 11df8cbd973cba949a9795a0e29db687, type: 3}
+  counterOrbSprite: {fileID: 4928427867988148276, guid: 11df8cbd973cba949a9795a0e29db687, type: 3}
+  counterOrbMaterial: {fileID: 2100000, guid: 8274299c3f7ea4e469789163308ed66b, type: 2}
   bossDistortion: {fileID: 2100000, guid: 3205d46e123968f48948880681f9dbc2, type: 2}
   bossAura: {fileID: 2100000, guid: 67de8d9d714ecfc4dacf1cd35f72b4f5, type: 2}
   attackShakeStrength: 1

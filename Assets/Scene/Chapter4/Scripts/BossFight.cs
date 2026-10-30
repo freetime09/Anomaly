@@ -55,6 +55,8 @@ public class BossFight : MonoBehaviour
     public Sprite bossSprite;
     public Sprite[] bossIntroFrames, bossShootFrames;
     public Sprite bossPupil;
+    public Sprite attackCursorSprite, counterOrbSprite;
+    public Material counterOrbMaterial;
     public Material bossDistortion, bossAura;
     BossEyePresentation eyePresentation;
     BossAttackSigils attackSigils;
@@ -912,7 +914,9 @@ public class BossFight : MonoBehaviour
     BossOrb SpawnOrb()
     {
         var sr = MakeSprite("BossOrb", hazardRoot, OrbSprite(), 18, new Color(1f, 0.3f, 0.3f, 1f));
+        if (counterOrbSprite != null) sr.sprite = counterOrbSprite;
         var go = sr.gameObject;
+        go.AddComponent<BossOrbVisual>().Initialize(sr, counterOrbMaterial);
         var rb = go.AddComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
         var orb = go.AddComponent<BossOrb>();
@@ -970,6 +974,9 @@ public class BossFight : MonoBehaviour
 
     public void OnOrbReflected(BossOrb o)
     {
+        var orbVisual = o.GetComponent<BossOrbVisual>();
+        if (orbVisual != null) orbVisual.Reflect();
+        if (eyePresentation != null) eyePresentation.PulseAt(o.transform.position, .014f);
         var sr = o.GetComponent<SpriteRenderer>();
         if (sr != null) sr.color = reflectedColor;
         Shake(0.1f, 0.08f);
@@ -1013,7 +1020,8 @@ public class BossFight : MonoBehaviour
     IEnumerator CursorErase(float k)
     {
         int clicks = phase >= 2 ? 2 : 1;
-        var cursor = AddSprite(CursorSprite(), BossPosition, 25, Color.white);
+        var cursor = AddSprite(attackCursorSprite != null ? attackCursorSprite : CursorSprite(), BossPosition, 25, Color.white);
+        if (attackCursorSprite != null) cursor.sr.transform.localScale = Vector3.one * (1.6f / attackCursorSprite.bounds.size.y);
         Vector2 pos = BossPosition;
         for (int c = 0; c < clicks; c++)
         {
@@ -1032,23 +1040,28 @@ public class BossFight : MonoBehaviour
             var box = AddRect((tl + br) * 0.5f, selectSize, warnColor, 5);
             // 커서가 왼쪽 위 → 오른쪽 아래로 끌기 (예고 동안)
             float tel = telegraphTime * k;
-            StartCoroutine(Telegraph(new List<Hazard> { box }, tel));
+            var selection = box.sr.gameObject.AddComponent<BossDragSelection>();
+            selection.Initialize(box.sr, tl);
             Vector2 start = pos;
             for (float t = 0f; t < tel; t += Time.deltaTime)
             {
                 float a = t / tel;
                 pos = a < 0.2f ? Vector2.Lerp(start, tl, a / 0.2f) : Vector2.Lerp(tl, br, Mathf.SmoothStep(0f, 1f, (a - 0.2f) / 0.8f));
+                selection.SetCorner(a < .2f ? tl : pos);
+                ChargeRumble(Mathf.Clamp01(a));
                 cursor.sr.transform.position = pos;
                 yield return null;
             }
 
-            box.sr.color = hazardColor; box.sr.sortingOrder = 20; box.armed = true;
+            selection.SetCorner(br);
+            selection.Activate();
+            box.sr.color = new Color(.43f, .025f, .025f, 1f); box.sr.sortingOrder = 20; box.armed = true;
             PlaySfx(cursorClickClip);
             Shake(0.15f, 0.15f);
             Glitch(0.15f, 0.6f);
             yield return new WaitForSeconds(eraseTime);
             box.armed = false;
-            Dissolve(box.sr.transform.position, selectSize, hazardColor, 24);
+            Dissolve(box.sr.transform.position, selectSize, new Color(.7f, .025f, .025f, 1f), 24);
             yield return FadeOut(new List<Hazard> { box }, 0.25f);
             if (c < clicks - 1) yield return new WaitForSeconds(0.3f);
         }

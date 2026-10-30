@@ -225,7 +225,8 @@ public class TitleController : MonoBehaviour
         yield return new WaitForSecondsRealtime(blackHold);
         yield return BootText();
         Debug.Log("[타이틀] 씬 로드 → " + startScene);
-        SceneManager.LoadScene(startScene);
+        SceneMusicBridge.Begin();
+        yield return SceneManager.LoadSceneAsync(startScene);
     }
 
     // ── 셋업 ──────────────────────────────
