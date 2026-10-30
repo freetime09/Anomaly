@@ -221,6 +221,51 @@ public class BossFight : MonoBehaviour
     [Tooltip("죽을 때 사라지며 지지직이 천천히 잦아드는 시간 (초)")]
     public float defeatFadeTime = 1.6f;
 
+    [Header("죽으면 되감기")]
+    [Tooltip("하트가 다 떨어지면 검은 페이드 대신, 마지막 몇 초를 거꾸로 감으며 보스전 처음으로 돌아간다")]
+    public bool rewindOnDeath = true;
+    [Tooltip("되감을 길이 (게임 시간 초). 죽기 전 이만큼의 메크로·보스·카메라 움직임을 기록")]
+    public float rewindSeconds = 4f;
+    [Tooltip("되감는 데 걸리는 시간 (실제 초). 점점 빨라짐")]
+    public float rewindTime = 1.6f;
+    [Tooltip("되감기 끝에 보스전 시작 자리로 빨려 들어가는 시간 (초)")]
+    public float rewindSnapTime = 0.35f;
+    [Tooltip("죽은 뒤 암전되는 시간 (초)")]
+    public float rewindBlackIn = 0.35f;
+    [Tooltip("완전히 검어진 뒤 O 안내가 뜨기까지 (초)")]
+    public float rewindBlackHold = 0.35f;
+    [Tooltip("죽을 때 배경음(카메라의 AudioSource)이 꺼지는 시간 (초). 다시 시작하면 이 시간 동안 다시 커짐")]
+    public float bgmFadeTime = 0.4f;
+
+    [Header("소리")]
+    [Tooltip("보스전 배경음 (싸움이 시작될 때 카메라 배경음을 이걸로 바꿈). 비우면 원래 배경음 그대로")]
+    public AudioClip bossBgmClip;
+    [Tooltip("보스(눈)가 처음 나타날 때")]
+    public AudioClip bossIntroClip;
+    [Tooltip("신의 커서가 선택 박스를 지울 때 (딸깍)")]
+    public AudioClip cursorClickClip;
+    [Tooltip("상자 내려찍기가 바닥에 닿을 때 (탕!)")]
+    public AudioClip slamClip;
+    [Tooltip("지우개 비 조각이 바닥에 닿을 때")]
+    public AudioClip rainClip;
+    [Tooltip("위에서 내려오는 조준 레이저를 쏠 때")]
+    public AudioClip laserClip;
+    [Tooltip("4방향 회전 레이저가 도는 동안 (반복)")]
+    public AudioClip laserSpinClip;
+    [Tooltip("틈(스턴) 동안 — 글리치·어지러운 소리 (틈이 끝나면 멈춤)")]
+    public AudioClip stunClip;
+    [Tooltip("보스가 맞을 때 (되받아친 탄·§)")]
+    public AudioClip bossHitClip;
+    [Tooltip("메크로가 맞을 때")]
+    public AudioClip playerHitClip;
+    [Tooltip("죽은 뒤 되감는 동안 (O 를 그리면 시작, 되감기가 끝나면 멈춤)")]
+    public AudioClip rewindClip;
+    [Tooltip("되감기가 끝나 다시 태어날 때")]
+    public AudioClip respawnClip;
+    [Tooltip("보스가 죽을 때 (글리치 + 삐- 이명). 여러 개면 동시에 같이 나옴. 이때 배경음은 꺼짐")]
+    public AudioClip[] bossDeathClips;
+    [Range(0f, 1f)] public float sfxVolume = 1f;
+
     [Tooltip("보스가 쓰러지기 시작할 때 (죽는 연출과 동시에 시작 — 엔딩의 하얀 빛이 연출 동안 차오름)")]
     public UnityEvent onDefeated;
 
@@ -244,6 +289,7 @@ public class BossFight : MonoBehaviour
         public Vector2 beamFrom, beamTo; public float beamHalf; // 기울어진 레이저 판정 (beamHalf > 0 일 때)
     }
     struct TrailPoint { public float t; public Vector3 pos; public Sprite sprite; public bool flip; }
+    struct RewindFrame { public float t; public Vector3 player, boss, cam; public float ortho; public Sprite sprite; public bool flip; }
     class Particle { public SpriteRenderer sr; public Vector2 v; public float life, max, gravity, spin, a; }
     enum Pattern { Columns, Orbs, Sweep, Cursor, Slam, Rain, Laser, Clone, Cross }
 
@@ -306,6 +352,14 @@ public class BossFight : MonoBehaviour
     bool hitStopWas;
     readonly List<Particle> particles = new List<Particle>();
     readonly List<TrailPoint> playerTrail = new List<TrailPoint>();
+    readonly List<RewindFrame> rewindBuf = new List<RewindFrame>();
+    bool fightLive, rewinding;  // fightLive = 패턴이 도는 중 (되감기 기록), rewinding = 되감는 중
+    RewindFrame rewindPose;     // 되감는 중 LateUpdate 에서 메크로 그림에 입힐 모습 (애니메이터보다 뒤에)
+    Vector3 spawnPos;           // 보스전 시작 자리 (되감기 끝에 돌아갈 곳)
+    AudioSource bgm;            // 배경음 (카메라에 붙은 반복 재생)
+    float bgmVolume = 1f, bgmLevel = 1f, bgmTarget = 1f; // 원래 음량, 지금 비율, 목표 비율
+    AudioSource sfx;            // 단발 효과음
+    AudioSource spinSrc, stunSrc, rewindSrc; // 도중에 멈춰야 하는 긴 소리
     float glitchLeft, glitchPower, glitchTick;
     readonly List<SpriteRenderer> glitchBars = new List<SpriteRenderer>();
     readonly List<SpriteRenderer> bossGhosts = new List<SpriteRenderer>();
@@ -375,6 +429,9 @@ public class BossFight : MonoBehaviour
             Shake(0.35f, 0.7f);
             Glitch(0.12f, 0.8f);
             if (arenaThumpClip != null) { var a = gameObject.AddComponent<AudioSource>(); a.playOnAwake = false; a.PlayOneShot(arenaThumpClip, arenaThumpVolume); }
+            // 원래 배경음은 검게 바뀌는 순간 끊고, 싸움이 시작될 때 보스 배경음으로
+            bgm = cam.GetComponent<AudioSource>();
+            if (bgm != null) { bgmVolume = bgm.volume; if (bossBgmClip != null) bgm.Stop(); }
             yield return MoveCamera(from, CamPosFor(baseOrtho), baseOrtho, baseOrtho, 1f);
         }
         if (arenaBlackHold > 0f) yield return new WaitForSeconds(arenaBlackHold);
@@ -414,13 +471,23 @@ public class BossFight : MonoBehaviour
         if (fr != null)
         {
             fr.TrySetCheckpoint(int.MaxValue, player.transform.position); // 죽으면 무대에서 부활
+            fr.fadeBgmOnDeath = false; // 보스전 배경음은 여기서 (UpdateBgm)
             fr.Died += OnDied;
             fr.Respawned += OnRespawned;
         }
         player.BossSkillUsed += OnBossSkill;
         player.AttackSwung += OnAttackSwung;
+        spawnPos = player.transform.position;
+        if (bgm != null && bossBgmClip != null)
+        {
+            bgm.clip = bossBgmClip;
+            bgm.loop = true;
+            bgm.volume = bgmVolume;
+            bgm.Play();
+        }
 
         CutsceneLock.Unlock(this);
+        fightLive = true;
         StartCoroutine(Loop());
     }
 
@@ -451,6 +518,7 @@ public class BossFight : MonoBehaviour
 
     IEnumerator BossAppear(float time)
     {
+        PlaySfx(bossIntroClip);
         if (eyePresentation != null)
         {
             introPlaying = true;
@@ -599,6 +667,9 @@ public class BossFight : MonoBehaviour
             sp.tailSize = src.tailSize * godBubbleScale;
             sp.glitchJitter = src.glitchJitter * godBubbleScale;
             sp.sortingOrder = src.sortingOrder;
+            sp.voiceClip = src.voiceClip; // 말소리도 메크로와 같게
+            sp.voiceVolume = src.voiceVolume;
+            sp.voicePitch = src.voicePitch;
         }
         sp.tailRight = true; // 꼬리가 오른쪽(신)을 가리킴
         sp.backgroundColor = Color.black;
@@ -865,6 +936,7 @@ public class BossFight : MonoBehaviour
             {
                 RemoveOrb(o);
                 cracks++;
+                PlaySfx(bossHitClip);
                 SetBossBar();
                 if (eyePresentation != null) eyePresentation.HitResponse();
                 else StartCoroutine(BossFlash(Color.red, 0.18f, true));
@@ -971,6 +1043,7 @@ public class BossFight : MonoBehaviour
             }
 
             box.sr.color = hazardColor; box.sr.sortingOrder = 20; box.armed = true;
+            PlaySfx(cursorClickClip);
             Shake(0.15f, 0.15f);
             Glitch(0.15f, 0.6f);
             yield return new WaitForSeconds(eraseTime);
@@ -1027,6 +1100,7 @@ public class BossFight : MonoBehaviour
                 er.sr.transform.position = new Vector3(x, y, 0f);
                 yield return null;
             }
+            PlaySfx(slamClip);
             Shake(0.5f, 0.55f * attackShakeStrength);
             if(attackSigils!=null)attackSigils.Impact();
             HitStop(0.05f);
@@ -1123,6 +1197,7 @@ public class BossFight : MonoBehaviour
             yield return null;
         }
         RemoveHazard(mark);
+        PlaySfx(rainClip, 0.7f);
         Shake(0.08f, 0.08f);
         Dust(new Vector2(x, floorTop), 0, 8, Color.white);
         yield return new WaitForSeconds(0.08f);
@@ -1166,6 +1241,7 @@ public class BossFight : MonoBehaviour
             float len = PlaceBeam(beam, from, dir, laserWidth);
             beam.beamFrom = from; beam.beamTo = from + dir * len; beam.beamHalf = laserWidth * 0.5f * 0.8f;
             beam.armed = true;
+            PlaySfx(laserClip);
             Shake(0.45f, 0.5f * attackShakeStrength);
             if(attackSigils!=null)attackSigils.Impact();
             HitStop(0.04f);
@@ -1229,6 +1305,7 @@ public class BossFight : MonoBehaviour
 
         // 발사 → 돌기
         foreach (var b in beams) { b.sr.color = hazardColor; b.sr.sortingOrder = 20; b.armed = true; FlashRect(b.sr); }
+        StartLong(ref spinSrc, laserSpinClip, true);
         Shake(0.45f, 0.5f * attackShakeStrength);
             if(attackSigils!=null)attackSigils.Impact();
         HitStop(0.04f);
@@ -1245,6 +1322,7 @@ public class BossFight : MonoBehaviour
             yield return null;
         }
         foreach (var b in beams) b.armed = false;
+        StopLong(spinSrc);
         yield return FadeOut(beams, 0.25f);
 
         // 제자리로
@@ -1373,6 +1451,7 @@ public class BossFight : MonoBehaviour
         if (eyePresentation != null) eyePresentation.SetHurt(true);
         SetBossBar(); // 틈 동안 실드는 0
         boss.color = eyePresentation != null ? Color.white : stunColor;
+        StartLong(ref stunSrc, stunClip, false);
         yield return MoveBoss(BossRest + Vector2.down * 3.5f, 0.5f);
         player.bossSkillReady = true;
         bool teach = tutorial && !skillTaught; // 첫 틈: 슬로우 모션 + § 를 그릴 때까지 기다림
@@ -1383,11 +1462,13 @@ public class BossFight : MonoBehaviour
         HideDemo();
         if (teach) { teaching = false; player.combatOnly = false; SetSlow(false); if (stunHit) skillTaught = true; }
         stunned = false;
+        StopLong(stunSrc);
         if (eyePresentation != null) eyePresentation.SetHurt(false);
 
         if (stunHit)
         {
             phase++;
+            PlaySfx(bossHitClip);
             HitStop(0.2f);
             Glitch(0.5f, 1f);
             Burst(BossPosition, Color.white, 20, 12f, 0.3f, 6f);
@@ -1425,6 +1506,8 @@ public class BossFight : MonoBehaviour
     {
         defeated = true;
         ClearHazards();
+        bgmTarget = 0f; // 배경음 꺼지고 글리치·이명만
+        if (bossDeathClips != null) foreach (var c in bossDeathClips) PlaySfx(c);
         onDefeated.Invoke(); // 엔딩 시작 → 이 연출 동안 하얀 빛이 차오름 (DefeatDuration)
         // 1) 지지직이 점점 세짐 (흔들림·색 번쩍·화면 줄무늬·눈 일그러짐)
         for (float t = 0f; t < defeatGlitchTime; t += Time.deltaTime)
@@ -1495,6 +1578,7 @@ public class BossFight : MonoBehaviour
         UpdateSlowFx();
         UpdateParticles();
         RecordPlayer();
+        UpdateBgm();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // 테스트용: 보스 바로 처치 (에디터·개발 빌드에서만)
         if (Input.GetKeyDown(debugDefeatKey) && started && !defeated && !dying)
@@ -1547,6 +1631,7 @@ public class BossFight : MonoBehaviour
     {
         if (dying || defeated || Time.time < invulnUntil) return;
         SetHearts(heartsLeft - 1);
+        PlaySfx(playerHitClip);
         ScreenFeedback.Ensure().FailFeedback();
         Shake(0.25f, 0.3f);
         HitStop(0.1f);
@@ -1554,6 +1639,7 @@ public class BossFight : MonoBehaviour
         Burst(pcol.bounds.center, new Color(1f, 0.25f, 0.3f), 12, 6f, 0.18f);
         if (heartsLeft <= 0)
         {
+            if (rewindOnDeath) { StartRewindDeath(); return; }
             if (fr != null) fr.Die(); // → OnDied 에서 멈추고, OnRespawned 에서 처음부터
             else OnRespawned(player.transform.position);
             return;
@@ -1577,6 +1663,8 @@ public class BossFight : MonoBehaviour
     {
         if (defeated) return;
         dying = true;
+        fightLive = false;
+        bgmTarget = 0f;
         StopAllCoroutines();
         ClearHazards();
         if (psr != null) psr.color = psrColor;
@@ -1593,11 +1681,220 @@ public class BossFight : MonoBehaviour
         SetBossBar();
         dying = false;
         invulnUntil = Time.time + 1.5f;
+        fightLive = true;
+        bgmTarget = 1f; // 배경음 다시
         StartCoroutine(Loop());
+    }
+
+    // ───────────── 죽으면 되감기 ─────────────
+
+    /// <summary>메크로·보스·카메라를 기록 (rewindSeconds 만큼만 남김).</summary>
+    void RecordRewind()
+    {
+        if (!fightLive || dying || defeated || player == null || cam == null) return;
+        rewindBuf.Add(new RewindFrame
+        {
+            t = Time.time, player = player.transform.position,
+            boss = bossAnchor != null ? bossAnchor.position : Vector3.zero,
+            cam = camPos, ortho = cam.orthographicSize,
+            sprite = psr != null ? psr.sprite : null, flip = psr != null && psr.flipX,
+        });
+        while (rewindBuf.Count > 2 && rewindBuf[1].t < Time.time - rewindSeconds) rewindBuf.RemoveAt(0);
+    }
+
+    RewindFrame SampleRewind(float time)
+    {
+        int last = rewindBuf.Count - 1;
+        if (time >= rewindBuf[last].t) return rewindBuf[last];
+        if (time <= rewindBuf[0].t) return rewindBuf[0];
+        for (int i = last - 1; i >= 0; i--)
+        {
+            if (rewindBuf[i].t > time) continue;
+            var a = rewindBuf[i]; var b = rewindBuf[i + 1];
+            float k = Mathf.InverseLerp(a.t, b.t, time);
+            a.player = Vector3.Lerp(a.player, b.player, k);
+            a.boss = Vector3.Lerp(a.boss, b.boss, k);
+            a.cam = Vector3.Lerp(a.cam, b.cam, k);
+            a.ortho = Mathf.Lerp(a.ortho, b.ortho, k);
+            return a;
+        }
+        return rewindBuf[0];
+    }
+
+    void ApplyRewind(RewindFrame f)
+    {
+        player.transform.position = f.player;
+        if (bossAnchor != null) bossAnchor.position = f.boss;
+        camPos = f.cam;
+        if (cam != null) cam.orthographicSize = f.ortho;
+        rewindPose = f;
+    }
+
+    /// <summary>배경음을 목표 비율로 서서히 (0 에 닿으면 일시정지, 다시 올라가면 이어서 재생).</summary>
+    void UpdateBgm()
+    {
+        if (bgm == null || PauseMenu.IsPaused) return;
+        if (Mathf.Approximately(bgmLevel, bgmTarget)) return;
+        bgmLevel = Mathf.MoveTowards(bgmLevel, bgmTarget, Time.unscaledDeltaTime / Mathf.Max(0.01f, bgmFadeTime));
+        bgm.volume = bgmVolume * bgmLevel;
+        if (bgmLevel <= 0f) bgm.Pause();
+        else if (!bgm.isPlaying) bgm.UnPause();
+    }
+
+    /// <summary>단발 효과음.</summary>
+    void PlaySfx(AudioClip clip, float volume = 1f)
+    {
+        if (clip == null) return;
+        if (sfx == null) { sfx = gameObject.AddComponent<AudioSource>(); sfx.playOnAwake = false; }
+        sfx.PlayOneShot(clip, sfxVolume * volume);
+    }
+
+    /// <summary>도중에 멈출 수 있는 긴 소리 (src 는 처음 쓸 때 만듦).</summary>
+    void StartLong(ref AudioSource src, AudioClip clip, bool loop)
+    {
+        if (clip == null) return;
+        if (src == null) { src = gameObject.AddComponent<AudioSource>(); src.playOnAwake = false; }
+        src.clip = clip;
+        src.loop = loop;
+        src.volume = sfxVolume;
+        src.Play();
+    }
+
+    static void StopLong(AudioSource src)
+    {
+        if (src != null) src.Stop();
+    }
+
+    /// <summary>왼쪽 위 설정 톱니바퀴 보이기/숨기기 (되감기 동안 숨김).</summary>
+    void SetSettingsGear(bool on)
+    {
+        var menu = FindAnyObjectByType<PauseMenu>();
+        if (menu != null && menu.settingsButton != null) menu.settingsButton.gameObject.SetActive(on);
+    }
+
+    void StartRewindDeath()
+    {
+        dying = true;
+        fightLive = false;
+        bgmTarget = 0f; // 배경음 꺼짐
+        StopLong(spinSrc);
+        StopLong(stunSrc);
+        StopAllCoroutines(); // 패턴이 그 자리에서 멈춤 (예고·기둥은 멈춘 채로 보이다가 되감기 때 흩어짐)
+        if (slowOn) SetSlow(false);
+        foreach (var o in orbs) if (o != null) o.enabled = false;
+        if (psr != null) psr.color = psrColor;
+        StartCoroutine(RewindDeath());
+    }
+
+    /// <summary>죽는 모습 → 완전히 암전 (O 를 그리라는 안내) → O 를 그리면 →
+    /// 기록을 거꾸로 감기 (회색 필름 화면, 오른쪽 위 ◀◀, 보스 체력이 다시 참, 하트·설정 톱니바퀴는 숨김) → 시작 자리로 빨려 들어감 → 처음부터.</summary>
+    IEnumerator RewindDeath()
+    {
+        CutsceneLock.Lock(this);
+        var rb = player.GetComponent<Rigidbody2D>();
+        var anim = psr != null ? psr.GetComponent<Animator>() : null;
+        player.PlayDeath();
+        yield return new WaitForSecondsRealtime(fr != null ? fr.deathAnimTime : 0.55f);
+
+        // 암전
+        var overlay = RewindOverlay.Create();
+        for (float t = 0f; t < rewindBlackIn; t += Time.unscaledDeltaTime) { overlay.SetBlack(t / rewindBlackIn); yield return null; }
+        overlay.SetBlack(1f);
+
+        // 검은 동안: 남은 공격을 치우고, 죽기 직전 모습으로 멈춰 세움
+        ClearHazards();
+        bool sim = rb != null && rb.simulated;
+        if (rb != null) { rb.linearVelocity = Vector2.zero; rb.simulated = false; }
+        if (anim != null) anim.enabled = false; // 그림은 기록된 프레임으로 직접 입힘
+        rewinding = true;
+        if (rewindBuf.Count > 0) ApplyRewind(rewindBuf[rewindBuf.Count - 1]);
+        // 하트·보스 체력바·설정 톱니바퀴도 가려 화면을 완전히 검게 (그리는 선은 검은 막 위로 보임)
+        if (healthHud != null) healthHud.gameObject.SetActive(false);
+        if (bossBar != null) bossBar.SetActive(false);
+        SetSettingsGear(false);
+        overlay.HoldBlack(cam);
+        yield return new WaitForSecondsRealtime(rewindBlackHold);
+
+        // 검은 화면 + O 를 그리라는 안내 → O 를 그릴 때까지 기다림
+        bool drawn = false;
+        System.Action onO = () => drawn = true;
+        player.InteractDrawn += onO;
+        player.combatOnly = true; // 다른 모양은 무시 (죽은 상태라 공격·§ 도 안 나감)
+        overlay.ShowPrompt(true);
+        CutsceneLock.Unlock(this);
+        while (!drawn)
+        {
+            overlay.Tick(0f, false);
+            yield return null;
+        }
+        CutsceneLock.Lock(this);
+        player.InteractDrawn -= onO;
+        player.combatOnly = false;
+
+        // 검은 화면이 걷히고 회색 필름으로 되감기
+        overlay.ShowPrompt(false);
+        overlay.ReleaseBlack();
+        overlay.SetFilm(1f);
+        StartLong(ref rewindSrc, rewindClip, false);
+        if (bossBar != null) bossBar.SetActive(true);
+        Shake(0.2f, 0.35f);
+        Glitch(0.15f, 0.6f);
+
+        float hp0 = dualGauge != null ? dualGauge.HealthValue : 1f, sh0 = dualGauge != null ? dualGauge.EnergyValue : 1f;
+        if (rewindBuf.Count > 0)
+        {
+            float end = rewindBuf[rewindBuf.Count - 1].t, span = end - rewindBuf[0].t;
+            for (float t = 0f; t < rewindTime; t += Time.unscaledDeltaTime)
+            {
+                float u = t / rewindTime;
+                float e = 0.4f * u + 0.6f * u * u; // 점점 빨라짐
+                ApplyRewind(SampleRewind(end - e * span));
+                if (dualGauge != null) dualGauge.SetValues(Mathf.Lerp(hp0, 1f, e), Mathf.Lerp(sh0, 1f, e));
+                if (Random.value < 0.25f) Glitch(0.08f, 0.55f); // 가로로 지직
+                overlay.Tick(u, true);
+                Shake(0.05f, 0.05f); // 필름이 덜덜 (게이트 흔들림)
+                yield return null;
+            }
+        }
+
+        // 보스전 시작 자리로 빨려 들어감
+        Vector3 p0 = player.transform.position, b0 = bossAnchor != null ? bossAnchor.position : Vector3.zero, c0 = camPos;
+        float o0 = cam != null ? cam.orthographicSize : 0f;
+        Vector3 bRest = new Vector3(BossRest.x, BossRest.y, b0.z);
+        for (float t = 0f; t < rewindSnapTime; t += Time.unscaledDeltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / rewindSnapTime);
+            player.transform.position = Vector3.Lerp(p0, spawnPos, k);
+            if (bossAnchor != null) bossAnchor.position = Vector3.Lerp(b0, bRest, k);
+            if (arenaCamSet) { camPos = Vector3.Lerp(c0, arenaCamPos, k); cam.orthographicSize = Mathf.Lerp(o0, arenaOrtho, k); }
+            rewindPose.player = player.transform.position;
+            Glitch(0.1f, 0.5f);
+            overlay.Tick(1f, true);
+            yield return null;
+        }
+        Shake(0.25f, 0.4f);
+        Glitch(0.2f, 0.8f);
+        overlay.FadeOut(0.45f);
+        StopLong(rewindSrc);
+        PlaySfx(respawnClip);
+
+        rewinding = false;
+        rewindBuf.Clear();
+        if (anim != null) anim.enabled = true;
+        if (rb != null) { rb.simulated = sim; rb.position = spawnPos; }
+        player.transform.position = spawnPos;
+        player.ResetMotion();
+        player.EndDeath();
+        if (player.branch != null) player.branch.Recover();
+        CutsceneLock.Unlock(this);
+        SetSettingsGear(true); // 하트는 OnRespawned 에서 다시 꽉 차서 나타남
+        OnRespawned(spawnPos); // 처음부터 (이 코루틴도 여기서 멈춤)
     }
 
     void ClearHazards()
     {
+        StopLong(spinSrc);
+        StopLong(stunSrc);
         if(attackSigils!=null)attackSigils.Clear();
         foreach (var h in hazards) if (h.sr != null) Destroy(h.sr.gameObject);
         hazards.Clear();
@@ -1622,6 +1919,13 @@ public class BossFight : MonoBehaviour
     {
         KeepGodBubbleClear();
         UpdateDemo();
+        RecordRewind();
+        if (rewinding && psr != null)
+        {
+            psr.enabled = true; // 죽음 애니 끝에 숨겨진 그림을 다시 보이게
+            if (rewindPose.sprite != null) psr.sprite = rewindPose.sprite;
+            psr.flipX = rewindPose.flip;
+        }
         if (!camLocked || cam == null) return;
         Vector3 off = Vector3.zero;
         if (shakeLeft > 0f)

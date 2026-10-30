@@ -127,22 +127,23 @@ public class SpeechBubble : MonoBehaviour
         int visible = 0;
         IsTyping = true;
         completeRequested = false;
+        StartVoice();
         while (visible < total)
         {
             if (completeRequested)
             {
-                // 스킵: 남은 글자를 한 번에 보여 준다. 목소리는 글자마다 내면 소리가 겹치므로 생략
+                // 스킵: 남은 글자를 한 번에 보여 준다
                 visible = total;
                 text.maxVisibleCharacters = visible;
                 break;
             }
             shown += Mathf.Max(1f, charsPerSecond) * Time.deltaTime;
             int next = Mathf.Min(total, Mathf.FloorToInt(shown));
-            for (int i = visible; i < next; i++) PlayVoice(i);
             visible = next;
             text.maxVisibleCharacters = visible;
             yield return null;
         }
+        StopVoice();
         IsTyping = false;
         completeRequested = false;
     }
@@ -154,12 +155,13 @@ public class SpeechBubble : MonoBehaviour
     }
 
     /// <summary>말풍선을 서서히 숨긴다.</summary>
-    public void Hide() { if (gameObject.activeSelf) FadeTo(0f); }
+    public void Hide() { StopVoice(); if (gameObject.activeSelf) FadeTo(0f); }
 
     /// <summary>말풍선을 즉시 숨긴다 (대화 강제 종료 등).</summary>
     public void HideImmediate()
     {
         if (fadeCo != null) { StopCoroutine(fadeCo); fadeCo = null; }
+        StopVoice();
         IsTyping = false; // Say 가 도중에 끊겨도(대화 강제 종료) 출력 중 상태가 남지 않게
         completeRequested = false;
         ApplyAlpha(0f);
@@ -302,14 +304,18 @@ public class SpeechBubble : MonoBehaviour
         text.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices | TMP_VertexDataUpdateFlags.Colors32);
     }
 
-    void PlayVoice(int charIndex)
+    /// <summary>글자가 찍히는 동안 말소리를 반복 재생 (다 찍히거나 스킵·숨김 때 StopVoice).</summary>
+    void StartVoice()
     {
         if (voice == null || owner.voiceClip == null) return;
-        if (charIndex % Mathf.Max(1, owner.voiceEveryNChars) != 0) return;
-        if (char.IsWhiteSpace(text.textInfo.characterInfo[charIndex].character)) return; // 공백엔 소리 없음
-        voice.pitch = owner.voicePitch * Random.Range(0.95f, 1.05f); // 살짝 흔들어 기계적인 반복감 완화
-        voice.PlayOneShot(owner.voiceClip, owner.voiceVolume);
+        voice.clip = owner.voiceClip;
+        voice.loop = true;
+        voice.volume = owner.voiceVolume;
+        voice.pitch = owner.voicePitch;
+        voice.Play();
     }
+
+    void StopVoice() { if (voice != null) voice.Stop(); }
 
     void FadeTo(float target)
     {

@@ -191,9 +191,17 @@ MonoBehaviour:
   flyingClip: {fileID: 8300000, guid: 16141af5c5073744db59a4017105546e, type: 3}
   wallHitClip: {fileID: 8300000, guid: 6474a0a3b09a6604ba3c6b8669752a14, type: 3}
   stickClip: {fileID: 8300000, guid: 59268a2e40be7fb428b530fd83defd54, type: 3}
-  returnClip: {fileID: 8300000, guid: 16141af5c5073744db59a4017105546e, type: 3}
+  returnClip: {fileID: 8300000, guid: 0748b13f3254c2146aaf7adbe1379b57, type: 3}
+  catchClip: {fileID: 0}
   wallHitMinSpeed: 2
   sfxVolume: 0.722
+  OnThrown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnStuck:
+    m_PersistentCalls:
+      m_Calls: []
+  stuckSortingOrder: -2
   groundNormalMin: 0.5
   stickDepth: 0.35
 --- !u!96 &3170340400101733943

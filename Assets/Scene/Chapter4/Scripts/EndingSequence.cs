@@ -61,10 +61,22 @@ public class EndingSequence : MonoBehaviour
     [Tooltip("오류창이 뜬 뒤 저절로 종료 (0 = 확인 누를 때까지)")]
     public float autoQuitTime = 0f;
 
+    [Header("지지직 소리")]
+    [Tooltip("지지직 소리. 소리가 끊기는(조용한) 순간마다 화면이 통째로 검게 꺼진다")]
+    public AudioClip glitchClip;
+    [Range(0f, 1f)] public float glitchVolume = 1f;
+    [Tooltip("소리를 앞에서부터 이만큼만 쓴다 (초). 소리가 있으면 지지직 시간도 이 길이")]
+    public float glitchClipLength = 3f;
+    [Tooltip("이 크기(dB)보다 작으면 끊긴 걸로 본다")]
+    public float glitchSilenceDb = -45f;
+
     [Header("오류창")]
     public TMP_FontAsset font;
     public string dialogTitle = "An§maly";
     public string dialogMessage = "게임이 삭제되었습니다.";
+    [Tooltip("오류창이 뜰 때 소리 (윈도우 오류음)")]
+    public AudioClip errorClip;
+    [Range(0f, 1f)] public float errorVolume = 1f;
 
     Camera cam;
     Canvas canvas;
@@ -145,17 +157,40 @@ public class EndingSequence : MonoBehaviour
             yield return new WaitForSeconds(afterVillager);
         }
 
-        // 지지직 → 구멍이 늘어나며 지워짐
-        for (float t = 0f; t < glitchTime; t += Time.deltaTime)
+        // 지지직 → 구멍이 늘어나며 지워짐. 소리가 있으면 소리가 끊기는 순간마다 화면이 검게 꺼짐
+        AudioSource glitchSrc = null;
+        bool[] gaps = null;
+        float glitchDur = glitchTime;
+        if (glitchClip != null)
         {
-            float a = t / glitchTime;
+            glitchDur = Mathf.Min(glitchClipLength, glitchClip.length);
+            gaps = SilentSteps(glitchClip, glitchDur, glitchSilenceDb);
+            glitchSrc = gameObject.AddComponent<AudioSource>();
+            glitchSrc.clip = glitchClip;
+            glitchSrc.volume = glitchVolume;
+            glitchSrc.Play();
+        }
+        var gap = MakeImage("SoundGap", canvasRect, Color.black);
+        Stretch(gap.rectTransform);
+        gap.enabled = false;
+        for (float t = 0f; t < glitchDur; t = glitchSrc != null ? glitchSrc.timeSamples / (float)glitchClip.frequency : t + Time.deltaTime)
+        {
+            if (glitchSrc != null && !glitchSrc.isPlaying) break;
+            float a = t / glitchDur;
+            if (glitchSrc != null) glitchSrc.volume = glitchVolume * Mathf.Clamp01((glitchDur - t) / GlitchFadeOut); // 자른 끝이 툭 안 끊기게
+            bool silent = gaps != null && gaps[Mathf.Min(gaps.Length - 1, (int)(t / GlitchStep))];
+            gap.enabled = silent;
+            if (silent) gap.transform.SetAsLastSibling();
             shake = Mathf.Lerp(0.02f, 0.5f, a * a);
             UpdateBars(Mathf.Lerp(0.15f, 1f, a));
             if (Random.value < Mathf.Lerp(0.02f, 0.5f, a)) AddHole(a);
             // 가끔 화면이 통째로 번쩍
-            if (Random.value < Mathf.Lerp(0.01f, 0.08f, a)) StartCoroutine(Blink(Random.value < 0.5f ? Color.black : new Color(1f, 0.15f, 0.25f, 0.5f)));
+            // (소리가 있으면 검은 번쩍은 소리 끊김이 대신함)
+            if (Random.value < Mathf.Lerp(0.01f, 0.08f, a)) StartCoroutine(Blink(glitchSrc == null && Random.value < 0.5f ? Color.black : new Color(1f, 0.15f, 0.25f, 0.5f)));
             yield return null;
         }
+        if (glitchSrc != null) glitchSrc.Stop();
+        Destroy(gap.gameObject);
         shake = 0f;
         UpdateBars(0f);
         white.color = Color.black;
@@ -168,6 +203,14 @@ public class EndingSequence : MonoBehaviour
         RectTransform okButton, closeButton;
         Image okImage;
         BuildDialog(out okButton, out okImage, out closeButton);
+        if (errorClip != null)
+        {
+            var src = gameObject.AddComponent<AudioSource>();
+            src.clip = errorClip;
+            src.volume = errorVolume;
+            src.timeSamples = FirstSound(errorClip); // 앞이 0.6초쯤 비어 있어서 창과 같이 나오게 건너뜀
+            src.Play();
+        }
         Color okColor = okImage.color, okHover = Color.Lerp(okColor, Color.white, 0.15f);
         float waited = 0f;
         while (true)
@@ -224,6 +267,40 @@ public class EndingSequence : MonoBehaviour
         sp.bubbleOffset = villagerBubbleOffset;
         sp.font = font;
         go.SetActive(was);
+    }
+
+    const float GlitchStep = 0.01f, GlitchFadeOut = 0.03f;
+
+    /// <summary>소리를 10ms 칸으로 나눠, 칸마다 조용한지(끊긴 자리인지).</summary>
+    static bool[] SilentSteps(AudioClip c, float length, float silenceDb)
+    {
+        if (c.loadState != AudioDataLoadState.Loaded) c.LoadAudioData();
+        int frames = Mathf.Min(c.samples, Mathf.CeilToInt(length * c.frequency));
+        var data = new float[frames * c.channels];
+        int step = Mathf.Max(1, Mathf.RoundToInt(GlitchStep * c.frequency)) * c.channels;
+        var gaps = new bool[Mathf.CeilToInt(data.Length / (float)step)];
+        if (frames <= 0 || !c.GetData(data, 0)) return gaps;
+        float gate = Mathf.Pow(10f, silenceDb / 10f);
+        for (int k = 0; k < gaps.Length; k++)
+        {
+            double sum = 0; int s = k * step, n = Mathf.Min(step, data.Length - s);
+            for (int i = 0; i < n; i++) sum += data[s + i] * data[s + i];
+            gaps[k] = sum / n < gate;
+        }
+        return gaps;
+    }
+
+    /// <summary>앞쪽 빈 부분을 건너뛴 첫 소리 위치 (샘플).</summary>
+    static int FirstSound(AudioClip c)
+    {
+        if (c.loadState != AudioDataLoadState.Loaded) c.LoadAudioData();
+        var data = new float[c.samples * c.channels];
+        if (!c.GetData(data, 0)) return 0;
+        float peak = 0f;
+        foreach (float x in data) peak = Mathf.Max(peak, Mathf.Abs(x));
+        for (int i = 0; i < data.Length; i++)
+            if (Mathf.Abs(data[i]) > peak * 0.02f) return i / c.channels;
+        return 0;
     }
 
     static void Quit()

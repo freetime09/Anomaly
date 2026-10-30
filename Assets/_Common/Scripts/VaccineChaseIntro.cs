@@ -16,6 +16,10 @@ public class VaccineChaseIntro : MonoBehaviour
     [Header("대상 (비우면 자동)")]
     public PlayerController player;
 
+    [Header("배경음")]
+    [Tooltip("추격이 시작되면 바꿀 배경음 (카메라의 배경음을 이걸로). 비우면 그대로")]
+    public AudioClip chaseBgmClip;
+
     [Header("1) 이상한 소리")]
     [Tooltip("뒤에서 나는 소리. 비우면 코드로 만든 임시 소리(웅웅거림 + 지지직)")]
     public AudioClip strangeSound;
@@ -97,6 +101,16 @@ public class VaccineChaseIntro : MonoBehaviour
     void OnEnable()  { if (respawn != null) respawn.Died += OnPlayerDied; }
     void OnDisable() { if (respawn != null) respawn.Died -= OnPlayerDied; }
 
+    /// <summary>카메라 배경음을 추격 배경음으로 (이미 바뀌었으면 그대로 이어서).</summary>
+    void SwitchBgm()
+    {
+        var bgm = Camera.main != null ? Camera.main.GetComponent<AudioSource>() : null;
+        if (bgm == null || chaseBgmClip == null || bgm.clip == chaseBgmClip) return;
+        bgm.clip = chaseBgmClip;
+        bgm.loop = true;
+        bgm.Play();
+    }
+
     /// <summary>연출 시작 (VaccineChaseTrigger가 부름).</summary>
     public void Play(VaccineWall w)
     {
@@ -104,6 +118,7 @@ public class VaccineChaseIntro : MonoBehaviour
         Played = true;
         Playing = true;
         wall = w;
+        SwitchBgm();
         StartCoroutine(Run());
     }
 

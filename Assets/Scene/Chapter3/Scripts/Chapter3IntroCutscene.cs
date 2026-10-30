@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Timeline;
 
 /// <summary>
 /// 챕터3 파트 A 컷신: 검은 공간에서 달리던 메크로 → 배경이 깨짐 → 고향 마을 입구로 순간이동 → 두리번 →
@@ -62,6 +63,13 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
     [Tooltip("컷신 끝에 마을 안쪽(오른쪽)으로 자동으로 걸어 들어가는 거리 (유닛)")]
     [Min(0f)] public float walkInDistance = 3f;
 
+    [Header("소리")]
+    [Tooltip("마을로 넘어가는 '피잉~' 소리. 소리가 끝나기 직전에 마을에 도착하도록 시작 시각을 맞춤")]
+    public AudioClip riserClip;
+    [Range(0f, 1f)] public float riserVolume = 1f;
+    [Tooltip("마을 도착 뒤 소리가 더 이어지는 시간 (초). 0 이면 소리가 끝나는 순간 도착")]
+    [Min(0f)] public float riserTail = 0.15f;
+
     [Header("개발용")]
     [Tooltip("켜면 컷신을 건너뛰고 바로 마을 입구에서 시작 (마을 작업·테스트용). 빌드 전에 꼭 끌 것")]
     public bool skipCutscene = false;
@@ -97,6 +105,45 @@ public class Chapter3IntroCutscene : Chapter3CutsceneBase
         BeginCutscene();
         StartCoroutine(FadeOpening());
         Play(); // 씬 시작과 동시에 컷신 재생
+        if (riserClip != null) StartCoroutine(PlayRiser());
+    }
+
+    /// <summary>'피잉~' 소리: Timeline 의 순간이동 신호 시각(+ 하얗게 차오르는 시간)에 소리 끝이 오도록 미리 틀어 둔다.</summary>
+    IEnumerator PlayRiser()
+    {
+        double arrive = -1;
+        var timeline = director.playableAsset as TimelineAsset;
+        if (timeline != null)
+            foreach (var track in timeline.GetOutputTracks())
+                foreach (var m in track.GetMarkers())
+                {
+                    var e = m as SignalEmitter;
+                    if (e != null && e.asset != null && e.asset.name.Contains("TeleportToVillage")) arrive = e.time;
+                }
+        if (timeline != null && timeline.markerTrack != null)
+            foreach (var m in timeline.markerTrack.GetMarkers())
+            {
+                var e = m as SignalEmitter;
+                if (e != null && e.asset != null && e.asset.name.Contains("TeleportToVillage")) arrive = e.time;
+            }
+        if (arrive < 0) yield break;
+        if (glitch != null) arrive += glitch.flashInTime;
+
+        double start = arrive + riserTail - riserClip.length;
+        while (director.time < start) yield return null;
+        var src = gameObject.AddComponent<AudioSource>();
+        src.playOnAwake = false;
+        src.clip = riserClip;
+        src.volume = riserVolume;
+        src.time = Mathf.Clamp((float)(director.time - start), 0f, riserClip.length - 0.01f); // 컷신이 소리보다 짧으면 중간부터
+        src.Play();
+        // 씬 시작 직후 프레임이 끊기면 Timeline 이 소리보다 늦어짐 → 도착할 때까지 어긋나면 다시 맞춤
+        while (director.time < arrive && src.isPlaying)
+        {
+            float want = (float)(director.time - start);
+            if (Mathf.Abs(src.time - want) > 0.15f && want < riserClip.length - 0.01f) src.time = Mathf.Max(0f, want);
+            yield return null;
+        }
     }
 
     // ───────── Timeline 신호가 부르는 동작들 (순서대로) ─────────

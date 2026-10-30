@@ -72860,6 +72860,8 @@ MonoBehaviour:
   blackHoldTime: 0.2
   fadeInTime: 0.3
   fadeColor: {r: 0, g: 0, b: 0, a: 1}
+  respawnClip: {fileID: 8300000, guid: 8721723bae355e84c800f5c311362b26, type: 3}
+  respawnVolume: 1
 --- !u!1001 &1014630375
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -87410,7 +87412,7 @@ PrefabInstance:
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: returnClip
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 8300000, guid: 0748b13f3254c2146aaf7adbe1379b57, type: 3}
     - target: {fileID: 5790877076077042636, guid: 1554067de215e6b4f8bab15803fcc343, type: 3}
       propertyPath: stickDepth
       value: 0.32

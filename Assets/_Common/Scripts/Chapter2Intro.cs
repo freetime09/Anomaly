@@ -64,6 +64,11 @@ public class Chapter2Intro : MonoBehaviour
     [Tooltip("착지 후 조작을 막아두는 시간 (충격 여운)")]
     public float landLockTime = 0.5f;
 
+    [Header("소리")]
+    [Tooltip("낙하 소리. 가장 큰 부분이 착지 순간에 오도록 시작 시점을 자동으로 맞춘다")]
+    public AudioClip fallClip;
+    [Range(0f, 1f)] public float fallVolume = 1f;
+
     [Header("대사 (챕터 3과 같은 말풍선)")]
     [Tooltip("착지 뒤 메크로 머리 위 말풍선으로 나올 대사")]
     public DialogueData dialogue;
@@ -84,6 +89,7 @@ public class Chapter2Intro : MonoBehaviour
     RectTransform[] bars;
     Image[] barImgs;
     bool glitching;
+    bool landed;
 
     void Start()
     {
@@ -126,6 +132,8 @@ public class Chapter2Intro : MonoBehaviour
 
         // 2) 낙하: 속도 제한 + 화면이 검게 + 속도선 + 간간이 글리치, 바닥이 가까워지면 어둠이 걷힘
         float fallStart = Time.time;
+        landed = false;
+        if (fallClip != null) StartCoroutine(FallSound(land));
         ScatterSpeedLines();
         linesRecycle = true;
         float viewH = view != null ? view.orthographicSize * 2f : 16f;
@@ -153,6 +161,7 @@ public class Chapter2Intro : MonoBehaviour
             // 착지: 착지 지점 근처까지 내려왔고 더 이상 떨어지지 않음
             if (player.transform.position.y < land.y + 1f && rb.linearVelocity.y > -0.5f) break;
         }
+        landed = true;
 
         // 3) 착지: 화면이 밝아지며 충격(흔들림 + 글리치), 잠깐 조작 잠금
         if (cam != null) { cam.smoothTime = oldSmooth; cam.offset = oldOffset; cam.Shake(landShakeTime, landShakeMagnitude); }
@@ -166,6 +175,52 @@ public class Chapter2Intro : MonoBehaviour
         if (input != null) input.enabled = true;
         if (dialogue != null) yield return DialoguePlayer.Ensure().PlayAndWait(dialogue);
         Cleanup();
+    }
+
+    // ── 낙하 소리: 착지까지 남은 시간을 매 스텝 예측해서, 소리의 가장 큰 부분이 착지 순간에 오게 재생 위치를 맞춤 ──
+    IEnumerator FallSound(Vector3 land)
+    {
+        float peak = LoudestTime(fallClip);
+        var src = gameObject.AddComponent<AudioSource>();
+        src.playOnAwake = false;
+        src.clip = fallClip;
+        src.volume = fallVolume;
+        float last = fallClip.length - 0.01f;
+        while (!landed)
+        {
+            float want = peak - TimeToLand(land); // 지금 있어야 할 재생 위치
+            if (!src.isPlaying) { if (want >= 0f) { src.time = Mathf.Min(want, last); src.Play(); } } // 낙하가 소리보다 길면 기다렸다가, 짧으면 중간부터
+            else if (want >= 0f && want < last && Mathf.Abs(src.time - want) > 0.12f) src.time = want; // 예측이 어긋나면 다시 맞춤
+            yield return new WaitForFixedUpdate();
+        }
+    }
+
+    /// <summary>지금 속도·중력·최고 속도로 착지 지점까지 걸릴 시간.</summary>
+    float TimeToLand(Vector3 land)
+    {
+        float d = Mathf.Max(0f, player.transform.position.y - land.y);
+        float s = Mathf.Max(0f, -rb.linearVelocity.y);
+        float g = Mathf.Max(0.01f, -Physics2D.gravity.y * rb.gravityScale);
+        float vmax = Mathf.Max(s, maxFallSpeed);
+        float t1 = (vmax - s) / g, d1 = s * t1 + 0.5f * g * t1 * t1; // 최고 속도까지 빨라지는 구간
+        if (d1 >= d) return (-s + Mathf.Sqrt(s * s + 2f * g * d)) / g;
+        return t1 + (d - d1) / vmax;
+    }
+
+    /// <summary>소리에서 가장 큰 0.1초 구간의 가운데 시각.</summary>
+    static float LoudestTime(AudioClip clip)
+    {
+        var data = new float[clip.samples * clip.channels];
+        if (!clip.GetData(data, 0)) return clip.length * 0.5f;
+        int win = Mathf.Max(1, clip.frequency / 10) * clip.channels;
+        double best = -1; int bestStart = 0;
+        for (int st = 0; st < data.Length; st += win)
+        {
+            double sum = 0; int n = Mathf.Min(win, data.Length - st);
+            for (int i = 0; i < n; i++) sum += data[st + i] * data[st + i];
+            if (sum / n > best) { best = sum / n; bestStart = st; }
+        }
+        return (bestStart / clip.channels + win / clip.channels * 0.5f) / (float)clip.frequency;
     }
 
     // ── 어둠 (카메라 화면을 덮는 검은 판, 플레이어보다 뒤) ──

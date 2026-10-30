@@ -66,10 +66,8 @@ public class DialogueSpeaker : MonoBehaviour
     [Range(0f, 1f)] public float glitchDropChance = 0.15f;
 
     [Header("말소리 (선택)")]
-    [Tooltip("글자가 찍힐 때 나는 짧은 소리. 비우면 소리 없음")]
+    [Tooltip("글자가 찍히는 동안 반복 재생되는 소리. 비우면 소리 없음")]
     public AudioClip voiceClip;
-    [Tooltip("몇 글자마다 소리를 낼지. 1이면 매 글자")]
-    [Min(1)] public int voiceEveryNChars = 2;
     [Tooltip("말소리 볼륨")]
     [Range(0f, 1f)] public float voiceVolume = 0.5f;
     [Tooltip("말소리 높낮이. 캐릭터마다 다르게 주면 목소리 구분이 된다")]
