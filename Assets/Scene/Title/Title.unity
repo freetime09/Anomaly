@@ -348,6 +348,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5641412678144381726, guid: 9c1bd941e887c5041a1677b24cdbeb60, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 5712599463135465133, guid: 9c1bd941e887c5041a1677b24cdbeb60, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -763,6 +771,9 @@ MonoBehaviour:
   failClip: {fileID: 8300000, guid: 066b418b8ec8d154e9e07b999b0d975b, type: 3}
   failVolume: 1
   breakTime: 1
+  glitchClip: {fileID: 8300000, guid: 33bc35a9c9e499c49aaac44cc70046d0, type: 3}
+  glitchVolume: 1
+  glitchStartTime: 1
   breakBars: 16
   blackHold: 0.3
   bootText: "An\xA7maly \uC2E4\uD589 \uC911"
