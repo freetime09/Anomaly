@@ -250,6 +250,8 @@ public class BossFight : MonoBehaviour
     public AudioClip rainClip;
     [Tooltip("위에서 내려오는 조준 레이저를 쏠 때")]
     public AudioClip laserClip;
+    [Tooltip("지우개 기둥(세로로 솟는 줄기)이 솟을 때")]
+    public AudioClip columnClip;
     [Tooltip("4방향 회전 레이저가 도는 동안 (반복)")]
     public AudioClip laserSpinClip;
     [Tooltip("틈(스턴) 동안 — 글리치·어지러운 소리 (틈이 끝나면 멈춤)")]
@@ -788,6 +790,7 @@ public class BossFight : MonoBehaviour
                 h.sr.color = hazardColor; h.sr.sortingOrder = 20; h.armed = true;
                 Dust(new Vector2(h.sr.transform.position.x, floorTop), 0, 10, hazardColor);
             }
+            PlaySfx(columnClip);
             Shake(0.28f, 0.28f * attackShakeStrength);
             if(attackSigils!=null)attackSigils.Impact();
             yield return new WaitForSeconds(columnActiveTime);

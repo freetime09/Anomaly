@@ -144,7 +144,16 @@ public class TitleController : MonoBehaviour
     {
         if (bgFlicker && !starting) UpdateBgFlicker();
         if (starting) return;
-        if (Input.GetMouseButtonDown(0)) Begin();
+        // 설정 메뉴가 열려 있으면 그리기 막음 (그리던 획은 취소)
+        if (PauseMenu.IsPaused)
+        {
+            if (drawing) { drawing = false; points.Clear(); if (drawSfx.isPlaying) drawSfx.Stop(); }
+            return;
+        }
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!PauseMenu.IsPointerOnSettingsButton(Input.mousePosition)) Begin(); // 설정 아이콘 클릭은 그리기 아님
+        }
         else if (Input.GetMouseButton(0) && drawing) Add();
         else if (Input.GetMouseButtonUp(0) && drawing) End();
     }

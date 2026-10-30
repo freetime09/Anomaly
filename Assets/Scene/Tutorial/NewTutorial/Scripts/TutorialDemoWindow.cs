@@ -8,9 +8,9 @@ using UnityEngine.UI;
 /// 화면 가운데에 크게 뜨는 '시범 창'. 배울 동작을 짧은 동영상처럼 끝없이 반복해서 보여 준다.
 ///  - 튜토리얼 곳곳의 홀로그램(TutorialHologram)에 다가가면 Open(번호) 로 열린다.
 ///  - 열려 있는 동안: 뒤의 게임 화면을 흐리고 어둡게 덮어 시범에 집중하게 하고, 메크로 조작을 잠근다.
-///  - 영상은 끝없이 반복되고, 아래 진행 막대가 재생 위치를 보여 준다. ESC 로 언제든 닫을 수 있다.
+///  - 영상은 끝없이 반복되고, 아래 진행 막대가 재생 위치를 보여 준다. 오른쪽 위 X 를 누르면 언제든 닫힌다 (ESC 도 됨).
 ///  - 닫은 뒤 다시 보려면 홀로그램 앞에서 O 를 그린다 (창 아래에 안내).
-///  - A / D (← / →) 로 지금까지 열린 다른 시범도 다시 볼 수 있다.
+///  - 창 양옆 화살표를 누르면 지금까지 열린 다른 시범도 다시 볼 수 있다 (A / D, ← / → 도 됨).
 ///  - 창은 시작할 때 코드로 만든다 → 씬에 UI 를 꾸밀 필요 없이 Inspector 값(크기·색·글꼴)만 고치면 된다.
 /// </summary>
 [RequireComponent(typeof(TutorialDemoStage))]
@@ -22,7 +22,7 @@ public class TutorialDemoWindow : MonoBehaviour
     [Tooltip("튜토리얼에서 배우는 순서대로 넣는다. 번호는 0 부터 (홀로그램의 Lesson Index 와 같은 번호)")]
     public List<TutorialDemoClip> clips = new List<TutorialDemoClip>();
 
-    [Header("조작")]
+    [Header("조작 (X·화살표를 누르는 것 말고 키보드로도)")]
     [Tooltip("이전 시범으로")]
     public KeyCode prevKey = KeyCode.A;
     [Tooltip("다음 시범으로")]
@@ -59,8 +59,9 @@ public class TutorialDemoWindow : MonoBehaviour
     RectTransform panelRt;
     RawImage backdrop, video;
     Image progressFill;
-    TextMeshProUGUI badgeText, titleText, pageText, instructionText, tipText, navText, closeText, replayText;
-    GameObject closeChip, navChip;
+    TextMeshProUGUI badgeText, titleText, pageText, instructionText, tipText, replayText;
+    Image closeButton, prevButton, nextButton;
+    Graphic closeIcon, prevIcon, nextIcon;
     RenderTexture backdropRt;
     Coroutine anim;
     int closedFrame = -1;
@@ -103,20 +104,41 @@ public class TutorialDemoWindow : MonoBehaviour
     {
         if (!IsOpen || PauseMenu.IsPaused) return;
 
+        Vector2 m = Input.mousePosition;
+        bool click = Input.GetMouseButtonDown(0);
+        bool overPrev = Hover(prevButton, prevIcon, m, CurrentIndex > 0);
+        bool overNext = Hover(nextButton, nextIcon, m, CurrentIndex < UnlockedCount - 1);
+        bool overClose = Hover(closeButton, closeIcon, m, true);
         if (UnlockedCount > 1)
         {
-            if (Input.GetKeyDown(prevKey) || Input.GetKeyDown(KeyCode.LeftArrow)) ShowPage(CurrentIndex - 1);
-            else if (Input.GetKeyDown(nextKey) || Input.GetKeyDown(KeyCode.RightArrow)) ShowPage(CurrentIndex + 1);
+            if ((click && overPrev) || Input.GetKeyDown(prevKey) || Input.GetKeyDown(KeyCode.LeftArrow)) ShowPage(CurrentIndex - 1);
+            else if ((click && overNext) || Input.GetKeyDown(nextKey) || Input.GetKeyDown(KeyCode.RightArrow)) ShowPage(CurrentIndex + 1);
         }
 
         // 진행 막대: 처음 한 번은 끝까지 차오르는 걸 보여 주고, 다 본 뒤엔 반복 진행을 얇게 보여 준다
         float target = stage.LoopCount > 0 ? 1f : stage.Progress;
         progressFill.fillAmount = Mathf.MoveTowards(progressFill.fillAmount, target, Time.unscaledDeltaTime * 0.8f);
 
-        // ESC 는 언제든 닫기. 한 번 끝까지 본 뒤에는 안내가 은은하게 깜빡여 '이제 해 보세요' 를 알려 준다
-        float a = stage.LoopCount > 0 ? 0.7f + 0.3f * Mathf.Sin(Time.unscaledTime * 4f) : 0.85f;
-        closeText.color = new Color(1f, 1f, 1f, a);
-        if (Input.GetKeyDown(closeKey)) Close();
+        // X 는 언제든 닫기. 한 번 끝까지 본 뒤에는 X 가 은은하게 깜빡여 '이제 해 보세요' 를 알려 준다
+        if (!overClose && stage.LoopCount > 0) SetIconColor(closeIcon, new Color(1f, 1f, 1f, 0.6f + 0.4f * Mathf.Sin(Time.unscaledTime * 4f)));
+        if ((click && overClose) || Input.GetKeyDown(closeKey)) Close();
+    }
+
+    /// <summary>마우스가 버튼 위면 밝게 (강조색). 누를 수 없으면 흐리게.</summary>
+    bool Hover(Image button, Graphic icon, Vector2 mouse, bool usable)
+    {
+        if (!button.gameObject.activeInHierarchy) return false;
+        bool over = usable && RectTransformUtility.RectangleContainsScreenPoint(button.rectTransform, mouse, null);
+        button.color = new Color(1f, 1f, 1f, !usable ? 0.04f : over ? 0.22f : 0.1f);
+        var c = over ? accentColor : Color.white;
+        c.a = usable ? 1f : 0.25f;
+        SetIconColor(icon, c);
+        return over;
+    }
+
+    static void SetIconColor(Graphic icon, Color c)
+    {
+        foreach (var g in icon.GetComponentsInChildren<Graphic>()) g.color = c;
     }
 
     // ───────────────────────── 외부에서 부르는 함수 ─────────────────────────
@@ -158,7 +180,8 @@ public class TutorialDemoWindow : MonoBehaviour
         pageText.text = UnlockedCount > 1 ? Dots(index) : "";
         instructionText.text = clip.instruction;
         tipText.text = clip.tip;
-        navChip.SetActive(UnlockedCount > 1);
+        prevButton.gameObject.SetActive(UnlockedCount > 1);
+        nextButton.gameObject.SetActive(UnlockedCount > 1);
         progressFill.fillAmount = 0f;
         stage.Play(clip);
         StartCoroutine(FlashVideo());
@@ -311,7 +334,7 @@ public class TutorialDemoWindow : MonoBehaviour
         badgeText = Text(panelRt, "Badge", new Vector2(pad, y), new Vector2(400f, 26f), 20f, accentColor, TextAlignmentOptions.TopLeft);
         badgeText.characterSpacing = 6f;
         titleText = Text(panelRt, "Title", new Vector2(pad, y - 26f), new Vector2(videoSize.x - 260f, 52f), 40f, titleColor, TextAlignmentOptions.TopLeft);
-        pageText = Text(panelRt, "Pages", new Vector2(pad + videoSize.x - 400f, y - 34f), new Vector2(400f, 40f), 26f, tipColor, TextAlignmentOptions.TopRight);
+        pageText = Text(panelRt, "Pages", new Vector2(pad + videoSize.x - 400f - 64f, y - 34f), new Vector2(400f, 40f), 26f, tipColor, TextAlignmentOptions.TopRight);
         y -= 86f;
 
         // 영상: 둥근 틀 안에 (Mask 로 모서리를 둥글게 자름)
@@ -340,25 +363,43 @@ public class TutorialDemoWindow : MonoBehaviour
         tipText = Text(panelRt, "Tip", new Vector2(pad, y), new Vector2(videoSize.x, 30f), 22f, tipColor, TextAlignmentOptions.TopLeft);
         y -= 30f + 22f;
 
-        // 아래 줄: 왼쪽 A/D 안내, 가운데 다시 보기 안내, 오른쪽 ESC 닫기
-        navChip = Chip(panelRt, "NavChip", new Vector2(pad, y), new Vector2(330f, 46f), out navText);
-        navText.text = "<b>A</b>  ◀  다른 시범  ▶  <b>D</b>";
-        closeChip = Chip(panelRt, "CloseChip", new Vector2(pad + videoSize.x - 230f, y), new Vector2(230f, 46f), out closeText);
-        closeText.text = "<b>ESC</b>  닫고 해 보기";
-        // 다시 보는 방법 안내 (닫은 뒤에는 홀로그램 앞에서 O 를 그려야 다시 열림)
-        replayText = Text(panelRt, "ReplayHint", new Vector2(pad + 350f, y + 2f), new Vector2(videoSize.x - 350f - 244f, 44f), 20f, tipColor, TextAlignmentOptions.MidlineRight);
+        // 아래 줄: 다시 보는 방법 안내 (닫은 뒤에는 홀로그램 앞에서 O 를 그려야 다시 열림)
+        replayText = Text(panelRt, "ReplayHint", new Vector2(pad, y + 2f), new Vector2(videoSize.x, 44f), 20f, tipColor, TextAlignmentOptions.Center);
         replayText.text = "다시 보기: 홀로그램 앞에서 <color=#FFE36A><b>O</b></color> 그리기";
+
+        // 오른쪽 위 X: 누르면 닫기
+        closeButton = Button(panelRt, "CloseButton", new Vector2(panelW - 18f - 52f, -18f), new Vector2(52f, 52f));
+        closeIcon = Cross(closeButton.rectTransform, 24f, 4f);
+
+        // 창 양옆 화살표: 누르면 이전·다음 시범 (영상 높이 가운데)
+        float arrowTop = -pad - 86f - videoSize.y * 0.5f + 50f;
+        prevButton = Button(panelRt, "PrevButton", new Vector2(-24f - 64f, arrowTop), new Vector2(64f, 100f));
+        prevIcon = Text(prevButton.rectTransform, "Arrow", Vector2.zero, new Vector2(64f, 100f), 40f, Color.white, TextAlignmentOptions.Center);
+        ((TextMeshProUGUI)prevIcon).text = "◀";
+        nextButton = Button(panelRt, "NextButton", new Vector2(panelW + 24f, arrowTop), new Vector2(64f, 100f));
+        nextIcon = Text(nextButton.rectTransform, "Arrow", Vector2.zero, new Vector2(64f, 100f), 40f, Color.white, TextAlignmentOptions.Center);
+        ((TextMeshProUGUI)nextIcon).text = "▶";
     }
 
-    GameObject Chip(RectTransform parent, string name, Vector2 topLeft, Vector2 size, out TextMeshProUGUI label)
+    Image Button(RectTransform parent, string name, Vector2 topLeft, Vector2 size)
     {
         var bg = Add<Image>(parent, name);
         TopLeft(bg.rectTransform, topLeft, size);
         bg.sprite = roundedSprite; bg.type = Image.Type.Sliced;
         bg.color = new Color(1f, 1f, 1f, 0.1f);
-        label = Text(bg.rectTransform, "Label", Vector2.zero, size, 22f, Color.white, TextAlignmentOptions.Center);
-        label.rectTransform.anchorMin = label.rectTransform.anchorMax = label.rectTransform.pivot = new Vector2(0f, 1f);
-        return bg.gameObject;
+        return bg;
+    }
+
+    /// <summary>X 모양: 막대 두 개를 엇갈려 그린다 (글꼴에 없는 기호라도 보이게).</summary>
+    static Graphic Cross(RectTransform parent, float size, float thick)
+    {
+        var a = Add<Image>(parent, "X");
+        Center(a.rectTransform, new Vector2(size * 1.3f, thick), Vector2.zero);
+        a.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+        var b = Add<Image>(a.rectTransform, "X2");
+        Center(b.rectTransform, new Vector2(size * 1.3f, thick), Vector2.zero);
+        b.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        return a;
     }
 
     TextMeshProUGUI Text(RectTransform parent, string name, Vector2 topLeft, Vector2 size, float fontSize, Color color, TextAlignmentOptions align)
