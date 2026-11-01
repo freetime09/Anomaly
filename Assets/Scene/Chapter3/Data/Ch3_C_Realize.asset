@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   lines:
   - speakerId: Mecro
-    text: "\uB9C8\uC744\uB3C4, \uC0AC\uB78C\uB4E4\uB3C4 \uADF8\uB300\uB85C\uC57C.
-      \uADF8\uB7F0\uB370... \uB098\uC5D0 \uB300\uD55C \uAC83\uB9CC \uC804\uBD80 \uC9C0\uC6CC\uC838
-      \uC788\uC5B4."
+    text: "\uB098\uBB34\uB3C4.."
     holdTime: 0
   - speakerId: Mecro
-    text: "\uC5EC\uAE34 \uB0B4\uAC00 \uC54C\uB358 \uB9C8\uC744\uC774 \uC544\uB2C8\uC57C.
-      ...\uAC00\uC9DC\uC57C."
+    text: "\uC0AC\uB78C\uB4E4\uB3C4.."
+    holdTime: 0
+  - speakerId: Mecro
+    text: "\uC804\uBD80 \uB0B4\uAC00 \uC54C\uB358 \uB9C8\uC744\uC778\uB370.."
     holdTime: 0
