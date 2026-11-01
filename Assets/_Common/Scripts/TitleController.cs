@@ -101,7 +101,7 @@ public class TitleController : MonoBehaviour
     bool drawing;
     bool starting;
     /// <summary>O 를 인식해 시작 연출 중인가 (TitleDecor 가 꾸미기를 멈출 때 씀)</summary>
-    public bool Starting => starting;
+    public bool Starting => starting || (GetComponent<TitleGestureMenu>() != null && GetComponent<TitleGestureMenu>().IsTransitioning);
 
     readonly List<UnistrokeRecognizer.Template> templates = new List<UnistrokeRecognizer.Template>();
 
@@ -196,7 +196,7 @@ public class TitleController : MonoBehaviour
         if (drawLoopClip != null)
         {
             drawSfx.clip = drawLoopClip;
-            drawSfx.volume = drawVolume;
+            drawSfx.volume = drawVolume * .9f;
             if (!drawSfx.isPlaying) drawSfx.Play();
         }
     }
@@ -305,6 +305,7 @@ public class TitleController : MonoBehaviour
     // 로고(1000) 위에서 화면이 깨지는 연출: 줄무늬가 지지직, 검은 구멍이 쌓이고, 로고가 흔들림.
     IEnumerator BreakScreen()
     {
+        GlitchLightPulse.Pulse(new Color(.25f,.65f,1f),.5f,1.4f);
         var go = new GameObject("BreakOverlay");
         var canvas = go.AddComponent<Canvas>();
         breakRoot = go.transform; // Canvas 를 붙이면 Transform 이 RectTransform 으로 바뀌므로 그 뒤에 잡음
@@ -395,6 +396,7 @@ public class TitleController : MonoBehaviour
         tmp.alignment = TextAlignmentOptions.Left;
         tmp.textWrappingMode = TextWrappingModes.NoWrap;
         tmp.raycastTarget = false;
+        GlitchHalo.Attach(tmp);
         // 다 쓴 글자 폭에 맞춰 가운데 두고 왼쪽부터 써 나감 → 쓰는 동안 글자가 옆으로 밀리지 않음
         var rt = tmp.rectTransform;
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
@@ -420,6 +422,7 @@ public class TitleController : MonoBehaviour
         var img = new GameObject("Bar", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
         img.transform.SetParent(parent, false);
         img.raycastTarget = false;
+        GlitchHalo.Attach(img);
         img.gameObject.SetActive(false);
         return img;
     }

@@ -75,16 +75,18 @@ public class Chapter4Intro : MonoBehaviour
             int dir = -1;
             for (int i = 0; i < lookCount; i++)
             {
-                player.Face(dir);
+                CutsceneHeadTurn.Face(player, dir);
                 dir = -dir;
-                yield return new WaitForSeconds(lookInterval);
+                yield return new WaitForSeconds(Mathf.Max(.6f, lookInterval));
             }
-            player.Face(lookFinalDir);
+            CutsceneHeadTurn.Face(player, lookFinalDir);
             yield return new WaitForSeconds(afterLook);
         }
         Bounds b = overviewArea.bounds;
         float overSize = Mathf.Max(b.size.y * 0.5f, b.size.x * 0.5f / view.aspect);
         Vector3 overPos = new Vector3(b.center.x, b.center.y, view.transform.position.z);
+        var overviewClip = Resources.Load<AudioClip>("Chapter4Overview");
+        if (overviewClip != null) { var source = gameObject.AddComponent<AudioSource>(); source.playOnAwake=false; source.volume=.75f; GameAudioAcoustics.Apply(source); source.PlayOneShot(overviewClip); }
         yield return MoveCamera(view.transform.position, overPos, zoomSize, overSize, zoomOutTime, false);
         yield return new WaitForSeconds(overviewHold);
 

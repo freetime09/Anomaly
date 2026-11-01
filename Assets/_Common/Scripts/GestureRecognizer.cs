@@ -258,7 +258,7 @@ public class GestureRecognizer : MonoBehaviour
         if (drawLoopClip != null && drawSfx != null)
         {
             drawSfx.clip = drawLoopClip;
-            drawSfx.volume = drawVolume;
+            drawSfx.volume = drawVolume * .9f;
             if (!drawSfx.isPlaying) drawSfx.Play();
         }
     }

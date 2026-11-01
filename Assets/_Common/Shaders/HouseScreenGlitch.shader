@@ -58,7 +58,11 @@ Shader "Hidden/AnomalyScreenGlitch"
                 glow+=max(view(uv-float2(0,px.y))-0.58,0);
                 glow+=max(view(uv+px*0.6)-0.58,0);
                 glow+=max(view(uv-px*0.6)-0.58,0);
-                c+=glow*_Bloom*0.3;
+                c+=glow*_Bloom*.8;
+                float rowCount=(36+_Variant*23);
+                float halo=0; float3 hue=0;
+                for(int j=-2;j<=2;j++){float rr=row+j;float nn=hash(float2(rr+_Seed,tick));float active=step(.92,nn);float center=(rr+.5)/rowCount;float distance=abs(i.uv.y-center)*rowCount;float bandGlow=exp(-distance*distance*14)*active;float3 color=frac(nn*17)<.5?float3(.1,.9,1):float3(1,.15,.65);hue+=color*bandGlow;halo+=bandGlow;}
+                c+=hue*_Amount*.45;
                 return half4(max(c,0),1);
             }
             ENDHLSL

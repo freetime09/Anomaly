@@ -105,7 +105,7 @@ public class Breakable : MonoBehaviour, IDamageable, IPuzzleState
     {
         if (burstOnDeath) SpawnBurst();                   // 사라지기 전에 파티클 (별도 오브젝트라 비활성돼도 유지)
         // 터지는 소리 — 비활성/파괴돼도 안 끊기게 독립 재생
-        if (breakClip != null && CodeExplosionAudio.TryClaim(breakClip)) AudioSource.PlayClipAtPoint(breakClip, transform.position, breakVolume);
+        CodeExplosionAudio.PlayBreak(breakClip, breakVolume);
         onDeath.Invoke();
         if (destroyOnDeath) Destroy(gameObject);
         else gameObject.SetActive(false);
@@ -202,9 +202,8 @@ public class Breakable : MonoBehaviour, IDamageable, IPuzzleState
         col.color = grad;
 
         var psr = ps.GetComponent<ParticleSystemRenderer>();
-        var mat = new Material(Shader.Find("Sprites/Default"));
-        mat.mainTexture = BurstTex(); // 또렷한 사각 파티클
-        psr.material = mat;
+        if(burstMaterial==null){burstMaterial=new Material(Shader.Find("Sprites/Default"));burstMaterial.mainTexture=BurstTex();}
+        psr.sharedMaterial = burstMaterial;
         psr.renderMode = ParticleSystemRenderMode.Billboard;
         psr.sortingOrder = 50;
 
@@ -213,6 +212,7 @@ public class Breakable : MonoBehaviour, IDamageable, IPuzzleState
     }
 
     static Texture2D burstTex;
+    static Material burstMaterial;
     static Texture2D BurstTex()
     {
         if (burstTex != null) return burstTex;

@@ -10,14 +10,15 @@ using UnityEngine;
 ///    가까이 가면 머리 위에 'O 다시 보기' 가 뜨고, O 를 그리면 PlayerController 가 Interact() 를 부른다.
 ///  - Ensure Branch Held 를 켜면, 열 때 나뭇가지가 손에 없으면 돌려받는다 (앞에서 실수로 던져 둔 경우에도 막히지 않게).
 /// </summary>
-[RequireComponent(typeof(CircleCollider2D))]
+[RequireComponent(typeof(CapsuleCollider2D))]
 public class TutorialHologram : MonoBehaviour, IInteractable
 {
     [Header("시범")]
     [Tooltip("열 시범 번호 (TutorialDemoWindow 의 Clips 순서, 0 부터)")]
     [Min(0)] public int lessonIndex;
     [Tooltip("이 거리(칸) 안으로 들어오면 시범 창이 열린다")]
-    [Min(0.5f)] public float triggerRadius = 2f;
+    [Min(0.5f)] public float triggerRadius = .75f;
+    public float triggerHeight = 3.1f;
     [Tooltip("열 때 나뭇가지가 손에 없으면 돌려받는다 (나뭇가지를 쓰는 시범에서 켬)")]
     public bool ensureBranchHeld;
     [Tooltip("한 번 본 뒤 O 를 그려 다시 열 수 있는 거리 (칸, 홀로그램 발밑 기준)")]
@@ -48,17 +49,18 @@ public class TutorialHologram : MonoBehaviour, IInteractable
 #if UNITY_EDITOR
     void Reset()
     {
-        GetComponent<CircleCollider2D>().isTrigger = true;
+        GetComponent<CapsuleCollider2D>().isTrigger = true;
         font = UnityEditor.AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(DialogueSpeaker.DefaultFontPath);
     }
 #endif
 
     void Awake()
     {
-        var col = GetComponent<CircleCollider2D>();
+        var col = GetComponent<CapsuleCollider2D>();
         col.isTrigger = true;
-        col.radius = triggerRadius;
-        col.offset = new Vector2(0f, 1f);
+        var oldCircle=GetComponent<CircleCollider2D>();if(oldCircle!=null)oldCircle.enabled=false;
+        col.direction=CapsuleDirection2D.Vertical;col.size=new Vector2(triggerRadius*2,triggerHeight);
+        col.offset = new Vector2(0f, triggerHeight*.5f);
         player = FindAnyObjectByType<PlayerController>();
         seed = Random.value * 100f;
         Build();
@@ -157,7 +159,7 @@ public class TutorialHologram : MonoBehaviour, IInteractable
         }
         else
         {
-            icon.text = "↻";
+            icon.text = "O";
             icon.color = new Color(0.3f, 0.55f, 0.8f, 0.7f);
         }
     }
@@ -226,6 +228,6 @@ public class TutorialHologram : MonoBehaviour, IInteractable
     void OnDrawGizmos()
     {
         Gizmos.color = new Color(0.45f, 0.95f, 1f, 0.6f);
-        Gizmos.DrawWireSphere(transform.position + Vector3.up, triggerRadius);
+        Gizmos.DrawWireCube(transform.position+Vector3.up*triggerHeight*.5f,new Vector3(triggerRadius*2,triggerHeight,0));
     }
 }

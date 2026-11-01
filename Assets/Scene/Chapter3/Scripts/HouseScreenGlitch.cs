@@ -13,6 +13,10 @@ public sealed class HouseScreenGlitch : MonoBehaviour
     [Min(0.5f)] public float repeatInterval = 3f;
     [Range(0f, 1f)] public float strength = 0.42f;
 
+    public bool soundEnabled;
+    [Range(0f, 1f)] public float staticVolume = .3f;
+    AudioSource staticSource;
+    AudioClip staticNoise;
     Material material, previousMaterial;
     bool repeating, rendering, ramping;
     float untilNext, age, duration, peak, seed;
@@ -68,6 +72,7 @@ public sealed class HouseScreenGlitch : MonoBehaviour
         seed = Random.Range(1f, 1000f);
         variant = (variant + Random.Range(1, 3)) % 3;
         BurstCount++;
+        PlayStatic();
         Apply(0f, 0f);
     }
 
@@ -110,6 +115,7 @@ public sealed class HouseScreenGlitch : MonoBehaviour
     void Apply(float amount, float bloom)
     {
         CurrentAmount = amount;
+        if(amount>.03f)GlitchLightPulse.Pulse(variant==1?new Color(1f,.18f,.32f):new Color(.18f,.7f,1f),amount,.1f);
         if (objectGlitch != null) objectGlitch.SetIntensity(Mathf.Clamp01(amount * objectBlend));
         material.SetFloat("_Amount", amount);
         material.SetFloat("_Bloom", bloom);
@@ -136,10 +142,44 @@ public sealed class HouseScreenGlitch : MonoBehaviour
     public void StopEffect()
     {
         repeating = false;
+        if (staticSource != null) staticSource.Stop();
         untilNext = 0f;
         EndBurst();
     }
 
+    void PlayStatic()
+    {
+        if (!soundEnabled) return;
+        if (staticSource == null)
+        {
+            staticSource = gameObject.AddComponent<AudioSource>();
+            staticSource.playOnAwake = false;
+            staticSource.spatialBlend = 0;
+            staticSource.ignoreListenerPause = false;
+        }
+        if (staticNoise == null)
+        {
+            const int rate = 44100, length = 12348;
+            var samples = new float[length];
+            uint state = 3571;
+            float low = 0;
+            for (int i = 0; i < length; i++)
+            {
+                state = 1664525u * state + 1013904223u;
+                float noise = (state >> 8) / 16777215f * 2 - 1;
+                low = Mathf.Lerp(low, noise, .22f);
+                float phase = i / (float)(length - 1);
+                float envelope = Mathf.Min(1, phase * 24) * Mathf.Pow(1 - phase, .8f);
+                float gate = Mathf.Repeat(i / (float)rate, .039f) < .026f ? 1 : .1f;
+                samples[i] = (noise - low) * envelope * gate * .65f;
+            }
+            staticNoise = AudioClip.Create("HouseStaticCrackle", length, 1, rate, false);
+            staticNoise.SetData(samples, 0);
+        }
+        staticSource.pitch = Random.Range(.94f, 1.06f);
+        staticSource.PlayOneShot(staticNoise, staticVolume);
+    }
+
     void OnDisable() { StopEffect(); }
-    void OnDestroy() { StopEffect(); if (material != null) Destroy(material); }
+    void OnDestroy() { StopEffect(); if (material != null) Destroy(material); if (staticNoise != null) Destroy(staticNoise); }
 }

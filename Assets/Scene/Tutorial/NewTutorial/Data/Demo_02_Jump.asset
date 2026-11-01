@@ -17,11 +17,11 @@ MonoBehaviour:
     \uADF8\uC5B4\n\uC7A5\uC560\uBB3C\uC744 \uB6F0\uC5B4\uB118\uC73C\uC138\uC694."
   tip: "\uAC77\uB294 \uC911\uC5D0 \uC810\uD504\uD558\uBA74 \uC55E\uC73C\uB85C \uB6F0\uC5B4\uC694.
     \uBA48\uCDB0\uC11C \uC810\uD504\uD558\uBA74 \uC81C\uC790\uB9AC\uC5D0\uC11C \uB6F0\uC5B4\uC694."
-  puppetStart: {x: -4.5, y: 0}
+  puppetStart: {x: -4.4, y: 0}
   startWithBranch: 1
   branchStart: {x: 2, y: 0}
-  viewCenter: {x: 0, y: 1.6}
-  viewHeight: 6
+  viewCenter: {x: 0, y: 1.75}
+  viewHeight: 6.5
   drawArea: {x: 1.6, y: 1.7}
   props:
   - type: 0
@@ -31,16 +31,18 @@ MonoBehaviour:
       y: -2
       width: 20
       height: 2
+    hitsToBreak: 1
   - type: 0
     rect:
       serializedVersion: 2
       x: -0.2
       y: 0
-      width: 1
+      width: 1.4
       height: 1
+    hitsToBreak: 1
   steps:
   - shape: 1
-    moveDistance: 6
+    moveDistance: 6.8
     waitBefore: 0.3
     drawTime: 0.45
     waitUntilIdle: 0

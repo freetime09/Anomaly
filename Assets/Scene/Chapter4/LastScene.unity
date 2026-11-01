@@ -5849,7 +5849,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 213574163}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 86305ee8a26271c47b91e11808eab4f9, type: 3}
   m_Name: 
@@ -13917,7 +13917,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 543411986}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3355fcca345278c4395686fce77b774f, type: 3}
   m_Name: 
@@ -15170,7 +15170,7 @@ MonoBehaviour:
   afterDialogue: 0.2
   zoomTime: 1.6
   lookCount: 4
-  lookInterval: 0.45
+  lookInterval: 0.6
   lookFinalDir: 1
   afterLook: 0.3
   dialogue: {fileID: 11400000, guid: 28bce6988b27b174a98244017519068f, type: 2}
@@ -16075,6 +16075,8 @@ MonoBehaviour:
   dialogMessage: "\uAC8C\uC784\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
   errorClip: {fileID: 8300000, guid: c640fa2a373dc63449dbf4336bc9194c, type: 3}
   errorVolume: 1
+  villageBirdClip: {fileID: 8300000, guid: ac02d338d6422294aac24f1c4a018ebd, type: 3}
+  villageBirdVolume: 0.65
 --- !u!4 &949747619
 Transform:
   m_ObjectHideFlags: 0
@@ -24319,6 +24321,7 @@ GameObject:
   - component: {fileID: 1587097420}
   - component: {fileID: 1587097419}
   - component: {fileID: 1587097421}
+  - component: {fileID: 1587097422}
   m_Layer: 0
   m_Name: BossFight
   m_TagString: Untagged
@@ -24419,6 +24422,8 @@ MonoBehaviour:
   columnActiveTime: 0.35
   sweepSpeed: 8
   sweepThickness: 0.7
+  errorAttackSprite: {fileID: 420819946, guid: 92225ff13ee2bd9499654b85c07b0f98, type: 3}
+  shockTileSprite: {fileID: 4775477002502826430, guid: 6e96e5caf9f3cce4ea2b8390161be28f, type: 3}
   lowLane: {x: 0, y: 0.9}
   lowSweepSpeed: 12
   lowSweepCount: 2
@@ -24436,13 +24441,13 @@ MonoBehaviour:
   eraseTime: 0.3
   slamFollowTime: 1.6
   slamFollowSpeed: 7
-  slamSize: {x: 3.2, y: 2.2}
+  slamSize: {x: 3, y: 2}
   slamHover: 8
   slamShakeTime: 0.5
   slamFallSpeed: 40
   shockDelay: 0.7
   shockSpeed: 9
-  shockSize: {x: 0.6, y: 0.8}
+  shockSize: {x: 1.2, y: 0.8}
   rainCount: 8
   rainInterval: 0.3
   rainTelegraph: 0.8
@@ -24483,8 +24488,17 @@ MonoBehaviour:
   defeatGlitchTime: 2.2
   defeatFadeTime: 1.6
   rewindOnDeath: 1
-  rewindSeconds: 4
-  rewindTime: 1.6
+  respawnSlowDuration: 5
+  respawnMoveMultiplier: 0.55
+  respawnLines:
+  - "\uC2EC\uC7A5\uC740 \uC544\uC9C1 \uB6F0\uACE0 \uC788\uC5B4.. \uBD84\uBA85 \uBA4E\uC5C8\uB294\uB370."
+  - "\uAC19\uC740 \uC21C\uAC04\uC774\uC57C. \uC800 \uB208\uB3C4, \uB0B4 \uBC1C\uC790\uAD6D\uB3C4.."
+  - "\uB3CC\uC544\uC628 \uAC74 \uB098\uBFD0\uC778 \uAC74\uAC00?"
+  - "\uC544\uAE4C\uC758 \uD1B5\uC99D\uC774 \uC544\uC9C1 \uB0A8\uC544 \uC788\uC5B4.."
+  - "\uC774\uBC88\uC5D4 \uAE30\uC5B5\uD574. \uC800 \uACF5\uACA9\uC774 \uC624\uB294
+    \uBC29\uD5A5."
+  rewindSeconds: 6
+  rewindTime: 3.6
   rewindSnapTime: 0.35
   rewindBlackIn: 0.35
   rewindBlackHold: 0.35
@@ -24492,6 +24506,8 @@ MonoBehaviour:
   bossBgmClip: {fileID: 8300000, guid: 93c83c4778ad4a548a8d098f743f06e6, type: 3}
   bossIntroClip: {fileID: 8300000, guid: a208b727da5b76b44bc1fd4efd6d2f04, type: 3}
   cursorClickClip: {fileID: 8300000, guid: a60b47a7a10da2a45a1d114fe6998076, type: 3}
+  reflectTingClip: {fileID: 8300000, guid: 8b2ed6d151cedc04f9d9c648f701c281, type: 3}
+  shockHissClip: {fileID: 8300000, guid: 87487dbc8b216b94eab5a4bee56bf5a6, type: 3}
   slamClip: {fileID: 8300000, guid: a5672c5caf6fdfd4182d578f5ca0ee08, type: 3}
   rainClip: {fileID: 8300000, guid: f1f649c4b72ec924ca181880090e8b2b, type: 3}
   laserClip: {fileID: 8300000, guid: 2a709b7f6013f9f42a2623de7d9d1812, type: 3}
@@ -24568,6 +24584,24 @@ MonoBehaviour:
   originalColorMaterial: {fileID: 2100000, guid: ee4d79cdac9ad3042ad808493d8147b5, type: 2}
   opacity: 0.8
   maxVisible: 8
+--- !u!114 &1587097422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1587097418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a7da975de1411449885f163e365d0b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossNeonLighting
+  spriteMaterial: {fileID: 2100000, guid: 100ab4ebad2729f47874106364039363, type: 2}
+  particleMaterial: {fileID: 2100000, guid: 916c5980942a7f247bd53e1bac3af194, type: 2}
+  neonProfile: {fileID: 11400000, guid: 1271f67e72deaff479c01fa2889d71df, type: 2}
+  maxLights: 10
+  reflectedIntensity: 0.22
+  lightReach: 0.85
 --- !u!1 &1618898498
 GameObject:
   m_ObjectHideFlags: 0
@@ -61213,22 +61247,42 @@ MonoBehaviour:
     factor: 1
     heightScale: 1
     widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0
+    orderOffset: -1
   - renderer: {fileID: 905140000}
     factor: 0.9
     heightScale: 1.08
     widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0
+    orderOffset: -1
   - renderer: {fileID: 1062001448}
     factor: 0.88
     heightScale: 0.85
     widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0
+    orderOffset: -1
   - renderer: {fileID: 1292851277}
     factor: 0.8
     heightScale: 0.8
     widthScale: 1.15
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0
+    orderOffset: -1
   - renderer: {fileID: 518896743}
     factor: 0.7
     heightScale: 0.790625
     widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0
+    orderOffset: -1
   cam: {fileID: 0}
   baseSortingOrder: -100
   heightCoverage: 1.05

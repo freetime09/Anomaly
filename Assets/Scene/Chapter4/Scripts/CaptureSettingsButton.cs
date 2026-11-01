@@ -36,6 +36,7 @@ public class CaptureSettingsButton : MonoBehaviour
     float scale = 1f, scaleVelocity;
     float opacity = 1f, opacityVelocity;
     float pressUntil;
+    bool wasHovered;
 
     void Awake()
     {
@@ -48,6 +49,7 @@ public class CaptureSettingsButton : MonoBehaviour
     {
         if (PauseMenu.ExtraSettingsArea == (System.Func<Vector2, bool>)Contains) PauseMenu.ExtraSettingsArea = null;
         SetShown(false);
+        wasHovered = false;
         angle = angleVelocity = scaleVelocity = opacityVelocity = pressUntil = 0f;
         scale = opacity = 1f;
         if (gear != null) gear.gameObject.SetActive(false);
@@ -58,6 +60,8 @@ public class CaptureSettingsButton : MonoBehaviour
     {
         SetShown(Visible());
         bool over = shown && Contains(Input.mousePosition);
+        if (over && !wasHovered && !PauseMenu.IsPaused) SettingsHoverAudio.PlayIcon(this);
+        wasHovered = over;
         if (over && !PauseMenu.IsPaused && Input.GetMouseButtonDown(0))
         {
             pressUntil = Time.unscaledTime + 0.10f; // 아주 짧은 클릭도 눌린 게 보이게

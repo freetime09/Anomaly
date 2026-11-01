@@ -65,7 +65,7 @@ public sealed class SettingsIconFeedback : MonoBehaviour,
         }
     }
 
-    public void OnPointerEnter(PointerEventData eventData) { hovered = true; }
+    public void OnPointerEnter(PointerEventData eventData) { if (!hovered && button != null && button.IsInteractable()) SettingsHoverAudio.PlayIcon(this); hovered = true; }
     public void OnPointerExit(PointerEventData eventData) { hovered = false; }
     public void OnPointerDown(PointerEventData eventData)
     {

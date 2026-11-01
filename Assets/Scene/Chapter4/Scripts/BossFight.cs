@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -98,6 +98,14 @@ public class BossFight : MonoBehaviour
     [Header("가로 지우기")]
     public float sweepSpeed = 8f;
     public float sweepThickness = 0.7f;
+    public Sprite errorAttackSprite;
+    public Sprite shockTileSprite;
+    BossSoundDesign soundDesign;
+    float finalPhaseNext;
+    public bool CombatActive { get { return fightLive && !dying && !defeated; } }
+    public bool IsCriticalHealth { get { return CombatActive && heartsLeft == 1; } }
+    public int VisualPhase { get { return phase; } }
+    public float ReflectedOrbSpeed { get { return reflectSpeed * (phase >= 2 ? 1.5f : 1f); } }
     [Tooltip("아래 줄 (바닥 위 y 범위) → 점프로 피함")]
     public Vector2 lowLane = new Vector2(0f, 0.9f);
     [Tooltip("아래 줄 속도 (점프만 하면 돼서 위 줄보다 빠르게)")]
@@ -226,10 +234,22 @@ public class BossFight : MonoBehaviour
     [Header("죽으면 되감기")]
     [Tooltip("하트가 다 떨어지면 검은 페이드 대신, 마지막 몇 초를 거꾸로 감으며 보스전 처음으로 돌아간다")]
     public bool rewindOnDeath = true;
+    [Header("Respawn recovery")]
+    public float respawnSlowDuration = 5f;
+    [Range(.1f,1f)] public float respawnMoveMultiplier = .55f;
+    public string[] respawnLines = new string[] {
+        "\ubb50\uc9c0..\ub098 \ubc29\uae08 \uc8fd\uc740\uac74\uac00?",
+        "\ud5c9..\ubc29\uae08 \ubb50\uc600\uc9c0..?",
+        "\ubd84\uba85 \ub9de\uc558\ub294\ub370.. \uc5b4\ub5bb\uac8c \uc0b4\uc544 \uc788\ub294 \uac70\uc9c0?",
+        "\uc2dc\uac04\uc774.. \uac70\uafb8\ub85c \ub3cc\uc544\uac04 \uac74\uac00?",
+        "\uc73c\uc73d.. \uc544\uc9c1 \ub2e4\ub9ac\uac00 \ub5a8\ub824..",
+        "\ub610 \uae30\ud68c\uac00 \uc0dd\uacbc\uc5b4.. \uc774\ubc88\uc5d4 \ud53c\ud574\uc57c \ud574.",
+        "\uafc8\uc740 \uc544\ub2c8\uc5c8\uc5b4.. \uc815\uc2e0 \ucc28\ub9ac\uc790, \uba54\ud06c\ub85c."
+    };
     [Tooltip("되감을 길이 (게임 시간 초). 죽기 전 이만큼의 메크로·보스·카메라 움직임을 기록")]
-    public float rewindSeconds = 4f;
+    public float rewindSeconds = 6f;
     [Tooltip("되감는 데 걸리는 시간 (실제 초). 점점 빨라짐")]
-    public float rewindTime = 1.6f;
+    public float rewindTime = 3.6f;
     [Tooltip("되감기 끝에 보스전 시작 자리로 빨려 들어가는 시간 (초)")]
     public float rewindSnapTime = 0.35f;
     [Tooltip("죽은 뒤 암전되는 시간 (초)")]
@@ -246,6 +266,11 @@ public class BossFight : MonoBehaviour
     public AudioClip bossIntroClip;
     [Tooltip("신의 커서가 선택 박스를 지울 때 (딸깍)")]
     public AudioClip cursorClickClip;
+    public AudioClip reflectTingClip;
+    public AudioClip shockHissClip;
+    float reflectSlowLeft;
+    float introMusicFadeUntil;
+    SpriteRenderer rewindActor;
     [Tooltip("상자 내려찍기가 바닥에 닿을 때 (탕!)")]
     public AudioClip slamClip;
     [Tooltip("지우개 비 조각이 바닥에 닿을 때")]
@@ -338,7 +363,7 @@ public class BossFight : MonoBehaviour
     int holdSide = 1;
     float baseFixedDt = 0.02f;
     Demo demoKind;
-    LineRenderer demo;
+    LineRenderer demo, demoGlow;
     SpriteRenderer demoTip;
     Vector2[] demoPath;
     float demoT;
@@ -355,6 +380,7 @@ public class BossFight : MonoBehaviour
     float hitStopLeft;
     bool hitStopWas;
     readonly List<Particle> particles = new List<Particle>();
+    readonly Stack<Particle> particlePool = new Stack<Particle>(256);
     readonly List<TrailPoint> playerTrail = new List<TrailPoint>();
     readonly List<RewindFrame> rewindBuf = new List<RewindFrame>();
     bool fightLive, rewinding;  // fightLive = 패턴이 도는 중 (되감기 기록), rewinding = 되감는 중
@@ -388,6 +414,7 @@ public class BossFight : MonoBehaviour
 
     IEnumerator Intro()
     {
+        soundDesign=GetComponent<BossSoundDesign>();if(soundDesign==null)soundDesign=gameObject.AddComponent<BossSoundDesign>();
         CutsceneLock.Lock(this);
         baseFixedDt = Time.fixedDeltaTime;
         player = FindAnyObjectByType<PlayerController>();
@@ -466,7 +493,8 @@ public class BossFight : MonoBehaviour
         arenaCamPos = camPos; arenaOrtho = cam != null ? cam.orthographicSize : big; arenaCamSet = cam != null;
         yield return new WaitForSeconds(0.8f);
 
-        if (introDialogue != null) yield return DialoguePlayer.Ensure().PlayAndWait(introDialogue);
+        if(introDialogue!=null&&introDialogue.lines.Count>0){var dialogue=DialoguePlayer.Ensure();System.Action lead=()=>StartCoroutine(IntroMusicLead());dialogue.LastLineStarted+=lead;yield return dialogue.PlayAndWait(introDialogue);dialogue.LastLineStarted-=lead;}
+        else StartCoroutine(IntroMusicLead());
         yield return new WaitForSeconds(0.4f);
 
         if (eyePresentation != null) eyePresentation.EnterCombat();
@@ -484,10 +512,8 @@ public class BossFight : MonoBehaviour
         spawnPos = player.transform.position;
         if (bgm != null && bossBgmClip != null)
         {
-            bgm.clip = bossBgmClip;
-            bgm.loop = true;
-            bgm.volume = bgmVolume;
-            bgm.Play();
+            if(bgm.clip!=bossBgmClip||!bgm.isPlaying){bgm.clip=bossBgmClip;bgm.loop=true;bgm.volume=0;bgmLevel=0;bgm.Play();}
+            bgmTarget=1;
         }
 
         CutsceneLock.Unlock(this);
@@ -496,6 +522,12 @@ public class BossFight : MonoBehaviour
     }
 
     /// <summary>화면 위 끝이 topY 까지 오게 하는 카메라 크기 (바닥 위치는 CamPosFor 와 같게 유지).</summary>
+    IEnumerator IntroMusicLead(){
+        yield return null;
+        if(bgm==null||bossBgmClip==null)yield break;
+        introMusicFadeUntil=Time.unscaledTime+2.2f;
+        bgm.clip=bossBgmClip;bgm.loop=true;bgm.volume=0;bgmLevel=0;bgmTarget=1;bgm.Play();
+    }
     float OrthoToShow(float topY)
     {
         return (topY - floorTop) / Mathf.Max(0.1f, 2f - floorMargin / baseOrtho);
@@ -523,6 +555,7 @@ public class BossFight : MonoBehaviour
     IEnumerator BossAppear(float time)
     {
         PlaySfx(bossIntroClip);
+        if(soundDesign!=null)soundDesign.Entrance();
         if (eyePresentation != null)
         {
             introPlaying = true;
@@ -597,6 +630,10 @@ public class BossFight : MonoBehaviour
         floorLine.transform.position = new Vector3(cx, floorTop - 0.03f, 0f);
         floorLine.transform.localScale = new Vector3(floorLineLength, 0.06f, 1f);
         floorLine.color = new Color(1f, 1f, 1f, 0f);
+        var neonLighting=GetComponent<BossNeonLighting>();
+        if(neonLighting!=null)neonLighting.BeginArena(root,floorLine);
+        var uiEffects=GetComponent<BossUiGlitch>();if(uiEffects==null)uiEffects=gameObject.AddComponent<BossUiGlitch>();uiEffects.Begin(this);
+        var skills=FindFirstObjectByType<SkillBar>();if(skills!=null)BossUiGlitch.Register(skills.transform);
 
         bossAnchor = new GameObject("God").transform;
         bossAnchor.SetParent(root, false);
@@ -742,6 +779,7 @@ public class BossFight : MonoBehaviour
 
     IEnumerator Run(Pattern p, float k)
     {
+        if(soundDesign!=null&&p!=Pattern.Cursor)soundDesign.Warn(p==Pattern.Sweep||p==Pattern.Clone,p==Pattern.Slam?(slamFollowTime+slamShakeTime)*k:telegraphTime*k);
         if(attackSigils!=null)attackSigils.Prepare();
         if (eyePresentation != null) eyePresentation.AttackAura(telegraphTime * k + 1.4f);
         switch (p)
@@ -823,57 +861,59 @@ public class BossFight : MonoBehaviour
     // 가로 지우기
     IEnumerator Sweep(float k)
     {
-        int bars = phase >= 2 ? 2 : 1;
-        bool low = Random.value < 0.5f;
-        for (int b = 0; b < bars; b++)
+        int bars=phase>=2?2:1;bool low=Random.value<.5f;
+        for(int wave=0;wave<bars;wave++)
         {
-            int side = Random.value < 0.5f ? -1 : 1; // 출발 쪽
-            Vector2 lane = low ? lowLane : highLane;
-            float y0 = floorTop + lane.x, y1 = floorTop + lane.y, yc = (y0 + y1) * 0.5f, hh = y1 - y0;
-
-            var band = AddRect(new Vector2(cx, yc), new Vector2(arenaHalfWidth * 2f, hh), warnColor, 5);
-            var mark = AddRect(new Vector2(cx + side * (arenaHalfWidth - 0.3f), yc), new Vector2(0.6f, hh), new Color(warnColor.r, warnColor.g, warnColor.b, 0.9f), 6);
-            yield return Telegraph(new List<Hazard> { band, mark }, telegraphTime * k);
-            RemoveHazard(mark);
-
-            // 아래 줄은 빠르게, 여러 개가 lowSweepGap 초 간격으로 연달아 옴
-            float speed = low ? lowSweepSpeed : sweepSpeed;
-            int count = low ? Mathf.Max(1, lowSweepCount) : 1;
-            float spacing = speed * lowSweepGap;
-            float x = cx + side * (arenaHalfWidth + 1f), end = cx - side * (arenaHalfWidth + 1f);
-            var barList = new List<Hazard>();
-            for (int i = 0; i < count; i++)
+            int side=Random.value<.5f?-1:1;
+            bool both=phase>=2&&low;
+            Vector2 lane=low?lowLane:highLane;
+            if(!low){var rb=player.GetComponent<Rigidbody2D>();float gravity=Mathf.Abs(Physics2D.gravity.y*(rb!=null?rb.gravityScale:1));float apex=player.jumpVelocity*player.jumpVelocity/(2*Mathf.Max(1,gravity));lane.y=Mathf.Max(lane.y,apex+2.6f);}
+            float y0=floorTop+lane.x,y1=floorTop+lane.y,yc=(y0+y1)*.5f,hh=y1-y0;
+            float width=low&&errorAttackSprite!=null?hh*errorAttackSprite.bounds.size.x/errorAttackSprite.bounds.size.y:Mathf.Max(1.8f,sweepThickness);
+            var band=AddRect(new Vector2(cx,yc),new Vector2(arenaHalfWidth*2,hh),warnColor,5);
+            var warnings=new List<Hazard>{band};
+            foreach(int direction in both?new[]{-1,1}:new[]{side})warnings.Add(AddRect(new Vector2(direction<0?ArenaLeft:ArenaRight,yc),new Vector2(width,hh),new Color(1,.15f,.15f,.68f),6));
+            yield return Telegraph(warnings,telegraphTime*k,true);
+            for(int i=1;i<warnings.Count;i++)RemoveHazard(warnings[i]);
+            float speed=low?lowSweepSpeed:sweepSpeed;int count=low?Mathf.Max(1,lowSweepCount):1;
+            float spacing=speed*lowSweepGap;
+            var shots=new List<Hazard>();var sides=new List<int>();
+            foreach(int direction in both?new[]{-1,1}:new[]{side})for(int i=0;i<count;i++)
             {
-                var bar = AddRect(new Vector2(x + side * spacing * i, yc), new Vector2(sweepThickness, hh), hazardColor, 20);
-                bar.armed = true;
-                barList.Add(bar);
+                Vector2 position=new Vector2(cx+direction*(arenaHalfWidth+width*.5f+spacing*i),yc);
+                Hazard shot;
+                if(low&&errorAttackSprite!=null){shot=AddSprite(errorAttackSprite,position,20,Color.white);shot.sr.transform.localScale=new Vector3(width/errorAttackSprite.bounds.size.x,hh/errorAttackSprite.bounds.size.y,1);shot.hit=.9f;}
+                else shot=AddRect(position,new Vector2(width,hh),hazardColor,20);
+                shot.armed=true;shots.Add(shot);sides.Add(direction);
             }
-            float last = x + side * spacing * (count - 1);
-            float trail = 0f;
-            while (side > 0 ? last > end : last < end)
+            if(low&&soundDesign!=null)soundDesign.BeginError();
+            float trail=0;bool any=true;
+            while(any)
             {
-                float dx = side * speed * Time.deltaTime;
-                x -= dx; last -= dx;
-                for (int i = 0; i < count; i++) barList[i].sr.transform.position = new Vector3(x + side * spacing * i, yc, 0f);
-                if ((trail -= Time.deltaTime) <= 0f)
+                any=false;trail-=Time.deltaTime;bool emit=trail<=0;if(emit)trail=.05f;
+                for(int i=0;i<shots.Count;i++)
                 {
-                    trail = 0.04f;
-                    for (int i = 0; i < count; i++)
-                    {
-                        AfterImage(barList[i].sr);
-                        if (low) Dust(new Vector2(barList[i].sr.transform.position.x, floorTop), side, 1, hazardColor);
-                    }
+                    var shot=shots[i];if(shot.sr==null)continue;
+                    shot.sr.transform.position+=Vector3.left*sides[i]*speed*Time.deltaTime;
+                    float x=shot.sr.transform.position.x;
+                    if(sides[i]>0?x<ArenaLeft-width:x>ArenaRight+width){RemoveHazard(shot);continue;}
+                    any=true;
+                    if(emit){if(low){ErrorAfterImage(shot.sr);Dust(new Vector2(x,floorTop),sides[i],1,new Color(.2f,1,.35f));}else AfterImage(shot.sr);}
                 }
                 yield return null;
             }
-            foreach (var bar in barList) RemoveHazard(bar);
-            RemoveHazard(band);
-            low = !low;
-            if (b < bars - 1) yield return new WaitForSeconds(0.6f);
+            if(low&&soundDesign!=null)soundDesign.EndError();
+            RemoveHazard(band);low=!low;
+            if(wave<bars-1)yield return new WaitForSeconds(.6f);
         }
     }
 
-    // 탄
+    void ErrorAfterImage(SpriteRenderer source)
+    {
+        AddParticle(source.transform.position,source.transform.localScale,new Color(.3f,1,.45f,.3f),Vector2.zero,.25f,0,0,source.sortingOrder-1);
+        if(particles.Count>0)particles[particles.Count-1].sr.sprite=source.sprite;
+    }
+
     IEnumerator Orbs(float k)
     {
         int n = phase >= 2 ? 3 : 2;
@@ -900,7 +940,7 @@ public class BossFight : MonoBehaviour
             if (orb == null) yield break;
             orb.transform.localScale = Vector3.one;
             Vector2 target = pcol.bounds.center;
-            orb.velocity = (target - (Vector2)orb.transform.position).normalized * orbSpeed * (1f + 0.1f * phase);
+            orb.velocity = (target - (Vector2)orb.transform.position).normalized * orbSpeed * (1f + 0.1f * phase) * (phase >= 2 ? 1.5f : 1f);
             orb.enabled = true;
             if (tutorial && !reflectTaught && firstOrb == null)
             {
@@ -909,14 +949,14 @@ public class BossFight : MonoBehaviour
                 player.ResetMotion();
                 player.combatOnly = true;
             }
-            yield return new WaitForSeconds(orbInterval * k);
+            yield return new WaitForSeconds(orbInterval * k / (phase >= 2 ? 1.5f : 1f));
         }
         yield return MoveBoss(BossRest, 0.6f);
     }
 
     BossOrb SpawnOrb()
     {
-        var sr = MakeSprite("BossOrb", hazardRoot, OrbSprite(), 18, new Color(1f, 0.3f, 0.3f, 1f));
+        var sr = MakeSprite("BossOrb", hazardRoot, OrbSprite(), 18, Color.white);
         if (counterOrbSprite != null) sr.sprite = counterOrbSprite;
         var go = sr.gameObject;
         go.AddComponent<BossOrbVisual>().Initialize(sr, counterOrbMaterial);
@@ -981,9 +1021,10 @@ public class BossFight : MonoBehaviour
         if (orbVisual != null) orbVisual.Reflect();
         if (eyePresentation != null) eyePresentation.PulseAt(o.transform.position, .014f);
         var sr = o.GetComponent<SpriteRenderer>();
-        if (sr != null) sr.color = reflectedColor;
+        if (sr != null) sr.color = Color.white;
+        PlaySfx(reflectTingClip); reflectSlowLeft=.3f;
         Shake(0.1f, 0.08f);
-        HitStop(0.08f);
+        reflectSlowLeft=.3f;
         Burst(o.transform.position, Color.white, 6, 7f, 0.15f);
         Burst(o.transform.position, reflectedColor, 8, 5f, 0.2f);
         if (o == firstOrb && !reflectTaught)
@@ -1022,7 +1063,7 @@ public class BossFight : MonoBehaviour
     // 신의 커서: 따라오다 멈추고 → 선택 박스를 끌어서 → 지운다
     IEnumerator CursorErase(float k)
     {
-        int clicks = phase >= 2 ? 2 : 1;
+        int clicks = Mathf.Clamp(phase+1,1,3);
         var cursor = AddSprite(attackCursorSprite != null ? attackCursorSprite : CursorSprite(), BossPosition, 25, Color.white);
         if (attackCursorSprite != null) cursor.sr.transform.localScale = Vector3.one * (1.6f / attackCursorSprite.bounds.size.y);
         Vector2 pos = BossPosition;
@@ -1046,9 +1087,11 @@ public class BossFight : MonoBehaviour
             var selection = box.sr.gameObject.AddComponent<BossDragSelection>();
             selection.Initialize(box.sr, tl);
             Vector2 start = pos;
+            bool clickPressed = false;
             for (float t = 0f; t < tel; t += Time.deltaTime)
             {
                 float a = t / tel;
+                if (!clickPressed && a >= .2f) { PlayCursorClick(false); clickPressed = true; }
                 pos = a < 0.2f ? Vector2.Lerp(start, tl, a / 0.2f) : Vector2.Lerp(tl, br, Mathf.SmoothStep(0f, 1f, (a - 0.2f) / 0.8f));
                 selection.SetCorner(a < .2f ? tl : pos);
                 ChargeRumble(Mathf.Clamp01(a));
@@ -1059,7 +1102,7 @@ public class BossFight : MonoBehaviour
             selection.SetCorner(br);
             selection.Activate();
             box.sr.color = new Color(.43f, .025f, .025f, 1f); box.sr.sortingOrder = 20; box.armed = true;
-            PlaySfx(cursorClickClip);
+            PlayCursorClick(true);
             Shake(0.15f, 0.15f);
             Glitch(0.15f, 0.6f);
             yield return new WaitForSeconds(eraseTime);
@@ -1072,6 +1115,34 @@ public class BossFight : MonoBehaviour
     }
 
     // 내려찍기 + 충격파
+    Hazard SpawnSlamBlock(Vector2 position)
+    {
+        var prefab=Resources.Load<GameObject>("BossSlamErrorBlock");
+        if(prefab==null)return AddRect(position,slamSize,eraserColor,19);
+        var go=Instantiate(prefab,position,Quaternion.identity);
+        go.transform.localScale=Vector3.one;
+        var sr=go.GetComponent<SpriteRenderer>();sr.size=slamSize;sr.color=Color.white;sr.sortingOrder=19;sr.sharedMaterial=Resources.Load<Material>("BossSlamInk");
+        var emitter=BossNeonLighting.Emit(sr);if(emitter!=null)emitter.lightTint=new Color(1,.2f,1);
+        var col=go.GetComponent<BoxCollider2D>();col.enabled=false;col.size=slamSize;col.offset=Vector2.zero;
+        var h=new Hazard{sr=sr};hazards.Add(h);return h;
+    }
+
+    Hazard AddShockBlock(Vector2 position)
+    {
+        if(shockTileSprite==null)return AddRect(position,shockSize,hazardColor,20);
+        var h=AddSprite(shockTileSprite,position,20,Color.white);
+        float scale=shockSize.y/shockTileSprite.bounds.size.y;
+        h.sr.drawMode=SpriteDrawMode.Tiled;h.sr.size=shockSize/scale;
+        h.sr.transform.localScale=Vector3.one*scale;
+        return h;
+    }
+    void ShockAfterImage(SpriteRenderer source)
+    {
+        AddParticle(source.transform.position,source.transform.localScale,new Color(1,1,1,.28f),Vector2.zero,.22f,0,0,source.sortingOrder-1);
+        if(particles.Count==0)return;
+        var sr=particles[particles.Count-1].sr;sr.sprite=source.sprite;sr.drawMode=source.drawMode;sr.size=source.size;
+    }
+
     IEnumerator Slam(float k)
     {
         int slams = phase >= 2 ? 2 : 1;
@@ -1080,7 +1151,7 @@ public class BossFight : MonoBehaviour
         {
             float x = Mathf.Clamp(player.transform.position.x, ArenaLeft + halfW, ArenaRight - halfW);
             float hoverY = floorTop + slamHover;
-            var er = AddRect(new Vector2(x, hoverY), slamSize, eraserColor, 19);
+            var er = AddRect(new Vector2(x,hoverY),slamSize,new Color(1f,.16f,.2f,.48f),19);
             var shadow = AddRect(Vector2.zero, Vector2.one, warnColor, 5);
             System.Action place = () =>
             {
@@ -1094,6 +1165,7 @@ public class BossFight : MonoBehaviour
             {
                 float tx = Mathf.Clamp(player.transform.position.x, ArenaLeft + halfW, ArenaRight - halfW);
                 x = Mathf.MoveTowards(x, tx, slamFollowSpeed * Time.deltaTime);
+                hoverY=floorTop+slamHover;foreach(var landed in BossSlamBlock.Active)if(landed.Shape!=null){var bounds=landed.Shape.bounds;if(bounds.max.x>x-halfW&&bounds.min.x<x+halfW)hoverY=Mathf.Max(hoverY,bounds.max.y+slamSize.y*.5f+1.5f);}
                 er.sr.transform.position = new Vector3(x, hoverY, 0f);
                 place();
                 yield return null;
@@ -1108,14 +1180,20 @@ public class BossFight : MonoBehaviour
             RemoveHazard(shadow);
 
             // 내려찍기
-            er.armed = true;
-            float y = hoverY, landY = floorTop + slamSize.y * 0.5f;
+            er.armed = false;
+            float support=floorTop;
+            foreach(var block in BossSlamBlock.Active){if(block.Shape!=null&&block.Shape.enabled){var bounds=block.Shape.bounds;if(bounds.max.x>x-halfW+.05f&&bounds.min.x<x+halfW-.05f)support=Mathf.Max(support,bounds.max.y);}}
+            float y = Mathf.Max(hoverY,support+slamSize.y*.5f+.2f), landY = support + slamSize.y * 0.5f;
             while (y > landY)
             {
                 y = Mathf.Max(landY, y - slamFallSpeed * Time.deltaTime);
                 er.sr.transform.position = new Vector3(x, y, 0f);
                 yield return null;
             }
+            var landedBlock=SpawnSlamBlock(new Vector2(x,landY));RemoveHazard(er);er=landedBlock;
+            er.armed=false;hazards.Remove(er);
+            er.sr.gameObject.AddComponent<BossSlamBlock>().Land(slamSize);
+            if(er.sr.bounds.Intersects(pcol.bounds)){float dir=player.transform.position.x<x?-1:1;float target=x+dir*(halfW+pcol.bounds.extents.x+.15f);if(target<ArenaLeft||target>ArenaRight)target=x-dir*(halfW+pcol.bounds.extents.x+.15f);player.ForceBossPush(target,Mathf.Sign(target-x)*8f);Hurt();}
             PlaySfx(slamClip);
             Shake(0.5f, 0.55f * attackShakeStrength);
             if(attackSigils!=null)attackSigils.Impact();
@@ -1129,15 +1207,15 @@ public class BossFight : MonoBehaviour
             // 충격파: 바닥 줄 예고 → 양쪽으로 퍼짐 (점프)
             float sy = floorTop + shockSize.y * 0.5f;
             var band = AddRect(new Vector2(cx, sy), new Vector2(arenaHalfWidth * 2f, shockSize.y), warnColor, 5);
-            yield return Telegraph(new List<Hazard> { band }, Mathf.Max(0.5f, shockDelay * k));
+            yield return Telegraph(new List<Hazard> { band }, Mathf.Max(0.5f, shockDelay * k),true);
             var waves = new List<Hazard>();
             foreach (int d in new[] { -1, 1 })
             {
-                var wv = AddRect(new Vector2(x + d * (halfW + shockSize.x * 0.5f), sy), shockSize, hazardColor, 20);
+                var wv = AddShockBlock(new Vector2(x + d * (halfW + shockSize.x * 0.5f), sy));
                 wv.armed = true;
                 waves.Add(wv);
             }
-            StartCoroutine(FadeOut(new List<Hazard> { er }, 0.6f));
+            PlaySfx(shockHissClip);
             bool any = true;
             while (any)
             {
@@ -1150,7 +1228,7 @@ public class BossFight : MonoBehaviour
                     p.x += (i == 0 ? -1f : 1f) * shockSpeed * Time.deltaTime;
                     wv.sr.transform.position = p;
                     if (Random.value < 0.4f) Dust(new Vector2(p.x, floorTop), i == 0 ? -1 : 1, 1, hazardColor);
-                    if (Random.value < 0.5f) AfterImage(wv.sr);
+                    if (Random.value < 0.5f) ShockAfterImage(wv.sr);
                     if (p.x < ArenaLeft - 1f || p.x > ArenaRight + 1f) RemoveHazard(wv);
                     else any = true;
                 }
@@ -1282,6 +1360,7 @@ public class BossFight : MonoBehaviour
         if (dir.y < -0.01f) len = Mathf.Min(len, (from.y - floorTop) / -dir.y);
         Vector2 mid = from + dir * len * 0.5f;
         var t = h.sr.transform;
+        var beamMat=Resources.Load<Material>("BossBeamFade");if(beamMat!=null){var light=h.sr.GetComponent<BossBeamLight>();if(light==null)light=h.sr.gameObject.AddComponent<BossBeamLight>();light.Configure(beamMat,BossRadius*.55f/Mathf.Max(.1f,len),(BossRadius*1.35f+1f)/Mathf.Max(.1f,len));}
         t.position = new Vector3(mid.x, mid.y, 0f);
         t.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
         t.localScale = new Vector3(len, width, 1f);
@@ -1569,6 +1648,7 @@ public class BossFight : MonoBehaviour
     /// <summary>엔딩으로 넘어갈 때: 카메라 고정·하트·지지직을 풀고 보스전을 끈다.</summary>
     public void EndFight()
     {
+        foreach(var block in new List<BossSlamBlock>(BossSlamBlock.Active))if(block!=null)Destroy(block.gameObject);
         if (eyePresentation != null) eyePresentation.Finish();
         if(attackSigils!=null)attackSigils.Clear();
         camLocked = false;
@@ -1582,6 +1662,8 @@ public class BossFight : MonoBehaviour
         foreach (var p in particles) if (p.sr != null) Destroy(p.sr.gameObject);
         particles.Clear();
         if (floorLine != null) floorLine.enabled = false;
+        var neon=GetComponent<BossNeonLighting>();if(neon!=null)neon.EndArena();
+        var uiEffects=GetComponent<BossUiGlitch>();if(uiEffects!=null)uiEffects.End();
         if (bgDecor != null) Destroy(bgDecor);
         if (bgHaze != null) Destroy(bgHaze);
         enabled = false;
@@ -1595,6 +1677,7 @@ public class BossFight : MonoBehaviour
         UpdateParticles();
         RecordPlayer();
         UpdateBgm();
+        UpdateFinalPhaseEffects();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // 테스트용: 보스 바로 처치 (에디터·개발 빌드에서만)
         if (Input.GetKeyDown(debugDefeatKey) && started && !defeated && !dying)
@@ -1700,6 +1783,8 @@ public class BossFight : MonoBehaviour
         fightLive = true;
         bgmTarget = 1f; // 배경음 다시
         StartCoroutine(Loop());
+        player.BeginRespawnSlow(respawnSlowDuration, respawnMoveMultiplier);
+        var recovery=GetComponent<BossRespawnRecovery>();if(recovery!=null)recovery.Cancel();
     }
 
     // ───────────── 죽으면 되감기 ─────────────
@@ -1751,13 +1836,24 @@ public class BossFight : MonoBehaviour
     {
         if (bgm == null || PauseMenu.IsPaused) return;
         if (Mathf.Approximately(bgmLevel, bgmTarget)) return;
-        bgmLevel = Mathf.MoveTowards(bgmLevel, bgmTarget, Time.unscaledDeltaTime / Mathf.Max(0.01f, bgmFadeTime));
+        bgmLevel = Mathf.MoveTowards(bgmLevel, bgmTarget, Time.unscaledDeltaTime / Mathf.Max(0.01f,Time.unscaledTime<introMusicFadeUntil?2f:bgmFadeTime));
         bgm.volume = bgmVolume * bgmLevel;
         if (bgmLevel <= 0f) bgm.Pause();
         else if (!bgm.isPlaying) bgm.UnPause();
     }
 
     /// <summary>단발 효과음.</summary>
+    void PlayCursorClick(bool released)
+    {
+        if (cursorClickClip == null) return;
+        var go = new GameObject(released ? "CursorReleaseClick" : "CursorPressClick");
+        go.transform.SetParent(transform, false);
+        var a = go.AddComponent<AudioSource>(); a.playOnAwake = false; a.spatialBlend = 0f;
+        if (sfx != null) a.outputAudioMixerGroup = sfx.outputAudioMixerGroup;
+        a.clip = cursorClickClip; a.volume = sfxVolume * (released ? .85f : 1f);
+        a.pitch = released ? Mathf.Pow(2f, -1f / 12f) : 1f; a.Play();
+        Destroy(go, cursorClickClip.length / a.pitch + .1f);
+    }
     void PlaySfx(AudioClip clip, float volume = 1f)
     {
         if (clip == null) return;
@@ -1790,6 +1886,7 @@ public class BossFight : MonoBehaviour
 
     void StartRewindDeath()
     {
+        var recovery=GetComponent<BossRespawnRecovery>();if(recovery!=null)recovery.Cancel();
         dying = true;
         fightLive = false;
         bgmTarget = 0f; // 배경음 꺼짐
@@ -1849,9 +1946,12 @@ public class BossFight : MonoBehaviour
 
         // 검은 화면이 걷히고 회색 필름으로 되감기
         overlay.ShowPrompt(false);
+        var actorGO=new GameObject("RewindPlayerVisible");rewindActor=actorGO.AddComponent<SpriteRenderer>();
+        rewindActor.sortingOrder=120;rewindActor.sharedMaterial=new Material(Shader.Find("Sprites/Default"));
+        rewindActor.transform.localScale=psr.transform.lossyScale;
         overlay.ReleaseBlack();
         overlay.SetFilm(1f);
-        StartLong(ref rewindSrc, rewindClip, false);
+        StartLong(ref rewindSrc, rewindClip, true);
         if (bossBar != null) bossBar.SetActive(true);
         Shake(0.2f, 0.35f);
         Glitch(0.15f, 0.6f);
@@ -1894,6 +1994,7 @@ public class BossFight : MonoBehaviour
         StopLong(rewindSrc);
         PlaySfx(respawnClip);
 
+        if(rewindActor!=null){Destroy(rewindActor.sharedMaterial);Destroy(rewindActor.gameObject);rewindActor=null;}
         rewinding = false;
         rewindBuf.Clear();
         if (anim != null) anim.enabled = true;
@@ -1936,6 +2037,7 @@ public class BossFight : MonoBehaviour
         KeepGodBubbleClear();
         UpdateDemo();
         RecordRewind();
+        if(rewinding && rewindActor!=null){rewindActor.sprite=rewindPose.sprite;rewindActor.flipX=rewindPose.flip;rewindActor.color=Color.white;rewindActor.transform.position=psr.transform.position;}
         if (rewinding && psr != null)
         {
             psr.enabled = true; // 죽음 애니 끝에 숨겨진 그림을 다시 보이게
@@ -1966,7 +2068,7 @@ public class BossFight : MonoBehaviour
                 glitchTimer -= Time.deltaTime;
                 if (glitchTimer <= 0f)
                 {
-                    glitchTimer = Random.Range(0.3f, 1.2f);
+                    glitchTimer = phase>=2?Random.Range(.12f,.38f):Random.Range(0.3f, 1.2f);
                     glitchHold = 0.07f;
                     boss.transform.localPosition = new Vector3(Random.Range(-0.4f, 0.4f), 0f, 0f);
                 }
@@ -2030,15 +2132,24 @@ public class BossFight : MonoBehaviour
             go.transform.SetParent(root, false);
             demo = go.AddComponent<LineRenderer>();
             demo.useWorldSpace = true;
-            demo.material = new Material(Shader.Find("Sprites/Default"));
-            demo.widthMultiplier = 0.25f;
-            demo.numCapVertices = 4;
-            demo.numCornerVertices = 4;
+            demo.sharedMaterial = Resources.Load<Material>("BossPlainLine");
+            var trail=FindFirstObjectByType<GestureTrail>();
+            demo.widthMultiplier=trail!=null?trail.width:.12f;
+            demo.numCapVertices = 6;
+            demo.numCornerVertices = 6;
             demo.sortingOrder = 300;
+            var halo=new GameObject("BrushHalo");halo.transform.SetParent(go.transform,false);
+            demoGlow=halo.AddComponent<LineRenderer>();demoGlow.useWorldSpace=true;demoGlow.sortingOrder=299;
             demoTip = MakeSprite("Tip", go.transform, OrbSprite(), 301, Color.white);
+            demoTip.sharedMaterial=Resources.Load<Material>("BossPlainSprite");
             demoTip.transform.localScale = Vector3.one * 0.6f;
         }
-        demo.startColor = demo.endColor = demoColor;
+        var referenceBrush=FindFirstObjectByType<GestureTrail>();
+        var palette=player!=null?player.GetComponent<GestureRecognizer>():null;
+        Color hintColor=palette!=null?(d==Demo.Section?palette.colorBoss:palette.colorAttack):new Color(.9f,.15f,.15f);
+        if(referenceBrush!=null)referenceBrush.ApplyGuideStyle(demo,demoGlow,hintColor);
+        else{demo.startColor=demo.endColor=hintColor;demoGlow.sharedMaterial=demo.sharedMaterial;hintColor.a=.35f;demoGlow.startColor=demoGlow.endColor=hintColor;demoGlow.widthMultiplier=.12f*2.8f;}
+        demoTip.enabled=false;
         demoPath = d == Demo.Section ? SectionPath() : AttackPath(d == Demo.AttackLeft);
         demoKind = d;
         demoT = 0f;
@@ -2058,14 +2169,14 @@ public class BossFight : MonoBehaviour
     {
         if (demoKind == Demo.None || demo == null || demoPath == null || player == null) return;
         bool section = demoKind == Demo.Section;
-        Vector2 c = section ? BossPosition + Vector2.right * (BossRadius + 2.2f) : (Vector2)player.transform.position + Vector2.up * 3.8f;
-        float s = section ? 1.5f : 2f;
+        Vector2 c = section ? new Vector2(boss != null ? boss.bounds.max.x + 1.1f : BossPosition.x + BossRadius + 3f, BossPosition.y) : (Vector2)player.transform.position + Vector2.up * 3.8f;
+        float s = section ? 1.875f : 2f;
         float drawTime = section ? 1.6f : 0.7f;
         demoT += Time.unscaledDeltaTime;
         float prog = Mathf.Clamp01((demoT % (drawTime + 0.7f)) / drawTime);
         int n = Mathf.Clamp(Mathf.CeilToInt(prog * (demoPath.Length - 1)) + 1, 2, demoPath.Length);
-        demo.positionCount = n;
-        for (int i = 0; i < n; i++) demo.SetPosition(i, c + demoPath[i] * s);
+        demo.positionCount = demoGlow.positionCount = n;
+        for (int i = 0; i < n; i++){Vector3 point=c+demoPath[i]*s;demo.SetPosition(i,point);demoGlow.SetPosition(i,point);}
         demoTip.transform.position = c + demoPath[n - 1] * s;
     }
 
@@ -2124,16 +2235,19 @@ public class BossFight : MonoBehaviour
     void ApplyTimeScale()
     {
         if (PauseMenu.IsPaused) return;
+        bool impact = reflectSlowLeft > 0f;
+        reflectSlowLeft=Mathf.Max(0,reflectSlowLeft-Time.unscaledDeltaTime);
         bool stop = hitStopLeft > 0f;
         if (stop) hitStopLeft -= Time.unscaledDeltaTime;
-        if (slowOn || stop || hitStopWas)
+        if (slowOn || stop || hitStopWas || impact)
         {
             float ts = slowOn ? Mathf.Lerp(1f, tutorialTimeScale, slowFx) : 1f;
             if (stop) ts = Mathf.Min(ts, 0.03f);
+            if(impact)ts=Mathf.Min(ts,.28f);
             Time.timeScale = ts;
             Time.fixedDeltaTime = baseFixedDt * ts; // 느려도 물리가 끊겨 보이지 않게
         }
-        hitStopWas = stop;
+        hitStopWas = stop || impact;
     }
 
     /// <summary>pos 에서 사방으로 튀는 네모 파편.</summary>
@@ -2174,6 +2288,7 @@ public class BossFight : MonoBehaviour
     void FlashRect(SpriteRenderer src)
     {
         if (src == null) return;
+        if(src.sharedMaterial!=null&&src.sharedMaterial.shader.name=="Anomaly/BossBeamFade")return;
         AddParticle(src.transform.position, src.transform.localScale, new Color(1f, 1f, 1f, 0.75f), Vector2.zero, 0.15f, 0f, 0f, 21);
     }
 
@@ -2188,10 +2303,16 @@ public class BossFight : MonoBehaviour
     void AddParticle(Vector2 pos, Vector2 scale, Color color, Vector2 vel, float life, float gravity, float spin, int order)
     {
         if (root == null) return;
-        var sr = MakeSprite("Fx", root, Square(), order, color);
+        Particle particle=particlePool.Count>0?particlePool.Pop():new Particle();
+        var sr=particle.sr;
+        if(sr==null)sr=particle.sr=MakeSprite("Fx",root,Square(),order,color);
+        BossNeonLighting.Particle(sr);
+        sr.drawMode=SpriteDrawMode.Simple;sr.size=Vector2.one;sr.sprite=Square();sr.color=color;sr.sortingOrder=order;sr.enabled=true;
         sr.transform.position = pos;
         sr.transform.localScale = new Vector3(scale.x, scale.y, 1f);
-        particles.Add(new Particle { sr = sr, v = vel, life = life, max = life, gravity = gravity, spin = spin, a = color.a });
+        sr.transform.localRotation=Quaternion.identity;
+        particle.v=vel;particle.life=particle.max=life;particle.gravity=gravity;particle.spin=spin;particle.a=color.a;
+        particles.Add(particle);
     }
 
     /// <summary>파편 움직이기 (게임 시간 기준이라 타격 멈춤 때 같이 멈춤).</summary>
@@ -2204,7 +2325,7 @@ public class BossFight : MonoBehaviour
             p.life -= dt;
             if (p.sr == null || p.life <= 0f)
             {
-                if (p.sr != null) Destroy(p.sr.gameObject);
+                if(p.sr!=null){p.sr.enabled=false;if(particlePool.Count<512)particlePool.Push(p);else Destroy(p.sr.gameObject);}
                 particles.RemoveAt(i);
                 continue;
             }
@@ -2217,9 +2338,17 @@ public class BossFight : MonoBehaviour
     }
 
     /// <summary>화면이 지지직: 가로 줄무늬가 어긋나고 신이 빨강·파랑으로 갈라진다. 겹치면 센 쪽.</summary>
+    void UpdateFinalPhaseEffects()
+    {
+        if(eyePresentation!=null)eyePresentation.combatPhase=phase;
+        if(!CombatActive||phase<2||teaching||PauseMenu.IsPaused)return;
+        if(Time.time>=finalPhaseNext){finalPhaseNext=Time.time+Random.Range(.65f,1.15f);Glitch(.12f,Random.Range(.32f,.55f));if(soundDesign!=null)soundDesign.StaticPulse();}
+    }
+
     void Glitch(float time, float power)
     {
         if (!glitchOn) return;
+        GlitchLightPulse.Pulse(new Color(1f,.12f,.25f),power*.5f,time);
         glitchLeft = Mathf.Max(glitchLeft, time);
         glitchPower = glitchLeft > 0f && glitchPower > power ? glitchPower : power;
     }
@@ -2231,10 +2360,11 @@ public class BossFight : MonoBehaviour
         if (on) glitchLeft -= Time.unscaledDeltaTime;
         else glitchPower = 0f;
 
-        if (glitchBars.Count == 0 && on)
-            for (int i = 0; i < 7; i++)
+        if (on)
+            for (int i = glitchBars.Count; i < (phase>=2?12:7); i++)
             {
                 var sr = MakeSprite("GlitchBar", cam.transform, Square(), 90, Color.clear);
+                GlitchHalo.Attach(sr);
                 glitchBars.Add(sr);
             }
         if (bossGhosts.Count == 0 && on && boss != null)
@@ -2247,7 +2377,7 @@ public class BossFight : MonoBehaviour
         // 줄무늬는 0.04초마다 새로 뿌림
         glitchTick -= Time.unscaledDeltaTime;
         bool reroll = glitchTick <= 0f;
-        if (reroll) glitchTick = 0.04f;
+        if (reroll) glitchTick = phase>=2?.024f:.04f;
         float h = cam.orthographicSize, w = h * cam.aspect;
         for (int i = 0; i < glitchBars.Count; i++)
         {
@@ -2312,11 +2442,13 @@ public class BossFight : MonoBehaviour
         go.transform.SetAsFirstSibling();
         healthHud = go.AddComponent<BossHealthHud>();
         healthHud.Configure(healthFullFrames, healthEmptyFrames, hearts, settings);
+        BossUiGlitch.Register(go.transform);
         go.SetActive(false);
     }
 
     void SetHearts(int n)
     {
+        if(n<heartsLeft)BossUiGlitch.Pulse();
         heartsLeft = Mathf.Clamp(n, 0, hearts);
         if (healthHud == null) return;
         healthHud.gameObject.SetActive(true);
@@ -2340,6 +2472,7 @@ public class BossFight : MonoBehaviour
         {
             var go=new GameObject("BossDualGauge",typeof(RectTransform));go.transform.SetParent(bossBar.transform,false);
             dualGauge=go.AddComponent<BossDualGauge>();dualGauge.Configure(bossGaugeFrame,bossGaugeGreen,bossGaugeRed,bossGaugeMaterial,bossBarSize.x,bossBarTop);
+            BossUiGlitch.Register(go.transform);
             bossBar.SetActive(false);return;
         }
         BuildBarRow("Health", bossBarTop, bossBarSize, bossPhases, bossBarColor, bossBarCells);
@@ -2420,8 +2553,9 @@ public class BossFight : MonoBehaviour
         boss.color = stunned ? stunColor : (punch ? bossColor : back);
     }
 
-    IEnumerator Telegraph(List<Hazard> list, float time)
+    IEnumerator Telegraph(List<Hazard> list, float time, bool alternateSound=false)
     {
+        if(soundDesign!=null)soundDesign.Warn(alternateSound,time);
         var baseA = new List<float>();
         foreach (var h in list) baseA.Add(h.sr != null ? h.sr.color.a : 0f);
         Glitch(0.12f, 0.4f);
@@ -2468,8 +2602,10 @@ public class BossFight : MonoBehaviour
 
     Hazard AddRect(Vector2 center, Vector2 size, Color color, int order)
     {
+        if(order==5&&size.x>=arenaHalfWidth*1.9f&&cam!=null)size.x=Mathf.Max(size.x,cam.orthographicSize*2f*cam.aspect+2f*Mathf.Abs(cam.transform.position.x-center.x)+2f);
         var h = AddSprite(Square(), center, order, color);
         h.sr.transform.localScale = new Vector3(size.x, size.y, 1f);
+        BossNeonLighting.Emit(h.sr,true);
         return h;
     }
 
@@ -2477,6 +2613,11 @@ public class BossFight : MonoBehaviour
     Hazard AddSprite(Sprite sprite, Vector2 pos, int order, Color color)
     {
         var sr = MakeSprite("Hazard", hazardRoot, sprite, order, color);
+        bool plainImage=order==25||sprite==attackCursorSprite;
+        var emitter=plainImage?null:BossNeonLighting.Emit(sr);
+        if(plainImage)sr.sharedMaterial=Resources.Load<Material>("BossPlainSprite");
+        if(emitter!=null&&sprite==errorAttackSprite)emitter.lightTint=new Color(.3f,1,.45f);
+        if(emitter!=null&&sprite==shockTileSprite)emitter.lightTint=new Color(1,.2f,1);
         sr.transform.position = pos;
         var h = new Hazard { sr = sr };
         hazards.Add(h);

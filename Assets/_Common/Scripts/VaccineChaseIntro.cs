@@ -246,6 +246,7 @@ public class VaccineChaseIntro : MonoBehaviour
             bars[i] = b.GetComponent<RectTransform>();
             barImgs[i] = b.GetComponent<Image>();
             barImgs[i].raycastTarget = false;
+        GlitchHalo.Attach(barImgs[i]);
             bars[i].anchorMin = bars[i].anchorMax = new Vector2(0.5f, 0.5f);
             b.SetActive(false);
         }
@@ -253,6 +254,7 @@ public class VaccineChaseIntro : MonoBehaviour
 
     IEnumerator Glitch(float duration, float strength)
     {
+        GlitchLightPulse.Pulse(new Color(.4f,.7f,1f),strength*.5f,duration);
         if (glitching) yield break;
         glitching = true;
         var rt = (RectTransform)canvas.transform;

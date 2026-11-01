@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 public sealed class BossDualGauge : MonoBehaviour
 {
@@ -17,6 +17,8 @@ public sealed class BossDualGauge : MonoBehaviour
         var go=new GameObject("OriginalFrame",typeof(RectTransform),typeof(Image));go.transform.SetParent(root,false);
         var rect=(RectTransform)go.transform;rect.anchorMin=Vector2.zero;rect.anchorMax=Vector2.one;rect.sizeDelta=Vector2.zero;rect.anchoredPosition=Vector2.zero;
         var img=go.GetComponent<Image>();img.sprite=frame;img.raycastTarget=false;
+        // Keep the original white and black frame pixels above both gauge fills.
+        go.transform.SetAsLastSibling();
     }
     Row CreateRow(string name,Texture tex,Material template,Color trail,float scale,float y,float width,float height,float opening){
         var go=new GameObject(name,typeof(RectTransform),typeof(RawImage));go.transform.SetParent(root,false);
@@ -31,12 +33,13 @@ public sealed class BossDualGauge : MonoBehaviour
         if(value<r.target){r.trail=Mathf.Max(r.trail,r.shown);r.hold=.32f;r.flash=.24f;glitch=.10f;}
         else {r.shown=r.trail=value;r.hold=0;r.flash=0;}
         r.target=value;
+        BossUiGlitch.Pulse();
     }
     void TickRow(Row r,float dt){
         r.shown=Mathf.MoveTowards(r.shown,r.target,dt*4.5f);
         if(r.hold>0)r.hold-=dt;else r.trail=Mathf.MoveTowards(r.trail,r.target,dt*.62f);
         r.trail=Mathf.Max(r.shown,r.trail);r.flash=Mathf.Max(0,r.flash-dt);
-        r.material.SetFloat("_Fill",r.shown);r.material.SetFloat("_Trail",r.trail);r.material.SetFloat("_Flash",r.flash/.24f);r.material.SetFloat("_Clock",clock);r.material.SetFloat("_Glitch",glitch>0?1:0);
+        r.material.SetFloat("_Fill",r.shown);r.material.SetFloat("_Trail",r.trail);r.material.SetFloat("_Flash",r.flash/.24f);r.material.SetFloat("_Clock",clock);r.material.SetFloat("_Glitch",Mathf.Max(glitch>0?1:0,BossUiGlitch.Strength));
     }
     void Update(){
         if(health==null||PauseMenu.IsPaused)return;

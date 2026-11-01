@@ -23,6 +23,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scene/Chapter4/LastScene.unity
     guid: 3997ef42147f26947821dd2feb51e137
+  - enabled: 1
+    path: Assets/Scene/Chapter1/Chapter1.unity
+    guid: aa17af2597bda4245af4e73c19584141
+  - enabled: 1
+    path: Assets/Scene/Story/Story.unity
+    guid: 03e3d98202dc4cc41b855736509659e0
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

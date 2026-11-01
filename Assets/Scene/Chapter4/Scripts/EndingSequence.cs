@@ -78,6 +78,10 @@ public class EndingSequence : MonoBehaviour
     public AudioClip errorClip;
     [Range(0f, 1f)] public float errorVolume = 1f;
 
+    public AudioClip villageBirdClip;
+    [Range(0, 1)] public float villageBirdVolume = .65f;
+    AudioSource villageBirds;
+    Coroutine birdFade;
     Camera cam;
     Canvas canvas;
     RectTransform canvasRect;
@@ -145,6 +149,7 @@ public class EndingSequence : MonoBehaviour
             camHeld = true;
         }
         yield return new WaitForSeconds(whiteHold);
+        StartVillageBirds();
         yield return FadeImage(white, 1f, 0f, whiteOutTime);
 
         // 조용한 마을 → 메크로 독백 → 마을 사람이 알아봄 (말이 끝나기 전에 지지직)
@@ -170,6 +175,10 @@ public class EndingSequence : MonoBehaviour
             glitchSrc.volume = glitchVolume;
             glitchSrc.Play();
         }
+        if (birdFade != null) { StopCoroutine(birdFade); birdFade = null; }
+        float birdsAtGlitch = villageBirds != null ? villageBirds.volume : 0;
+        var fadeBlack = MakeImage("EndingBlackFade", canvasRect, Color.clear);
+        Stretch(fadeBlack.rectTransform);
         var gap = MakeImage("SoundGap", canvasRect, Color.black);
         Stretch(gap.rectTransform);
         gap.enabled = false;
@@ -177,6 +186,9 @@ public class EndingSequence : MonoBehaviour
         {
             if (glitchSrc != null && !glitchSrc.isPlaying) break;
             float a = t / glitchDur;
+            if (villageBirds != null) villageBirds.volume = birdsAtGlitch * (1 - Mathf.SmoothStep(0, 1, Mathf.Clamp01(t / Mathf.Max(.1f, Mathf.Min(2.2f, glitchDur)))));
+            fadeBlack.color = new Color(0, 0, 0, Mathf.SmoothStep(0, 1, a));
+            fadeBlack.transform.SetAsLastSibling();
             if (glitchSrc != null) glitchSrc.volume = glitchVolume * Mathf.Clamp01((glitchDur - t) / GlitchFadeOut); // 자른 끝이 툭 안 끊기게
             bool silent = gaps != null && gaps[Mathf.Min(gaps.Length - 1, (int)(t / GlitchStep))];
             gap.enabled = silent;
@@ -190,11 +202,13 @@ public class EndingSequence : MonoBehaviour
             yield return null;
         }
         if (glitchSrc != null) glitchSrc.Stop();
+        if (villageBirds != null) { villageBirds.volume = 0; villageBirds.Stop(); }
         Destroy(gap.gameObject);
         shake = 0f;
         UpdateBars(0f);
         white.color = Color.black;
         white.transform.SetAsLastSibling();
+        Destroy(fadeBlack.gameObject);
         foreach (var h in holes) Destroy(h.gameObject);
         holes.Clear();
         yield return new WaitForSeconds(blackHold);
@@ -213,17 +227,48 @@ public class EndingSequence : MonoBehaviour
         }
         Color okColor = okImage.color, okHover = Color.Lerp(okColor, Color.white, 0.15f);
         float waited = 0f;
+        bool wasOver = false;
         while (true)
         {
             Vector2 m = Input.mousePosition;
             bool overOk = RectTransformUtility.RectangleContainsScreenPoint(okButton, m, null);
             bool overClose = RectTransformUtility.RectangleContainsScreenPoint(closeButton, m, null);
             okImage.color = overOk ? okHover : okColor;
+            bool over = overOk || overClose;
+            if (over && !wasOver) SettingsHoverAudio.PlayText(this);
+            wasOver = over;
             if (Input.GetMouseButtonDown(0) && (overOk || overClose)) break;
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) break;
             waited += Time.unscaledDeltaTime;
             if (autoQuitTime > 0f && waited >= autoQuitTime) break;
             yield return null;
+        }
+        yield return ConfirmAndQuit();
+    }
+
+    void StartVillageBirds()
+    {
+        if (villageBirdClip == null) return;
+        villageBirds = gameObject.AddComponent<AudioSource>();
+        villageBirds.playOnAwake = false; villageBirds.spatialBlend = 0;
+        villageBirds.clip = villageBirdClip; villageBirds.loop = true; villageBirds.volume = 0;
+        villageBirds.Play(); birdFade = StartCoroutine(FadeBirdsIn());
+    }
+    IEnumerator FadeBirdsIn()
+    {
+        for (float t = 0; t < 1.6f; t += Time.deltaTime)
+        { villageBirds.volume = villageBirdVolume * Mathf.SmoothStep(0, 1, t / 1.6f); yield return null; }
+        villageBirds.volume = villageBirdVolume; birdFade = null;
+    }
+    IEnumerator ConfirmAndQuit()
+    {
+        var clip = Resources.Load<AudioClip>("SettingsOpenClick");
+        if (clip != null)
+        {
+            var sound = gameObject.AddComponent<AudioSource>();
+            sound.playOnAwake = false; sound.spatialBlend = 0; sound.ignoreListenerPause = true;
+            sound.clip = clip; sound.volume = .65f; sound.timeSamples = FirstSound(clip); sound.Play();
+            yield return new WaitForSecondsRealtime(.28f);
         }
         Quit();
     }
@@ -269,7 +314,7 @@ public class EndingSequence : MonoBehaviour
         go.SetActive(was);
     }
 
-    const float GlitchStep = 0.01f, GlitchFadeOut = 0.03f;
+    const float GlitchStep = 0.01f, GlitchFadeOut = 0.55f;
 
     /// <summary>소리를 10ms 칸으로 나눠, 칸마다 조용한지(끊긴 자리인지).</summary>
     static bool[] SilentSteps(AudioClip c, float length, float silenceDb)

@@ -61,7 +61,13 @@ public class TutorialDemoStage : MonoBehaviour
     SpriteRenderer puppetSr;
     Animator puppetAnim;
     SpriteRenderer branchSr;
-    LineRenderer stroke;
+    LineRenderer stroke, strokeGlow;
+    ParticleSystem strokeSparks;
+    GestureTrail brushReference;
+    Sprite fingerSprite;
+    float strokeBaseWidth;
+    Color lessonColor;
+    Coroutine fadingStroke;
     SpriteRenderer cursor, fade, slash;
     readonly List<PropRuntime> props = new List<PropRuntime>();
     static Sprite whiteSprite, dotSprite;
@@ -106,6 +112,11 @@ public class TutorialDemoStage : MonoBehaviour
     float teleportTimer = -1f, attackTimer = -1f;
     bool passThroughBranch;  // 나뭇가지로 순간이동한 직후: 몸이 나뭇가지와 겹쳐 있으니 빠져나올 때까지 통과
 
+    TutorialSceneAssets sceneAssets;
+    readonly List<GameObject> attackCopies=new List<GameObject>();
+    float pendingAttackHit=-1;
+    TutorialDemoAudio previewAudio;
+    public bool IsPlaying { get { return playing != null; } }
     Coroutine playing;
     static Dictionary<string, List<Vector2>> templates;
 
@@ -120,13 +131,19 @@ public class TutorialDemoStage : MonoBehaviour
     void Awake()
     {
         ReadGameRules();
+        sceneAssets=gameObject.AddComponent<TutorialSceneAssets>();
+        for(int i=0;i<breakableStages.Count;i++)breakableStages[i]=sceneAssets.ForTiling(breakableStages[i]);
         Build();
+        sceneAssets.BuildBackdrop(root);
+        previewAudio = gameObject.AddComponent<TutorialDemoAudio>();
+        previewAudio.Configure(sourcePlayer, sourceBranch);
     }
 
     void OnDestroy()
     {
         if (Texture != null) { Texture.Release(); Destroy(Texture); }
         if (root != null) Destroy(root.gameObject);
+        if (fingerSprite != null) Destroy(fingerSprite);
     }
 
     /// <summary>진짜 메크로·나뭇가지의 값을 읽어 시범이 실제 게임과 똑같이 움직이게 한다.</summary>
@@ -223,19 +240,40 @@ public class TutorialDemoStage : MonoBehaviour
         }
 
         // 그린 선 + 손가락
-        var lGo = new GameObject("Stroke");
-        lGo.transform.SetParent(root, false);
-        stroke = lGo.AddComponent<LineRenderer>();
-        stroke.useWorldSpace = false;
-        stroke.widthMultiplier = strokeWidth;
-        stroke.numCapVertices = 4; stroke.numCornerVertices = 4;
-        stroke.sortingOrder = 50;
-        stroke.positionCount = 0;
-        stroke.sharedMaterial = FindLineMaterial();
-
-        cursor = MakeSprite("Cursor", DotSprite(), 52, cursorColor);
-        cursor.transform.localScale = Vector3.one * 0.42f;
-        cursor.enabled = false;
+        brushReference = FindAnyObjectByType<GestureTrail>();
+        var lGo = new GameObject("Stroke"); lGo.transform.SetParent(root, false);
+        stroke = lGo.AddComponent<LineRenderer>(); stroke.useWorldSpace = false;
+        stroke.numCapVertices = stroke.numCornerVertices = 6; stroke.sortingOrder = 50;
+        stroke.positionCount = 0; stroke.sharedMaterial = FindLineMaterial();
+        var glowGo = new GameObject("StrokeGlow"); glowGo.transform.SetParent(root, false);
+        strokeGlow = glowGo.AddComponent<LineRenderer>(); strokeGlow.useWorldSpace = false;
+        strokeGlow.numCapVertices = strokeGlow.numCornerVertices = 6;
+        strokeGlow.sortingOrder = 49; strokeGlow.sharedMaterial = stroke.sharedMaterial;
+        if (brushReference != null)
+        {
+            var sparks = brushReference.GetComponentInChildren<ParticleSystem>();
+            if (sparks != null)
+            {
+                strokeSparks = Instantiate(sparks.gameObject, root).GetComponent<ParticleSystem>();
+                strokeSparks.name = "TutorialBrushSparks";
+                strokeSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = strokeSparks.main; main.playOnAwake = false;
+                var emission = strokeSparks.emission; emission.rateOverTime = 0;
+                strokeSparks.GetComponent<ParticleSystemRenderer>().sortingOrder = 53;
+                strokeSparks.Play();
+            }
+        }
+        var pointer = FindAnyObjectByType<GameMouseCursor>();
+        var texture = pointer != null ? pointer.pressedImage : null;
+        Sprite tip = DotSprite();
+        if (texture != null)
+        {
+            Vector2 pivot = new Vector2(pointer.hotspot.x / texture.width, 1 - pointer.hotspot.y / texture.height);
+            fingerSprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), pivot, texture.width);
+            tip = fingerSprite;
+        }
+        cursor = MakeSprite("Cursor", tip, 52, Color.white);
+        cursor.transform.localScale = Vector3.one * .42f; cursor.enabled = false;
 
         slash = MakeSprite("Slash", WhiteSprite(), 40, new Color(1f, 1f, 1f, 0.9f));
         slash.enabled = false;
@@ -270,12 +308,28 @@ public class TutorialDemoStage : MonoBehaviour
     public void SetRendering(bool on)
     {
         if (cam != null) cam.enabled = on;
+        if (previewAudio != null) previewAudio.SetVisible(on);
+        if (!on) StopPreview();
     }
 
     /// <summary>클립을 처음부터 반복 재생한다. 같은 클립이면 무시.</summary>
+    public void StopPreview()
+    {
+        ClearAttacks();
+        if (previewAudio != null) previewAudio.SetVisible(false);
+        if (playing != null) { StopCoroutine(playing); playing = null; }
+        if (fadingStroke != null) { StopCoroutine(fadingStroke); fadingStroke = null; }
+        if (stroke != null) stroke.positionCount = 0;
+        if (strokeGlow != null) strokeGlow.positionCount = 0;
+        if (cursor != null) cursor.enabled = false;
+        if (strokeSparks != null) strokeSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+    }
+    void OnDisable() { StopPreview(); }
+
     public void Play(TutorialDemoClip clip)
     {
         if (clip == Current && playing != null) return;
+        if (previewAudio != null) previewAudio.ResetSounds();
         Current = clip;
         LoopCount = 0; Progress = 0f;
         if (playing != null) StopCoroutine(playing);
@@ -332,6 +386,8 @@ public class TutorialDemoStage : MonoBehaviour
     /// <summary>무대를 클립 처음 상태로 되돌린다 (발판 다시 만들기, 메크로·나뭇가지 제자리).</summary>
     void ResetStage(TutorialDemoClip clip)
     {
+        ClearAttacks(); pendingAttackHit=-1;
+        if (previewAudio != null) previewAudio.ResetSounds();
         foreach (var pr in props) Destroy(pr.go);
         props.Clear();
         foreach (var spec in clip.props) props.Add(MakeProp(spec));
@@ -340,12 +396,15 @@ public class TutorialDemoStage : MonoBehaviour
         moveRemaining = 0f; sliding = false; shownVx = 0f;
         teleportTimer = -1f; attackTimer = -1f; passThroughBranch = false;
         bState = clip.startWithBranch ? BranchState.Held : BranchState.Stuck;
-        if (bState == BranchState.Stuck) bPos = new Vector2(clip.branchStart.x, clip.branchStart.y + branchSize.y * 0.5f - 0.15f); // 처음부터 꽂혀 있는 나뭇가지
+        if (bState == BranchState.Stuck) bPos = new Vector2(clip.branchStart.x, clip.branchStart.y + BranchVisualHalfHeight - .15f); // 처음부터 꽂혀 있는 나뭇가지
         bAngle = 0f;
-        stroke.positionCount = 0; cursor.enabled = false; slash.enabled = false;
+        if (fadingStroke != null) { StopCoroutine(fadingStroke); fadingStroke = null; }
+        stroke.positionCount = strokeGlow.positionCount = 0; cursor.enabled = false; slash.enabled = false;
+        if (strokeSparks != null) { strokeSparks.Clear(); var e = strokeSparks.emission; e.rateOverTime = 0; }
 
         float h = Mathf.Max(2f, clip.viewHeight);
         cam.orthographicSize = h * 0.5f;
+        sceneAssets.FitBackdrop(clip.viewCenter,h,h*cam.aspect);
         cam.transform.localPosition = new Vector3(clip.viewCenter.x, clip.viewCenter.y, -10f);
         fade.transform.localPosition = new Vector3(clip.viewCenter.x, clip.viewCenter.y, 0f);
         ApplyVisuals();
@@ -353,103 +412,105 @@ public class TutorialDemoStage : MonoBehaviour
 
     PropRuntime MakeProp(TutorialDemoClip.Prop spec)
     {
-        var pr = new PropRuntime { type = spec.type, rect = spec.rect, hitsToBreak = Mathf.Max(1, spec.hitsToBreak) };
-        pr.go = new GameObject(spec.type.ToString());
-        pr.go.transform.SetParent(root, false);
-        Rect r = spec.rect;
-        if (spec.type == TutorialDemoClip.PropType.Lever)
-        {
-            // 레버: 작은 받침 + 기울어진 손잡이 (발판이 아님)
-            AddRect(pr.go.transform, new Rect(r.center.x - 0.3f, r.yMin, 0.6f, 0.25f), leverColor, blockLine, 3);
-            var hGo = new GameObject("Handle");
-            hGo.transform.SetParent(pr.go.transform, false);
-            hGo.transform.localPosition = new Vector3(r.center.x, r.yMin + 0.2f, 0f);
-            AddRect(hGo.transform, new Rect(-0.06f, 0f, 0.12f, 0.8f), leverColor, blockLine, 2);
-            hGo.transform.localRotation = Quaternion.Euler(0f, 0f, 30f);
-            pr.handle = hGo.transform;
-            return pr;
-        }
-        if (spec.type == TutorialDemoClip.PropType.Breakable && breakableStages.Count > 0)
-        {
-            // 진짜 게임과 같은 오류 블럭 무늬를 칸마다 반복해서 깐다
-            var sGo = new GameObject("ErrorBlock");
-            sGo.transform.SetParent(pr.go.transform, false);
-            sGo.transform.localPosition = new Vector3(r.center.x, r.center.y, 0f);
-            pr.stageSr = sGo.AddComponent<SpriteRenderer>();
-            pr.stageSr.sprite = breakableStages[0];
-            pr.stageSr.drawMode = SpriteDrawMode.Tiled;
-            pr.stageSr.size = r.size;
-            return pr;
-        }
-        Color fill = spec.type == TutorialDemoClip.PropType.Breakable ? breakableFill
-                   : spec.type == TutorialDemoClip.PropType.Door ? doorFill : blockFill;
-        AddRect(pr.go.transform, r, fill, blockLine, 0);
+        var pr = new PropRuntime { type=spec.type, rect=spec.rect, hitsToBreak=Mathf.Max(1,spec.hitsToBreak) };
+        pr.go = new GameObject(spec.type.ToString());pr.go.transform.SetParent(root,false);
+        pr.stageSr = sceneAssets.Make(spec.type,spec.rect,pr.go.transform);
         return pr;
     }
 
-    void AddRect(Transform parent, Rect r, Color fill, Color line, int order)
+    void EnsureBrushSparks()
     {
-        var back = new GameObject("Line").AddComponent<SpriteRenderer>();
-        back.transform.SetParent(parent, false);
-        back.sprite = WhiteSprite(); back.color = line; back.sortingOrder = order;
-        back.transform.localPosition = new Vector3(r.center.x, r.center.y, 0f);
-        back.transform.localScale = new Vector3(r.width, r.height, 1f);
-        var front = new GameObject("Fill").AddComponent<SpriteRenderer>();
-        front.transform.SetParent(parent, false);
-        front.sprite = WhiteSprite(); front.color = fill; front.sortingOrder = order + 1;
-        front.transform.localPosition = new Vector3(r.center.x, r.center.y, 0f);
-        front.transform.localScale = new Vector3(Mathf.Max(0f, r.width - lineWidth * 2f), Mathf.Max(0f, r.height - lineWidth * 2f), 1f);
+        if (strokeSparks != null) return;
+        if (brushReference == null) brushReference = FindAnyObjectByType<GestureTrail>();
+        var source = brushReference != null ? brushReference.GetComponentInChildren<ParticleSystem>(true) : null;
+        if (source == null) return;
+        strokeSparks = Instantiate(source.gameObject, root).GetComponent<ParticleSystem>();
+        strokeSparks.name = "TutorialBrushSparks";
+        strokeSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = strokeSparks.main; main.playOnAwake = false;
+        var emission = strokeSparks.emission; emission.rateOverTime = 0;
+        strokeSparks.GetComponent<ParticleSystemRenderer>().sortingOrder = 53;
+        strokeSparks.Play();
     }
 
-    // ───────────────────────── 그리기 ─────────────────────────
-
-    /// <summary>손가락이 모양을 그린다. 다 그리면 선이 파랗게 바뀌어 '인식됨'을 보여 준 뒤 서서히 사라진다.</summary>
     IEnumerator Draw(TutorialDemoClip clip, TutorialDemoClip.Step step)
     {
+        EnsureBrushSparks();
         float viewW = cam.orthographicSize * 2f * cam.aspect;
-        // 무대를 멀리서 비추는 시범(화면이 넓은 시범)에서도 선·손가락이 같은 크기로 보이도록 화면 높이에 비례시킨다 (기준: 높이 6칸)
         float k = cam.orthographicSize * 2f / 6f;
-        stroke.widthMultiplier = StrokeWorldWidth(k);
+        if (fadingStroke != null) { StopCoroutine(fadingStroke); fadingStroke = null; }
+        strokeBaseWidth = StrokeWorldWidth(k);
+        lessonColor = ShapeColor(step.shape);
         List<Vector2> pts = ShapePoints(step, viewW, k);
-        Vector2 anchor = clip.viewCenter + clip.drawArea;
-        // 모양의 가운데를 그리는 자리에 맞춤
-        Vector2 min = pts[0], max = pts[0];
+        Vector2 anchor = clip.viewCenter + clip.drawArea, min = pts[0], max = pts[0];
         foreach (var q in pts) { min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
-        Vector2 offset = anchor - (min + max) * 0.5f;
+        Vector2 offset = anchor - (min + max) * .5f;
         for (int i = 0; i < pts.Count; i++) pts[i] += offset;
-
-        stroke.startColor = stroke.endColor = strokeColor;
-        stroke.positionCount = 0;
-        cursor.enabled = true;
-        cursor.transform.localPosition = (Vector3)pts[0] + Vector3.back;
-
-        // 누르기 직전 손가락이 살짝 커졌다가 눌림
-        for (float t = 0f; t < 0.15f; t += RawDt)
+        stroke.positionCount = strokeGlow.positionCount = 0;
+        BrushColor(lessonColor, 1, 1);
+        cursor.enabled = true; cursor.transform.localPosition = (Vector3)pts[0] + Vector3.back;
+        if (strokeSparks != null)
         {
-            cursor.transform.localScale = Vector3.one * Mathf.Lerp(0.6f, 0.42f, t / 0.15f) * k;
-            yield return null;
+            var main = strokeSparks.main; main.startColor = lessonColor;
+            main.startSize = new ParticleSystem.MinMaxCurve(strokeBaseWidth * .33f, strokeBaseWidth * .83f);
+            var emission = strokeSparks.emission; emission.rateOverTime = brushReference != null ? brushReference.drawSparkRate : 25;
+            strokeSparks.Play();
+            strokeSparks.transform.position = root.TransformPoint(pts[0]);
         }
-
+        for (float t = 0; t < .15f; t += RawDt)
+        { cursor.transform.localScale = Vector3.one * Mathf.Lerp(.52f, .42f, t / .15f) * k; yield return null; }
+        previewAudio.BeginDraw();
         int shown = 0;
-        for (float t = 0f; t < step.drawTime; t += Dt)
+        for (float t = 0; t < step.drawTime; t += Dt)
         {
             int target = Mathf.Clamp(Mathf.CeilToInt(pts.Count * (t / step.drawTime)), 1, pts.Count);
             while (shown < target)
             {
-                stroke.positionCount = shown + 1;
-                stroke.SetPosition(shown, pts[shown]);
-                shown++;
+                stroke.positionCount = strokeGlow.positionCount = shown + 1;
+                stroke.SetPosition(shown, pts[shown]); strokeGlow.SetPosition(shown, pts[shown]); shown++;
             }
             cursor.transform.localPosition = (Vector3)pts[shown - 1] + Vector3.back;
+            if (strokeSparks != null) strokeSparks.transform.position = root.TransformPoint(pts[shown - 1]);
             yield return null;
         }
-        stroke.positionCount = pts.Count;
-        for (int i = 0; i < pts.Count; i++) stroke.SetPosition(i, pts[i]);
+        previewAudio.CompleteDraw(step.shape);
+        stroke.positionCount = strokeGlow.positionCount = pts.Count;
+        for (int i = 0; i < pts.Count; i++) { stroke.SetPosition(i, pts[i]); strokeGlow.SetPosition(i, pts[i]); }
         cursor.enabled = false;
-        StartCoroutine(FadeStroke());
+        if (strokeSparks != null)
+        {
+            var emission = strokeSparks.emission; emission.rateOverTime = 0;
+            strokeSparks.Emit(new ParticleSystem.EmitParams { startColor = lessonColor }, brushReference != null ? brushReference.burstCount : 24);
+        }
+        fadingStroke = StartCoroutine(FadeStroke());
     }
 
-    /// <summary>그린 선 두께 (무대 단위). 플레이어가 실제로 그리는 선(GestureTrail)과 화면에서 같은 두께가 되게 환산한다.</summary>
+    Color ShapeColor(TutorialDemoClip.Shape shape)
+    {
+        var palette = sourcePlayer != null ? sourcePlayer.GetComponent<GestureRecognizer>() : null;
+        if(shape==TutorialDemoClip.Shape.Up||shape==TutorialDemoClip.Shape.Right||shape==TutorialDemoClip.Shape.Left)return Color.white;
+        if (palette == null) return shape == TutorialDemoClip.Shape.O ? new Color(1, .9f, .25f) : new Color(1, .35f, .35f);
+        switch (shape)
+        {
+            case TutorialDemoClip.Shape.N: return palette.colorThrow;
+            case TutorialDemoClip.Shape.Nine: return palette.colorPlant;
+            case TutorialDemoClip.Shape.S: return palette.colorReturn;
+            case TutorialDemoClip.Shape.O: return palette.colorInteract;
+            case TutorialDemoClip.Shape.X: return palette.colorTeleport;
+            case TutorialDemoClip.Shape.SlideRight: return palette.colorSlide;
+            case TutorialDemoClip.Shape.Right: case TutorialDemoClip.Shape.Left: case TutorialDemoClip.Shape.Up: return Color.white;
+            default: return palette.colorAttack;
+        }
+    }
+    void BrushColor(Color color, float alpha, float scale)
+    {
+        color.a = alpha; stroke.startColor = stroke.endColor = color;
+        stroke.widthMultiplier = strokeBaseWidth * scale;
+        color.a = alpha * (brushReference != null ? brushReference.glowAlpha : .35f);
+        strokeGlow.startColor = strokeGlow.endColor = color;
+        strokeGlow.widthMultiplier = strokeBaseWidth * scale * (brushReference != null ? brushReference.glowWidthMultiplier : 2.8f);
+    }
+
     float StrokeWorldWidth(float k)
     {
         var trail = FindAnyObjectByType<GestureTrail>();
@@ -463,18 +524,20 @@ public class TutorialDemoStage : MonoBehaviour
 
     IEnumerator FadeStroke()
     {
-        stroke.startColor = stroke.endColor = strokeDoneColor;
-        yield return new WaitForSeconds(0.25f);
-        for (float t = 0f; t < 0.35f; t += Time.deltaTime)
+        float hold = brushReference != null ? brushReference.holdTime : .5f;
+        float fadeTime = brushReference != null ? brushReference.fadeTime : .45f;
+        float pop = brushReference != null ? brushReference.popTime : .18f;
+        float scale = brushReference != null ? brushReference.popScale : 1.9f;
+        for (float t = 0; t < hold + fadeTime; t += Time.deltaTime)
         {
-            var c = strokeDoneColor; c.a = 1f - t / 0.35f;
-            stroke.startColor = stroke.endColor = c;
+            float pulse = 1 - Mathf.Clamp01(t / Mathf.Max(.01f, pop));
+            float alpha = t < hold ? 1 : 1 - Mathf.Clamp01((t - hold) / Mathf.Max(.01f, fadeTime));
+            BrushColor(Color.Lerp(lessonColor, Color.white, pulse * .6f), alpha, 1 + (scale - 1) * pulse);
             yield return null;
         }
-        stroke.positionCount = 0;
+        stroke.positionCount = strokeGlow.positionCount = 0; fadingStroke = null;
     }
 
-    /// <summary>모양 → 선의 점들 (무대 좌표, 아직 위치 맞추기 전).</summary>
     List<Vector2> ShapePoints(TutorialDemoClip.Step step, float viewW, float k)
     {
         float size = 1.5f * k; // 모양의 크기 (칸, 화면 높이 6칸 기준 1.5칸)
@@ -576,12 +639,12 @@ public class TutorialDemoStage : MonoBehaviour
         {
             case TutorialDemoClip.Shape.Right: moveDir = 1; facing = 1; moveRemaining = step.moveDistance; break;
             case TutorialDemoClip.Shape.Left: moveDir = -1; facing = -1; moveRemaining = step.moveDistance; break;
-            case TutorialDemoClip.Shape.Up: if (grounded) { vy = jumpVelocity; grounded = false; } break;
+            case TutorialDemoClip.Shape.Up: if (grounded) { vy = jumpVelocity; grounded = false; previewAudio.Jump(); } break;
             case TutorialDemoClip.Shape.SlideRight:
-                if (grounded) { sliding = true; slideLeft = slideDuration; facing = 1; moveRemaining = 0f; }
+                if (grounded) { sliding = true; slideLeft = slideDuration; facing = 1; moveRemaining = 0f; previewAudio.BeginSlide(); }
                 break;
             case TutorialDemoClip.Shape.AttackRight:
-                if (bState == BranchState.Held) { facing = 1; attackTimer = 0.25f; HitBreakables(); }
+                if (bState == BranchState.Held) { facing = 1; attackTimer = 0.25f; previewAudio.Attack(); PlayRealAttack(); pendingAttackHit=sourcePlayer!=null?sourcePlayer.attackHitDelay:0; }
                 break;
             case TutorialDemoClip.Shape.Nine: PlantBranch(); break;
             case TutorialDemoClip.Shape.N: ThrowBranch(); break;
@@ -606,6 +669,7 @@ public class TutorialDemoStage : MonoBehaviour
         bPos = new Vector2(x, top + branchSize.y * 0.5f - 0.15f);
         bAngle = 0f;
         bState = BranchState.Stuck;
+        previewAudio.Stick();
     }
 
     void ThrowBranch()
@@ -614,6 +678,7 @@ public class TutorialDemoStage : MonoBehaviour
         bPos = p + new Vector2(0.5f * facing, 1f);
         bVel = throwSpeed * new Vector2(0.7071f * facing, 0.7071f);
         bState = BranchState.Flying;
+        previewAudio.Throw();
     }
 
     void Interact()
@@ -621,13 +686,25 @@ public class TutorialDemoStage : MonoBehaviour
         foreach (var pr in props)
         {
             if (pr.type != TutorialDemoClip.PropType.Lever || pr.on) continue;
-            if (Mathf.Abs(pr.rect.center.x - p.x) <= 2f) { pr.on = true; OpenDoors(); return; }
+            if (Mathf.Abs(pr.rect.center.x - p.x) <= 2f) { pr.on = true; previewAudio.Lever(); OpenDoors(); return; }
         }
         if (bState == BranchState.Stuck && Vector2.Distance(bPos, p + Vector2.up) <= 1.5f + branchSize.y * 0.5f)
-            bState = BranchState.Held; // 가까이 박힌 나뭇가지 줍기
+        { bState = BranchState.Held; previewAudio.Catch(); } // 가까이 박힌 나뭇가지 줍기
     }
 
-    void OpenDoors() { foreach (var pr in props) if (pr.type == TutorialDemoClip.PropType.Door) pr.gone = true; }
+    void OpenDoors() { bool opened=false;foreach (var pr in props) if (pr.type == TutorialDemoClip.PropType.Door&&!pr.gone){pr.gone=true;opened=true;}if(opened)previewAudio.Break(); }
+
+    void PlayRealAttack()
+    {
+        if (sourcePlayer == null || sourcePlayer.attackEffectPrefab == null) return;
+        var fx=Instantiate(sourcePlayer.attackEffectPrefab,root);
+        fx.transform.localPosition=new Vector3(p.x+facing*attackReach,p.y+spriteOffsetY+sourcePlayer.attackHeight,0);
+        fx.transform.localRotation=Quaternion.identity;fx.transform.localScale=Vector3.one*sourcePlayer.attackEffectScale;
+        var effect=fx.GetComponent<AttackEffect>();if(effect!=null)effect.SetFacing(facing);
+        foreach(var a in fx.GetComponentsInChildren<Animator>())a.speed=playbackSpeed;
+        attackCopies.Add(fx);
+    }
+    void ClearAttacks(){foreach(var fx in attackCopies)if(fx!=null)Destroy(fx);attackCopies.Clear();}
 
     void HitBreakables()
     {
@@ -637,7 +714,7 @@ public class TutorialDemoStage : MonoBehaviour
         {
             if (pr.type != TutorialDemoClip.PropType.Breakable || pr.gone || !hit.Overlaps(pr.rect)) continue;
             pr.hits++;
-            if (pr.hits >= pr.hitsToBreak) pr.gone = true;                  // 마지막 그림을 때리면 부서짐
+            if (pr.hits >= pr.hitsToBreak) { pr.gone = true; previewAudio.Break(); }                  // 마지막 그림을 때리면 부서짐
             else if (pr.stageSr != null)                                     // 아니면 더 깨진 무늬로
                 pr.stageSr.sprite = breakableStages[Mathf.Min(pr.hits, breakableStages.Count - 1)];
         }
@@ -647,18 +724,22 @@ public class TutorialDemoStage : MonoBehaviour
 
     void Update()
     {
-        if (Current == null) return;
+        if (Current == null || previewAudio == null || !previewAudio.IsVisible) return;
         float dt = Dt;
         if (dt <= 0f) return;
 
+        bool wasGrounded = grounded;
         UpdateTimers(dt);
         UpdatePuppet(dt);
+        if (!wasGrounded && grounded) previewAudio.Land();
         UpdateBranch(dt);
         ApplyVisuals();
+        previewAudio.Tick(grounded && Mathf.Abs(shownVx) > .1f, sliding, bState == BranchState.Flying, bState == BranchState.Returning, dt);
     }
 
     void UpdateTimers(float dt)
     {
+        if(pendingAttackHit>=0){pendingAttackHit-=dt;if(pendingAttackHit<0)HitBreakables();}
         if (teleportTimer >= 0f)
         {
             teleportTimer -= dt;
@@ -666,6 +747,7 @@ public class TutorialDemoStage : MonoBehaviour
             {
                 p = new Vector2(bPos.x, bPos.y - branchSize.y * 0.5f + 0.15f); // 나뭇가지 밑동에 발을 맞춤 (게임과 동일)
                 vy = 0f; moveRemaining = 0f;
+                previewAudio.Teleport();
                 passThroughBranch = true;
             }
         }
@@ -737,13 +819,14 @@ public class TutorialDemoStage : MonoBehaviour
                 if (bPos.x < s.xMin || bPos.x > s.xMax) continue;
                 if (bVel.y <= 0f && tipPrev >= s.yMax - 0.05f && tip <= s.yMax)
                 {
-                    bPos.y = s.yMax + branchSize.y * 0.5f - 0.15f; bAngle = 0f; bState = BranchState.Stuck; return;
+                    bPos.y = s.yMax + branchSize.y * 0.5f - 0.15f; bAngle = 0f; bState = BranchState.Stuck; previewAudio.Stick(); return;
                 }
                 if (bPos.y > s.yMin && bPos.y < s.yMax)
                 {
                     // 벽 옆면에 부딪힘: 벽 바로 앞으로 되돌리고 가로 속도를 없앤다 → 그대로 떨어져 바닥에 꽂힘
                     if (prev.x <= s.xMin) bPos.x = s.xMin - 0.05f;
                     else if (prev.x >= s.xMax) bPos.x = s.xMax + 0.05f;
+                    if (Mathf.Abs(bVel.x) > .01f) previewAudio.WallHit();
                     bVel.x = 0f;
                 }
             }
@@ -753,7 +836,7 @@ public class TutorialDemoStage : MonoBehaviour
             Vector2 target = p + Vector2.up * (bodyHeight * 0.5f);
             bPos = Vector2.MoveTowards(bPos, target, 18f * dt);
             bAngle += 720f * dt;
-            if (Vector2.Distance(bPos, target) < 0.3f) bState = BranchState.Held;
+            if (Vector2.Distance(bPos, target) < 0.3f) { bState = BranchState.Held; previewAudio.Catch(); }
         }
     }
 
@@ -793,6 +876,7 @@ public class TutorialDemoStage : MonoBehaviour
 
     // ───────────────────────── 화면 반영 ─────────────────────────
 
+    float BranchVisualHalfHeight { get { return branchSr!=null&&branchSr.sprite!=null?branchSr.sprite.bounds.extents.y*Mathf.Abs(branchSr.transform.localScale.y):branchSize.y*.5f; } }
     void ApplyVisuals()
     {
         puppet.localPosition = new Vector3(p.x, p.y, 0f);
@@ -809,22 +893,18 @@ public class TutorialDemoStage : MonoBehaviour
         }
 
         branchSr.enabled = !held;
+        branchSr.sortingOrder=bState==BranchState.Stuck?-2:8;
+        branchSr.sortingLayerID=sceneAssets.GroundSortingLayer;
         branchSr.transform.localPosition = new Vector3(bPos.x, bPos.y, 0f);
         branchSr.transform.localRotation = Quaternion.Euler(0f, 0f, bAngle);
 
         // ㄱ 공격: 앞쪽에 짧게 번쩍이는 베기 자국
-        slash.enabled = attackTimer > 0f;
-        if (slash.enabled)
-        {
-            float k = 1f - attackTimer / 0.25f;
-            slash.transform.localPosition = new Vector3(p.x + facing * (bodyHalfWidth + attackReach * 0.5f), p.y + bodyHeight * 0.55f, 0f);
-            slash.transform.localScale = new Vector3(attackReach, 0.12f, 1f);
-            slash.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(50f, -40f, k) * facing);
-            slash.color = new Color(strokeDoneColor.r, strokeDoneColor.g, strokeDoneColor.b, 1f - k);
-        }
+        slash.enabled = false;
 
         foreach (var pr in props)
         {
+            if(pr.type==TutorialDemoClip.PropType.Door)sceneAssets.FitDoor(pr.stageSr,pr.rect);
+            if(pr.type==TutorialDemoClip.PropType.Lever)sceneAssets.SetLever(pr.stageSr,pr.on);
             if (pr.handle != null)
                 pr.handle.localRotation = Quaternion.Lerp(pr.handle.localRotation, Quaternion.Euler(0f, 0f, pr.on ? -30f : 30f), 0.3f);
             if (pr.gone && pr.go.activeSelf)

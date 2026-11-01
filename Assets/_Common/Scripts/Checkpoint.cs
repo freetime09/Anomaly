@@ -22,11 +22,13 @@ public class Checkpoint : MonoBehaviour
     public float sfxVolume = 1f;
 
     Animator anim;
+    CheckpointNeon neon;
     AudioSource sfxSrc;
 
     void Awake()
     {
         anim = GetComponentInChildren<Animator>();
+        neon = GetComponent<CheckpointNeon>();
         var c = GetComponent<Collider2D>();
         if (c != null) c.isTrigger = true; // 트리거로 강제 (충돌 아님)
         sfxSrc = gameObject.AddComponent<AudioSource>();
@@ -49,6 +51,7 @@ public class Checkpoint : MonoBehaviour
     /// <summary>비활성(CheckPointOff)/활성(CheckPoint) 애니메이션으로 전환.</summary>
     public void SetActivated(bool on)
     {
+        if (neon != null) { neon.SetActivated(on); return; }
         if (anim != null) anim.SetBool("Activated", on);
     }
 }

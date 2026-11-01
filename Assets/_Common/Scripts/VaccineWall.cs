@@ -155,6 +155,7 @@ public class VaccineWall : MonoBehaviour
     // 지나간 곳을 채우는 하얀 사각형들. 구간마다 폭이 같은 부분끼리 묶은 조각(run)
     class Run { public float a0, a1, left, right, killL, killR; public SpriteRenderer sr; public SpriteMask mask; }
     System.Collections.Generic.List<Run>[] runs;
+    float visualLeft,visualRight;
     float frontLeft, frontRight; // 현재 앞면의 양옆 폭 (진행 방향 왼쪽/오른쪽)
     float[][] bandL, bandR;      // 구간별·0.25 조각별 통로 폭 (양옆, 최대 span/2)
     Transform trailRoot;
@@ -386,7 +387,7 @@ public class VaccineWall : MonoBehaviour
         // 앞면 일렁임 (살아 있는 덩어리 느낌)
         if (body == null || !bodySr.enabled) return;
         float w = wobble * (Mathf.PerlinNoise(Time.time * 3f, 0f) - 0.5f) * 2f;
-        body.localPosition = new Vector3(-edgeWidth * 0.5f + w, (frontLeft - frontRight) * 0.5f, 0f);
+        body.localPosition = new Vector3(-edgeWidth * 0.5f + w, (visualLeft - visualRight) * 0.5f, 0f);
 
         // 앞면 지지직: 프레임을 랜덤 간격으로 바꿈
         if (frames != null && frames.Length > 1)
@@ -771,7 +772,8 @@ public class VaccineWall : MonoBehaviour
         float at = Mathf.Max(0f, legD - 0.01f);
         float killL = frontLeft, killR = frontRight;
         foreach (var r in runs[leg]) if (r.a0 >= 0f && at >= r.a0 && at < r.a1 + 1e-3f) { frontLeft = r.left; frontRight = r.right; killL = r.killL; killR = r.killR; break; }
-        float width = frontLeft + frontRight;
+        visualLeft=frontLeft;visualRight=frontRight;FillToBottom(dir,transform.position,ref visualLeft,ref visualRight);
+        float width = visualLeft + visualRight;
         if (frames != null) body.localScale = new Vector3(edgeWidth / frames[0].bounds.size.x, width / frames[0].bounds.size.y, 1f);
         else if (bodySr != null && bodySprite != null) bodySr.size = new Vector2(edgeWidth, width);
         // 닿음 판정: 현재 구간 안에서만, 앞면 뒤로 killDepth 까지, 폭은 실제 빈 공간만 (블럭 너머 다른 층은 안 죽음)
@@ -787,6 +789,8 @@ public class VaccineWall : MonoBehaviour
 
     /// <summary>지나간 곳을 하얗게 채운다. 지나온 구간은 끝(천장)까지, 현재 구간은 앞면 조금 뒤까지.
     /// 첫 구간만 시작점 뒤로 depth 만큼 더 채운다 (화면 밖에서 밀려오는 느낌).</summary>
+    void FillToBottom(Vector2 direction,Vector2 origin,ref float left,ref float right){var camera=Camera.main;if(camera==null||Mathf.Abs(direction.x)<.9f)return;float fill=Mathf.Max(0,origin.y-(camera.transform.position.y-camera.orthographicSize-3));if(direction.x>0)right=Mathf.Max(right,fill);else left=Mathf.Max(left,fill);}
+
     void UpdateTrail()
     {
         if (runs == null || trailRoot == null) return;
@@ -805,9 +809,10 @@ public class VaccineWall : MonoBehaviour
                 if (r.mask != null && r.mask.enabled != on) r.mask.enabled = on;
                 if (!on) continue;
                 var tr = r.sr.transform;
-                tr.position = legA[i] + u * ((r.a0 + a1) * 0.5f) + perp * ((r.left - r.right) * 0.5f);
+                float left=r.left,right=r.right;FillToBottom(u,legA[i],ref left,ref right);
+                tr.position = legA[i] + u * ((r.a0 + a1) * 0.5f) + perp * ((left - right) * 0.5f);
                 tr.rotation = Quaternion.Euler(0f, 0f, rot);
-                tr.localScale = new Vector3(a1 - r.a0, r.left + r.right, 1f);
+                tr.localScale = new Vector3(a1 - r.a0, left + right, 1f);
             }
         }
         if (coverObjects) CoverObjects();

@@ -96,6 +96,10 @@ public class Chapter2Intro : MonoBehaviour
     bool glitching;
     bool landed;
 
+    public bool IsIntroActive { get; private set; }
+    void Awake(){IsIntroActive=true;CutsceneLock.Lock(this);}
+    void OnDisable(){CutsceneLock.Unlock(this);}
+
     void Start()
     {
         if (player == null) player = FindObjectOfType<PlayerController>();
@@ -178,8 +182,20 @@ public class Chapter2Intro : MonoBehaviour
         yield return new WaitForSeconds(landLockTime);
 
         // 4) 조작 가능 → 말풍선 대사
-        if (input != null) input.enabled = true;
-        if (dialogue != null) yield return DialoguePlayer.Ensure().PlayAndWait(dialogue);
+        var speaker=player.GetComponent<DialogueSpeaker>();
+        if(speaker!=null&&speaker.Bubble!=null){
+            var question=StartCoroutine(speaker.Bubble.Say("\uC5EC\uAE34 \uC5B4\uB514\uC9C0..?",24));
+            CutsceneHeadTurn.Face(player,-1);yield return new WaitForSeconds(.65f);CutsceneHeadTurn.Face(player,1);yield return new WaitForSeconds(.7f);CutsceneHeadTurn.Face(player,-1);yield return new WaitForSeconds(.65f);CutsceneHeadTurn.Face(player,1);
+            yield return question;yield return new WaitForSeconds(1.25f);speaker.Bubble.Hide();yield return new WaitForSeconds(.25f);
+        }else if(dialogue!=null)yield return DialoguePlayer.Ensure().PlayAndWait(dialogue);
+        IsIntroActive=false;CutsceneLock.Unlock(this);
+        if(speaker!=null&&speaker.Bubble!=null){
+            yield return new WaitForSeconds(1.5f);
+            yield return speaker.Bubble.Say("\uc774\ub7f0 \uacf3\uc5d0\uc11c \uc2dc\uac04\uc744 \uc9c0\uccb4\ud560 \uc218 \uc5c6\uc5b4",19);
+            yield return new WaitForSeconds(1.8f);speaker.Bubble.Hide();yield return new WaitForSeconds(.35f);
+            yield return speaker.Bubble.Say("\ube68\ub9ac \ub9c8\uc744\ub85c \ub3cc\uc544\uac00\uc57c \ud574!",21);
+            yield return new WaitForSeconds(2.6f);speaker.Bubble.Hide();
+        }
         Cleanup();
     }
 
@@ -346,6 +362,7 @@ public class Chapter2Intro : MonoBehaviour
             bars[i] = b.GetComponent<RectTransform>();
             barImgs[i] = b.GetComponent<Image>();
             barImgs[i].raycastTarget = false;
+        GlitchHalo.Attach(barImgs[i]);
             bars[i].anchorMin = bars[i].anchorMax = new Vector2(0.5f, 0.5f);
             b.SetActive(false);
         }
@@ -353,6 +370,7 @@ public class Chapter2Intro : MonoBehaviour
 
     IEnumerator Glitch(float duration, float strength)
     {
+        GlitchLightPulse.Pulse(new Color(.25f,.65f,1f),.45f,.25f);
         if (glitching) yield break; // 겹치면 앞의 것이 계속
         glitching = true;
         var rt = (RectTransform)canvas.transform;

@@ -2,13 +2,16 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// Keeps the outgoing camera music alive while a scene loads.
+// Keeps outgoing music alive while a scene loads.
 public sealed class SceneMusicBridge : MonoBehaviour
 {
     static SceneMusicBridge active;
     AudioSource outgoing, incoming;
-    float incomingVolume;
-    bool fading;
+    StoryMusicLoop outgoingStory;
+    readonly System.Collections.Generic.List<AudioSource> ambient=new System.Collections.Generic.List<AudioSource>();
+    readonly System.Collections.Generic.List<float> ambientVolume=new System.Collections.Generic.List<float>();
+    float incomingVolume, incomingStoryFade;
+    bool fading, incomingManaged;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetState() { active = null; }
 
@@ -20,7 +23,13 @@ public sealed class SceneMusicBridge : MonoBehaviour
         var bridge = new GameObject("SceneMusicBridge").AddComponent<SceneMusicBridge>();
         active = bridge;
         DontDestroyOnLoad(bridge.gameObject);
-        if (source != null && source.clip != null && source.isPlaying)
+        bridge.outgoingStory = Object.FindFirstObjectByType<StoryMusicLoop>();
+        if (bridge.outgoingStory != null)
+        {
+            // Preserve both scheduled voices and their overlap, including during the loading cover.
+            bridge.outgoingStory.transform.SetParent(bridge.transform, true);
+        }
+        else if (source != null && source.clip != null && source.isPlaying)
         {
             bridge.outgoing = bridge.gameObject.AddComponent<AudioSource>();
             var copy = bridge.outgoing;
@@ -35,6 +44,7 @@ public sealed class SceneMusicBridge : MonoBehaviour
             copy.Play();
             source.Stop();
         }
+        foreach(var marker in Object.FindObjectsByType<SceneAmbientLoop>(FindObjectsSortMode.None)){var original=marker.GetComponent<AudioSource>();if(original==null||!original.isPlaying||original.clip==null)continue;var copy=bridge.gameObject.AddComponent<AudioSource>();copy.playOnAwake=false;copy.clip=original.clip;copy.loop=original.loop;copy.volume=original.volume;copy.timeSamples=original.timeSamples;copy.outputAudioMixerGroup=original.outputAudioMixerGroup;copy.Play();bridge.ambient.Add(copy);bridge.ambientVolume.Add(original.volume);original.Stop();}
         SceneManager.sceneLoaded += bridge.Loaded;
     }
     void Loaded(Scene scene, LoadSceneMode mode)
@@ -43,17 +53,23 @@ public sealed class SceneMusicBridge : MonoBehaviour
         fading = true;
         var camera = Camera.main;
         incoming = camera != null ? camera.GetComponent<AudioSource>() : null;
+        if (outgoingStory == null)
+        {
+            var story = Object.FindFirstObjectByType<StoryMusicLoop>();
+            if (story != null) incomingStoryFade = story.fadeInDuration;
+        }
         if (incoming != null)
         {
+            incomingManaged=incoming.GetComponent<DelayedMusicFadeIn>()!=null;
             incomingVolume = incoming.volume;
-            incoming.volume = 0f;
+            if(!incomingManaged)incoming.volume = 0f;
         }
         StartCoroutine(Crossfade());
     }
     IEnumerator Crossfade()
     {
         yield return null; // allow scene initialization and SoundLevels to finish
-        if (incoming != null && outgoing != null && incoming.clip != null &&
+        if (!incomingManaged && incoming != null && outgoing != null && incoming.clip != null &&
             incoming.clip.name == outgoing.clip.name &&
             incoming.clip.samples == outgoing.clip.samples)
         {
@@ -64,15 +80,19 @@ public sealed class SceneMusicBridge : MonoBehaviour
         }
         else
         {
+            float duration=outgoingStory!=null?2.4f:incomingStoryFade>0?incomingStoryFade:UnityEngine.SceneManagement.SceneManager.GetActiveScene().name=="LastScene"?2.8f:1.25f;
             float from = outgoing != null ? outgoing.volume : 0f;
-            for (float t = 0f; t < 1.25f; t += Time.unscaledDeltaTime)
+            float storyFrom = outgoingStory != null ? outgoingStory.TransitionVolume : 0f;
+            for (float t = 0f; t < duration; t += Time.unscaledDeltaTime)
             {
-                float k = Mathf.SmoothStep(0f, 1f, t / 1.25f);
+                float k = Mathf.SmoothStep(0f, 1f, t / duration);
                 if (outgoing != null) outgoing.volume = from * Mathf.Cos(k * Mathf.PI * .5f);
-                if (incoming != null) incoming.volume = incomingVolume * Mathf.Sin(k * Mathf.PI * .5f);
+                if (outgoingStory != null) outgoingStory.TransitionVolume = storyFrom * Mathf.Cos(k * Mathf.PI * .5f);
+                for(int j=0;j<ambient.Count;j++)if(ambient[j]!=null)ambient[j].volume=ambientVolume[j]*Mathf.Cos(k*Mathf.PI*.5f);
+                if (incoming != null && !incomingManaged) incoming.volume = incomingVolume * Mathf.Sin(k * Mathf.PI * .5f);
                 yield return null;
             }
-            if (incoming != null) incoming.volume = incomingVolume;
+            if (incoming != null && !incomingManaged) incoming.volume = incomingVolume;
         }
         Destroy(gameObject);
     }

@@ -15,7 +15,7 @@ public sealed class BossAttackSigils : MonoBehaviour
         anchor=boss;source=renderer;if(pool!=null)return;
         useOriginalNext=Random.value<.5f;
         pool=new Item[12];
-        for(int i=0;i<pool.Length;i++){var go=new GameObject("BossAttackEffect_"+i);go.transform.SetParent(anchor,false);var r=go.AddComponent<SpriteRenderer>();r.sharedMaterial=effectMaterial;r.sortingLayerID=source.sortingLayerID;r.sortingOrder=source.sortingOrder-3;r.enabled=false;pool[i]=new Item{r=r};}
+        for(int i=0;i<pool.Length;i++){var go=new GameObject("BossAttackEffect_"+i);go.transform.SetParent(anchor,false);var r=go.AddComponent<SpriteRenderer>();r.sharedMaterial=effectMaterial;r.sortingLayerID=source.sortingLayerID;r.sortingOrder=source.sortingOrder-3;r.enabled=false;BossNeonLighting.Emit(r,false,true);pool[i]=new Item{r=r};}
     }
     public void Prepare(){if(Time.time<nextPreparation)return;nextPreparation=Time.time+.6f;Emit(Random.Range(1,3),false);}
     public void Impact(){Emit(Random.Range(2,4),true);}

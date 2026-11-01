@@ -8,11 +8,12 @@ public sealed class GameMouseCursor : MonoBehaviour
     public Texture2D normalImage;
     public Texture2D pressedImage;
     [Range(0.8f, 1f)] public float pressedBrightness = 0.94f;
-    [Range(1f, 2f)] public float cursorScale = 1.2f;
+    [Range(1f, 2f)] public float cursorScale = 1.728f;
     public Vector2 hotspot = new Vector2(8f, 4f);
     static GameMouseCursor instance;
     Texture2D normalCursor, pressedCursor;
     bool pressed, focused = true;
+    float appliedScale;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatic() { instance = null; }
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -26,6 +27,7 @@ public sealed class GameMouseCursor : MonoBehaviour
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
         DontDestroyOnLoad(gameObject);
+        appliedScale = cursorScale;
         normalCursor = MakeCursor(normalImage, 1f);
         pressedCursor = MakeCursor(pressedImage, pressedBrightness);
         Apply(false);
@@ -55,6 +57,13 @@ public sealed class GameMouseCursor : MonoBehaviour
     void Update()
     {
         if (!focused) return;
+        if (!Mathf.Approximately(appliedScale, cursorScale))
+        {
+            if(normalCursor!=null)Destroy(normalCursor);
+            if(pressedCursor!=null)Destroy(pressedCursor);
+            normalCursor=MakeCursor(normalImage,1f); pressedCursor=MakeCursor(pressedImage,pressedBrightness);
+            appliedScale=cursorScale; Apply(pressed);
+        }
         bool down = false;
 #if ENABLE_INPUT_SYSTEM
         var mouse = Mouse.current;
@@ -68,13 +77,13 @@ public sealed class GameMouseCursor : MonoBehaviour
     {
         pressed = down;
         var texture = down && pressedCursor != null ? pressedCursor : normalCursor;
-        Cursor.SetCursor(texture, texture != null ? new Vector2(Mathf.Round(hotspot.x * cursorScale), Mathf.Round(hotspot.y * cursorScale)) : Vector2.zero, CursorMode.Auto);
+        Cursor.SetCursor(texture, texture != null ? new Vector2(Mathf.Round(hotspot.x * cursorScale), Mathf.Round(hotspot.y * cursorScale)) : Vector2.zero, CursorMode.ForceSoftware);
     }
     void OnApplicationFocus(bool value) { focused = value; if (instance == this) Apply(false); }
     void OnDestroy()
     {
         if (instance != this) return;
-        Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+        Cursor.SetCursor(null, Vector2.zero, CursorMode.ForceSoftware);
         instance = null;
         if (normalCursor != null) Destroy(normalCursor);
         if (pressedCursor != null) Destroy(pressedCursor);

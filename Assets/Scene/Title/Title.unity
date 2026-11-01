@@ -131,6 +131,8 @@ GameObject:
   - component: {fileID: 12133658}
   - component: {fileID: 12133657}
   - component: {fileID: 12133660}
+  - component: {fileID: 12133662}
+  - component: {fileID: 12133661}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -256,6 +258,117 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &12133661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 12133656}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a7d96951f174374cba9f1a521b3274f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DelayedMusicFadeIn
+  delay: 0.25
+  duration: 1.75
+--- !u!82 &12133662
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 12133656}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 7d138b7046370d849810b2694f7acbf7, type: 3}
+  m_PlayOnAwake: 0
+  m_Volume: 0.38
+  m_Pitch: 1
+  Loop: 1
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1001 &277894108
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -733,6 +846,7 @@ GameObject:
   - component: {fileID: 1730737620}
   - component: {fileID: 1730737619}
   - component: {fileID: 1730737621}
+  - component: {fileID: 1730737622}
   m_Layer: 0
   m_Name: TitleController
   m_TagString: Untagged
@@ -752,7 +866,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bdd4b685d69114e47b59c0dc9ed34694, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleController
-  startScene: TutorialNew
+  startScene: Chapter1
   logo: {fileID: 1278000497}
   dropStartY: 720
   dropRestY: 120
@@ -838,7 +952,7 @@ MonoBehaviour:
   doodleAlpha: 0.45
   doodleDrawTime: 0.5
   doodleBob: 0.1
-  demo: 1
+  demo: 0
   demoAbove: 1.35
   demoRadius: 0.5
   demoWidth: 0.07
@@ -851,6 +965,26 @@ MonoBehaviour:
   glitchEvery: {x: 3, y: 6}
   glitchTime: 0.25
   glitchJitter: 10
+--- !u!114 &1730737622
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730737618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86c02a400d964364ca07e5e1819c009f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TitleGestureMenu
+  source: {fileID: 1730737619}
+  font: {fileID: 11400000, guid: a30c919b497a4994a9cb8216ed31580f, type: 2}
+  gameScene: Chapter1
+  tutorialScene: TutorialNew
+  storyScene: Story
+  returnSound: {fileID: 8300000, guid: 1e65a4ce8222a4a4b83c71e01c08a04f, type: 3}
+  plantSound: {fileID: 0}
+  teleportSound: {fileID: 8300000, guid: e40e9ce5d2feb7446966233dad3e2599, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

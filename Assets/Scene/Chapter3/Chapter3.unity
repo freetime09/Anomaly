@@ -1080,6 +1080,7 @@ MonoBehaviour:
   holdTime: 0.3
   fadeInTime: 0.8
   fadeColor: {r: 0, g: 0, b: 0, a: 1}
+  ditherFade: 0
 --- !u!114 &183921155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1130,6 +1131,9 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  onEntering:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!61 &183921156
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2341,7 +2345,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!114 &313911518
@@ -3640,7 +3643,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!1 &462494733
@@ -40731,7 +40733,7 @@ SpriteRenderer:
   m_MaskInteraction: 0
   m_Sprite: {fileID: 3041637118409072909, guid: c97e34e26abc2be429fa23c36f23949c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 1
+  m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
   m_Size: {x: 2, y: 2}
@@ -40797,7 +40799,7 @@ Transform:
   m_GameObject: {fileID: 747455851}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6, y: 2, z: 0}
+  m_LocalPosition: {x: 6.15, y: 2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -46160,7 +46162,7 @@ Transform:
   m_GameObject: {fileID: 863144091}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 43.53, y: 2, z: 0}
+  m_LocalPosition: {x: 42.8, y: 2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -47907,7 +47909,7 @@ Transform:
   m_GameObject: {fileID: 1054493259}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 16, y: 0, z: 0}
+  m_LocalPosition: {x: 18, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -47997,7 +47999,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 1}
-  m_Radius: 3.5
+  m_Radius: 3
 --- !u!114 &1054493264
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48031,7 +48033,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!114 &1054493265
@@ -48096,6 +48097,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1073250230}
   - component: {fileID: 1073250229}
+  - component: {fileID: 1073250231}
   m_Layer: 0
   m_Name: Background_5_Town
   m_TagString: Untagged
@@ -48150,7 +48152,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: -96
+  m_SortingOrder: -98
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 39aa65349ef3a3242bb3abc707c5683d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -48177,6 +48179,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1402033642}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1073250231
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1073250228}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2478a8a84a14044088c95ca5c1fa403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraBackdropPlacement
+  target: {fileID: 1208530622}
+  screenCover: 0
+  worldLeft: -6
+  worldWidth: 68
+  worldHeight: 16.071
+  horizontalRepeats: 2
+  horizonOffset: -0.34
+  followViewWidth: 0
+  visibleX: {x: -80, y: 120}
 --- !u!1 &1090160724
 GameObject:
   m_ObjectHideFlags: 0
@@ -55149,26 +55172,30 @@ MonoBehaviour:
     factor: 1
     heightScale: 1
     widthScale: 1
-  - renderer: {fileID: 1749672955}
-    factor: 0.9
-    heightScale: 1.08
-    widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0
+    orderOffset: 0
   - renderer: {fileID: 825155107}
     factor: 0.88
     heightScale: 0.85
     widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0.055
+    orderOffset: 3
   - renderer: {fileID: 1541963027}
     factor: 0.8
     heightScale: 0.8
     widthScale: 1.15
-  - renderer: {fileID: 1073250229}
-    factor: 0.7
-    heightScale: 0.790625
-    widthScale: 1
+    fullScreen: 0
+    driftSpeed: 0
+    verticalShift: 0.06
+    orderOffset: 4
   cam: {fileID: 0}
   baseSortingOrder: -100
-  heightCoverage: 1.05
-  verticalOffset: 0.165
+  heightCoverage: 1.1
+  verticalOffset: 0
   visibleCameraX: {x: -80, y: 120}
 --- !u!4 &1402033642
 Transform:
@@ -56098,6 +56125,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1541963028}
   - component: {fileID: 1541963027}
+  - component: {fileID: 1541963029}
   m_Layer: 0
   m_Name: Background_4_Field
   m_TagString: Untagged
@@ -56179,6 +56207,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1402033642}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1541963029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1541963026}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2478a8a84a14044088c95ca5c1fa403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraBackdropPlacement
+  target: {fileID: 1208530622}
+  screenCover: 0
+  worldLeft: -6
+  worldWidth: 76
+  worldHeight: 14.080001
+  horizontalRepeats: 0
+  horizonOffset: -0.43
+  followViewWidth: 1
+  visibleX: {x: -80, y: 120}
 --- !u!1001 &1567008443
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -63820,7 +63869,7 @@ Transform:
   m_GameObject: {fileID: 1702206591}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 26, y: 2, z: 0}
+  m_LocalPosition: {x: 25.67, y: 2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -64092,7 +64141,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 1}
-  m_Radius: 3
+  m_Radius: 2.5
 --- !u!114 &1712498688
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64126,7 +64175,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!114 &1712498689
@@ -64565,7 +64613,7 @@ ParticleSystem:
         m_RotationOrder: 4
     startSizeY:
       serializedVersion: 2
-      minMaxState: 0
+      minMaxState: 3
       scalar: 1
       minScalar: 1
       maxCurve:
@@ -64618,7 +64666,7 @@ ParticleSystem:
         m_RotationOrder: 4
     startSizeZ:
       serializedVersion: 2
-      minMaxState: 0
+      minMaxState: 3
       scalar: 1
       minScalar: 1
       maxCurve:
@@ -69258,6 +69306,21 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  onEntering:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 2071326513}
+        m_TargetAssemblyTypeName: HouseAmbienceTransition, Assembly-CSharp
+        m_MethodName: EnterHouse
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!61 &1740148535
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -69405,6 +69468,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1749672956}
   - component: {fileID: 1749672955}
+  - component: {fileID: 1749672957}
   m_Layer: 0
   m_Name: Background_2_Clouds
   m_TagString: Untagged
@@ -69461,7 +69525,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -99
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: f18340e4db2f1e146bb82f47cc7c11f4, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 74344fe235a0fcc42b2995f28d04f588, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -69486,6 +69550,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1402033642}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1749672957
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1749672954}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2478a8a84a14044088c95ca5c1fa403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraBackdropPlacement
+  target: {fileID: 1208530622}
+  screenCover: 1
+  worldLeft: -6
+  worldWidth: 76
+  worldHeight: 14.61
+  horizontalRepeats: 0
+  horizonOffset: -0.1375
+  followViewWidth: 0
+  visibleX: {x: -80, y: 120}
 --- !u!1 &1750821220
 GameObject:
   m_ObjectHideFlags: 0
@@ -69573,6 +69658,7 @@ MonoBehaviour:
   riserClip: {fileID: 8300000, guid: 95c4d4694db47ba4c80ff5ab8f555614, type: 3}
   riserVolume: 1
   riserTail: 0.15
+  villageBgm: {fileID: 0}
   skipCutscene: 0
   openingFadeTime: 0.5
 --- !u!114 &1761218908
@@ -71052,7 +71138,7 @@ Transform:
   m_GameObject: {fileID: 2052145987}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 17.4, y: 0, z: 0}
+  m_LocalPosition: {x: 19.4, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -71094,7 +71180,6 @@ MonoBehaviour:
   - {r: 0.15, g: 0.15, b: 0.15, a: 1}
   glitchDropChance: 0.15
   voiceClip: {fileID: 8300000, guid: 7743190ed8c55f6438663130339df2b7, type: 3}
-  voiceEveryNChars: 2
   voiceVolume: 0.5
   voicePitch: 1
 --- !u!114 &2052145991
@@ -71218,6 +71303,7 @@ GameObject:
   - component: {fileID: 2071326509}
   - component: {fileID: 2071326508}
   - component: {fileID: 2071326512}
+  - component: {fileID: 2071326513}
   m_Layer: 0
   m_Name: Cutscene_C_House
   m_TagString: Untagged
@@ -71617,6 +71703,25 @@ MonoBehaviour:
   objectBlend: 1.35
   repeatInterval: 3
   strength: 0.32
+  soundEnabled: 0
+  staticVolume: 0.3
+--- !u!114 &2071326513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2071326507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be844acdf9d1e5a4a9054ed38266f137, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HouseAmbienceTransition
+  birds: {fileID: 1208530618}
+  glitch: {fileID: 2071326512}
+  interiorClip: {fileID: 8300000, guid: 1570efb965ae82d41ad950d449ddc0b9, type: 3}
+  interiorVolume: 0.42
+  fadeDuration: 4
 --- !u!1 &2074987637
 GameObject:
   m_ObjectHideFlags: 0
@@ -71832,6 +71937,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2119266519}
+  - component: {fileID: 2119266520}
   m_Layer: 0
   m_Name: NPCs
   m_TagString: Untagged
@@ -71858,6 +71964,24 @@ Transform:
   - {fileID: 1712498685}
   m_Father: {fileID: 830575347}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2119266520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2119266518}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5400710bde97fac44bfae59993f08fa2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FriendsByWell
+  friendB: {fileID: 1054493260}
+  friendC: {fileID: 2052145988}
+  conversation: {fileID: 1054493262}
+  hopHeight: 0.08
+  hopDuration: 0.34
+  hopInterval: 3.6
 --- !u!1 &2128384053
 GameObject:
   m_ObjectHideFlags: 0

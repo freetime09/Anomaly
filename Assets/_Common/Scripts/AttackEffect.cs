@@ -12,18 +12,21 @@ public class AttackEffect : MonoBehaviour
 {
     SpriteRenderer sr;
     Animator anim;
+    float age;
 
     void Awake()
     {
         sr = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
+        if(anim.runtimeAnimatorController!=null){anim.Rebind();anim.Play(0,0,0);anim.Update(0);}
     }
 
     void Update()
     {
         if (anim == null) { Destroy(gameObject); return; }
         var st = anim.GetCurrentAnimatorStateInfo(0);
-        if (st.normalizedTime >= 1f) Destroy(gameObject); // 한 번 재생이 끝나면 소멸
+        age+=Time.deltaTime;
+        if (age>.015f && st.normalizedTime >= 1f) Destroy(gameObject); // 한 번 재생이 끝나면 소멸
     }
 
     /// <summary>플레이어가 바라보는 방향으로 이펙트를 좌우 반전한다.</summary>

@@ -103,6 +103,7 @@ public class GlitchBreakEffect : MonoBehaviour
     {
         if (rampCo != null) { StopCoroutine(rampCo); rampCo = null; }
         intensity = Mathf.Clamp01(value);
+        if(value>.03f)GlitchLightPulse.Pulse(new Color(.3f,1f,.72f),value,.18f);
         if (intensity <= 0f) HideAll();
     }
 
@@ -156,6 +157,7 @@ public class GlitchBreakEffect : MonoBehaviour
     void Update()
     {
         if (intensity <= 0f) { HideAll(); return; }
+        GlitchLightPulse.Pulse(new Color(.3f,1f,.72f),intensity*.5f,.1f);
 
         // 줄무늬·조각은 refreshInterval 마다 새로 섞는다 (매 프레임 섞으면 너무 정신없음)
         refreshTimer -= Time.deltaTime;
@@ -196,6 +198,7 @@ public class GlitchBreakEffect : MonoBehaviour
             bars[i] = b.GetComponent<RectTransform>();
             barImages[i] = b.GetComponent<Image>();
             barImages[i].raycastTarget = false;
+        GlitchHalo.Attach(barImages[i]);
             bars[i].anchorMin = bars[i].anchorMax = new Vector2(0.5f, 0.5f);
             b.SetActive(false);
         }
@@ -205,6 +208,7 @@ public class GlitchBreakEffect : MonoBehaviour
         f.transform.SetParent(go.transform, false);
         flashImage = f.GetComponent<Image>();
         flashImage.raycastTarget = false;
+        GlitchHalo.Attach(flashImage);
         var rt = flashImage.rectTransform;
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
@@ -244,6 +248,7 @@ public class GlitchBreakEffect : MonoBehaviour
             go.transform.SetParent(root, false);
             fragments[i] = go.AddComponent<SpriteRenderer>();
             fragments[i].sprite = whiteSprite;
+            GlitchHalo.Attach(fragments[i]);
             fragments[i].sortingOrder = fragmentSortingOrder;
             fragments[i].enabled = false;
         }

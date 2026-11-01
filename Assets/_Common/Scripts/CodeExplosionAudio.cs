@@ -9,6 +9,20 @@ public static class CodeExplosionAudio
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Reset() { busyUntil.Clear(); }
 
+    public static void PlayBreak(AudioClip clip, float volume)
+    {
+        if (clip == null || !TryClaim(clip)) return;
+        var go = new GameObject("CodeBlockBreakSfx");
+        var source = go.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        source.spatialBlend = 0f;
+        source.dopplerLevel = 0f;
+        source.clip = clip;
+        source.volume = Mathf.Clamp01(volume);
+        source.Play();
+        Object.Destroy(go, clip.length + .1f);
+    }
+
     public static bool TryClaim(AudioClip clip)
     {
         if (clip == null) return false;

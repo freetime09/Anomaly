@@ -54,6 +54,8 @@ public sealed class BossEyePresentation : MonoBehaviour
         if(distortionMaterial!=null){noise=new Material(distortionMaterial);art.sharedMaterial=noise;pupilNoise=new Material(distortionMaterial);pupil.sharedMaterial=pupilNoise;
             pupilNoise.SetTexture("_MaskTex",whiteSprite.texture);pupilNoise.SetFloat("_UseMask",1f);}
         art.sprite=introFrames.Length>0?introFrames[0]:whiteSprite;
+        var eyeLight=BossNeonLighting.Emit(art,false,true);if(eyeLight!=null)eyeLight.emissionOverride=3.8f;
+        var pupilLight=BossNeonLighting.Emit(pupil,false,true);if(pupilLight!=null)pupilLight.emissionOverride=2.8f;
         waveCamera=Camera.main;
         var vg=new GameObject("BossAtmosphere");vg.transform.SetParent(transform,false);
         volume=vg.AddComponent<Volume>();volume.isGlobal=true;volume.priority=70;
@@ -64,7 +66,7 @@ public sealed class BossEyePresentation : MonoBehaviour
         profile.Add<ChromaticAberration>(true).intensity.value=0f;
         profile.Add<PaniniProjection>(true).distance.value=0f;
         BuildAura();
-        nextGlitch=UnityEngine.Random.Range(4f,7f);
+        nextGlitch=combatPhase>=2?UnityEngine.Random.Range(.55f,1.3f):UnityEngine.Random.Range(4f,7f);
     }
     void BuildAura()
     {
@@ -94,10 +96,11 @@ public sealed class BossEyePresentation : MonoBehaviour
         }
         yield return new WaitForSeconds(.4f);
     }
+    public int combatPhase;
     public void EnterCombat()
     {
         combat=true;hurt=false;ended=false;art.enabled=true;art.sprite=whiteSprite;visual.localScale=Vector3.one;pupil.enabled=true;pupil.transform.localPosition=new Vector3(0,-.2f,0);
-        glitchLeft=0;nextGlitch=UnityEngine.Random.Range(4f,7f);vignette.intensity.value=.27f;
+        glitchLeft=0;nextGlitch=combatPhase>=2?UnityEngine.Random.Range(.55f,1.3f):UnityEngine.Random.Range(4f,7f);vignette.intensity.value=.27f;
     }
     public void SetHurt(bool value)
     {
@@ -110,6 +113,7 @@ public sealed class BossEyePresentation : MonoBehaviour
     public void Finish(){ResetWave();ended=true;hurt=false;pupil.enabled=false;volume.weight=0;var e=aura.emission;e.rateOverTime=0;}
     public void Tick(bool defeated)
     {
+        if(glitchLeft>0||forceGlitch>.05f)GlitchLightPulse.Pulse(hurt?new Color(1f,.12f,.18f):new Color(.35f,.65f,1f),.35f,.1f);
         if(body==null||PauseMenu.IsPaused)return;
         float dt=Time.deltaTime;float fxDt=Time.unscaledDeltaTime;clock+=fxDt;
         art.color=body.color;pupil.color=body.color;
@@ -119,8 +123,11 @@ public sealed class BossEyePresentation : MonoBehaviour
         {
             var drift=new Vector3(Mathf.Sin(clock*.83f)*.018f+Mathf.Sin(clock*1.91f)*.007f,Mathf.Sin(clock*1.12f)*.023f,0);
             if(hurt)drift+=(Vector3)UnityEngine.Random.insideUnitCircle*.024f;
+            float unstable=combat&&combatPhase>=2?(.65f+.35f*Mathf.Sin(clock*4.3f)*Mathf.Sin(clock*4.3f)):0;
+            drift+=new Vector3((Mathf.Sin(clock*37.7f)+.45f*Mathf.Sin(clock*61.3f))*.038f,(Mathf.Sin(clock*43.1f)+.4f*Mathf.Sin(clock*73.9f))*.03f,0)*unstable;
             visual.localPosition=drift;
-            visual.localRotation=Quaternion.Euler(0,0,Mathf.Sin(clock*.63f)*.65f);
+            visual.localRotation=Quaternion.Euler(0,0,Mathf.Sin(clock*.63f)*.65f+unstable*(Mathf.Sin(clock*27.9f)*1.9f+Mathf.Sin(clock*51.1f)*.7f));
+            if(unstable>0&&!hurt)visual.localScale=new Vector3(1+Mathf.Sin(clock*19.7f)*.011f,1+Mathf.Sin(clock*25.3f)*.016f,1);
             if(combat&&!hurt&&player!=null)
             {
                 Vector2 dir=(player.position-body.transform.position);dir.Normalize();
@@ -129,16 +136,17 @@ public sealed class BossEyePresentation : MonoBehaviour
                 Vector2 ellipse=new Vector2(want.x/.20f,want.y/.075f);if(ellipse.sqrMagnitude>1)want/=ellipse.magnitude;
                 want.y-=.18f;
                 pupil.transform.localPosition=Vector3.Lerp(pupil.transform.localPosition,want,1-Mathf.Exp(-dt*7));
+                if(unstable>0){var p=pupil.transform.localPosition;p.x+=unstable*(Mathf.Sin(clock*33.1f)+.4f*Mathf.Sin(clock*57.3f))*.012f;p.y+=unstable*(Mathf.Sin(clock*41.7f)+.4f*Mathf.Sin(clock*69.1f))*.008f;var limited=new Vector2(p.x/.20f,(p.y+.18f)/.075f);if(limited.sqrMagnitude>1)limited.Normalize();p.x=limited.x*.20f;p.y=limited.y*.075f-.18f;pupil.transform.localPosition=p;}
             }
             if(hurt&&shootFrames.Length>0){CurrentFrame=(int)(clock*11)%shootFrames.Length;art.sprite=shootFrames[CurrentFrame];visual.localScale=Vector3.one*(whiteSprite.pixelsPerUnit/art.sprite.pixelsPerUnit);}
-            if(combat&&(nextGlitch-=fxDt)<=0){glitchLeft=.18f;nextGlitch=UnityEngine.Random.Range(4f,7f);}
+            if(combat&&(nextGlitch-=fxDt)<=0){glitchLeft=combatPhase>=2?.22f:.18f;nextGlitch=combatPhase>=2?UnityEngine.Random.Range(.22f,.6f):UnityEngine.Random.Range(4f,7f);}
         }
         glitchLeft=Mathf.Max(0,glitchLeft-fxDt);
         float amount=glitchLeft>0?(hurt?.7f:.45f):0;
         if(hurt&&Mathf.Repeat(clock,.8f)<.12f)amount=.6f;
         amount=Mathf.Max(amount,forceGlitch);
-        if(noise!=null){noise.SetFloat("_Amount",amount);noise.SetFloat("_Phase",Mathf.Floor(clock*24));}
-        if(pupilNoise!=null){pupilNoise.SetFloat("_Amount",amount);pupilNoise.SetFloat("_Phase",Mathf.Floor(clock*24));
+        if(noise!=null){noise.SetFloat("_Amount",amount);noise.SetFloat("_Phase",Mathf.Floor(clock*(combatPhase>=2?42:24)));}
+        if(pupilNoise!=null){pupilNoise.SetFloat("_Amount",amount);pupilNoise.SetFloat("_Phase",Mathf.Floor(clock*(combatPhase>=2?42:24)));
             Vector2 shift=(Vector2)pupil.transform.localPosition*whiteSprite.pixelsPerUnit+whiteSprite.pivot-pupilSprite.rect.position-pupilSprite.pivot;
             pupilNoise.SetVector("_MaskUVOffset",new Vector4(shift.x/whiteSprite.texture.width,shift.y/whiteSprite.texture.height,0,0));}
         // Grain remains restrained; distortion is confined to the boss material.

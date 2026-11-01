@@ -32,6 +32,8 @@ public class MovingObject : SignalReceiver, IPuzzleState
     [Header("상태 (읽기용)")]
     public bool activated;
 
+    public float returnDelay;float returnAt=-1;
+    public bool finishTripBeforeReturn;
     Rigidbody2D rb;
     Vector3 startPos;
     Vector3 target;
@@ -51,8 +53,10 @@ public class MovingObject : SignalReceiver, IPuzzleState
 
     void FixedUpdate()
     {
+        if(returnAt>=0&&Time.time>=returnAt){returnAt=-1;target=startPos;if(moveClip!=null&&sfxSrc!=null)sfxSrc.PlayOneShot(moveClip,sfxVolume);}
         Vector3 cur = rb != null ? (Vector3)rb.position : transform.position;
-        float speed = (!activated && returnSpeed > 0f) ? returnSpeed : moveSpeed;
+        bool returning = !activated && target == startPos;
+        float speed = (returning && returnSpeed > 0f) ? returnSpeed : moveSpeed;
         Vector3 next = Vector3.MoveTowards(cur, target, speed * Time.fixedDeltaTime);
         if (rb != null) rb.MovePosition(next); // Kinematic 플랫폼이면 부드럽게 밀기
         else transform.position = next;
@@ -70,25 +74,30 @@ public class MovingObject : SignalReceiver, IPuzzleState
     {
         activated = on;
         Vector3 before = target;
-        if (on) target = startPos + Offset();
-        else if (returnWhenOff) target = startPos;
+        if (on){returnAt=-1;target = startPos + Offset();}
+        else if (returnWhenOff){
+            float remaining=finishTripBeforeReturn?Vector3.Distance(rb!=null?(Vector3)rb.position:transform.position,target)/Mathf.Max(.01f,moveSpeed):0;
+            if(returnDelay+remaining>0)returnAt=Time.time+returnDelay+remaining;else target = startPos;
+        }
         // returnWhenOff=false 면 target 그대로 두어 이동한 자리에 머무름
         if (target != before && moveClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring) sfxSrc.PlayOneShot(moveClip, sfxVolume); // 움직이는 소리
     }
 
     // ── IPuzzleState (죽으면 체크포인트 때 위치로, 미끄러지지 않고 바로) ──
-    struct MoveState { public Vector3 pos, target; public bool activated; }
+    struct MoveState { public Vector3 pos, target; public bool activated; public float returnRemaining; }
     public object SaveState()
     {
-        return new MoveState { pos = rb != null ? (Vector3)rb.position : transform.position, target = target, activated = activated };
+        return new MoveState { pos = rb != null ? (Vector3)rb.position : transform.position, target = target, activated = activated, returnRemaining = returnAt >= 0 ? Mathf.Max(0, returnAt - Time.time) : -1 };
     }
     public void LoadState(object state)
     {
+        returnAt=-1;
         var s = (MoveState)state;
         transform.position = s.pos;
         if (rb != null) rb.position = s.pos;
         target = s.target;
         activated = s.activated;
+        returnAt = s.returnRemaining >= 0 ? Time.time + s.returnRemaining : -1;
     }
 
     Vector3 Offset()

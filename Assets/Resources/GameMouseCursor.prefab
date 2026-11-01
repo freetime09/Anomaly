@@ -47,5 +47,5 @@ MonoBehaviour:
   normalImage: {fileID: 2800000, guid: 32353f19639d7c74281e82483c9f40e1, type: 3}
   pressedImage: {fileID: 2800000, guid: 8b6c23cc02004fd4bb343104eaa6e959, type: 3}
   pressedBrightness: 0.94
-  cursorScale: 1.2
+  cursorScale: 1.728
   hotspot: {x: 8, y: 4}

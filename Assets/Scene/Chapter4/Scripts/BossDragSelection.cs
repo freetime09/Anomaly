@@ -11,7 +11,7 @@ public sealed class BossDragSelection : MonoBehaviour
         origin = topLeft;
         border = new GameObject("SelectionBorder").AddComponent<LineRenderer>();
         border.transform.SetParent(transform, false);
-        material = new Material(Shader.Find("Sprites/Default"));
+        material = new Material(Resources.Load<Material>("BossNeonLine"));
         border.sharedMaterial = material;
         border.useWorldSpace = true;
         border.loop = true;

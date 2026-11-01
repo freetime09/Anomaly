@@ -52,6 +52,9 @@ public class DialoguePlayer : MonoBehaviour
     readonly System.Collections.Generic.Queue<Pending> queue = new System.Collections.Generic.Queue<Pending>();
 
     /// <summary>대화가 재생 중이거나 기다리는 대화가 남아 있는가?</summary>
+    public event System.Action LastLineStarted;
+    public event System.Action<DialogueData> DialogueStarted;
+    public int CurrentLineIndex { get; private set; }
     public bool IsPlaying => running != null || queue.Count > 0;
 
     void Awake()
@@ -159,10 +162,13 @@ public class DialoguePlayer : MonoBehaviour
 
     IEnumerator Run(DialogueData data, bool lockControl, Action onFinished)
     {
+        DialogueStarted?.Invoke(data);
         if (lockControl) { CutsceneLock.Lock(this); lockedControl = true; }
 
         for (int i = 0; i < data.lines.Count; i++)
         {
+            CurrentLineIndex=i;
+            if(i==data.lines.Count-1)LastLineStarted?.Invoke();
             var line = data.lines[i];
             var speaker = DialogueSpeaker.Find(line.speakerId);
             if (speaker == null)

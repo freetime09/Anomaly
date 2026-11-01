@@ -62,6 +62,9 @@ public class TutorialDemoWindow : MonoBehaviour
     TextMeshProUGUI badgeText, titleText, pageText, instructionText, tipText, replayText;
     Image closeButton, prevButton, nextButton;
     Graphic closeIcon, prevIcon, nextIcon;
+    readonly Dictionary<Image,bool> hoverStates=new Dictionary<Image,bool>();
+    readonly Dictionary<Image,float> pressedUntil=new Dictionary<Image,float>();
+    bool closingByButton;
     RenderTexture backdropRt;
     Coroutine anim;
     int closedFrame = -1;
@@ -111,8 +114,8 @@ public class TutorialDemoWindow : MonoBehaviour
         bool overClose = Hover(closeButton, closeIcon, m, true);
         if (UnlockedCount > 1)
         {
-            if ((click && overPrev) || Input.GetKeyDown(prevKey) || Input.GetKeyDown(KeyCode.LeftArrow)) ShowPage(CurrentIndex - 1);
-            else if ((click && overNext) || Input.GetKeyDown(nextKey) || Input.GetKeyDown(KeyCode.RightArrow)) ShowPage(CurrentIndex + 1);
+            if ((click && overPrev) || Input.GetKeyDown(prevKey) || Input.GetKeyDown(KeyCode.LeftArrow)) { Press(prevButton); SettingsHoverAudio.PlayTutorialClick(this); ShowPage(CurrentIndex - 1); }
+            else if ((click && overNext) || Input.GetKeyDown(nextKey) || Input.GetKeyDown(KeyCode.RightArrow)) { Press(nextButton); SettingsHoverAudio.PlayTutorialClick(this); ShowPage(CurrentIndex + 1); }
         }
 
         // 진행 막대: 처음 한 번은 끝까지 차오르는 걸 보여 주고, 다 본 뒤엔 반복 진행을 얇게 보여 준다
@@ -121,20 +124,26 @@ public class TutorialDemoWindow : MonoBehaviour
 
         // X 는 언제든 닫기. 한 번 끝까지 본 뒤에는 X 가 은은하게 깜빡여 '이제 해 보세요' 를 알려 준다
         if (!overClose && stage.LoopCount > 0) SetIconColor(closeIcon, new Color(1f, 1f, 1f, 0.6f + 0.4f * Mathf.Sin(Time.unscaledTime * 4f)));
-        if ((click && overClose) || Input.GetKeyDown(closeKey)) Close();
+        if (!closingByButton && ((click && overClose) || Input.GetKeyDown(closeKey))) { Press(closeButton); SettingsHoverAudio.PlayTutorialClick(this); closingByButton=true; StartCoroutine(CloseAfterPress()); }
     }
 
     /// <summary>마우스가 버튼 위면 밝게 (강조색). 누를 수 없으면 흐리게.</summary>
     bool Hover(Image button, Graphic icon, Vector2 mouse, bool usable)
     {
-        if (!button.gameObject.activeInHierarchy) return false;
+        if (!button.gameObject.activeInHierarchy) { hoverStates[button]=false; return false; }
         bool over = usable && RectTransformUtility.RectangleContainsScreenPoint(button.rectTransform, mouse, null);
+        bool before;hoverStates.TryGetValue(button,out before);if(over&&!before)SettingsHoverAudio.PlayText(this);hoverStates[button]=over;
         button.color = new Color(1f, 1f, 1f, !usable ? 0.04f : over ? 0.22f : 0.1f);
         var c = over ? accentColor : Color.white;
         c.a = usable ? 1f : 0.25f;
         SetIconColor(icon, c);
+        float until;pressedUntil.TryGetValue(button,out until);float scale=Time.unscaledTime<until?.93f:over?1.08f:1f;
+        button.rectTransform.localScale=Vector3.Lerp(button.rectTransform.localScale,Vector3.one*scale,1-Mathf.Exp(-22*Time.unscaledDeltaTime));
         return over;
     }
+
+    void Press(Image button){pressedUntil[button]=Time.unscaledTime+.11f;button.rectTransform.localScale=Vector3.one*.93f;}
+    IEnumerator CloseAfterPress(){yield return new WaitForSecondsRealtime(.09f);Close();closingByButton=false;}
 
     static void SetIconColor(Graphic icon, Color c)
     {
@@ -150,6 +159,8 @@ public class TutorialDemoWindow : MonoBehaviour
         UnlockedCount = Mathf.Max(UnlockedCount, index + 1);
         if (!IsOpen)
         {
+            closingByButton=false;
+            closeButton.rectTransform.localScale=prevButton.rectTransform.localScale=nextButton.rectTransform.localScale=Vector3.one;
             IsOpen = true;
             CutsceneLock.Lock(this);       // 시범을 보는 동안 메크로 조작 잠금 (그리던 획도 취소됨)
             stage.SetRendering(true);
@@ -163,6 +174,8 @@ public class TutorialDemoWindow : MonoBehaviour
     {
         if (!IsOpen) return;
         IsOpen = false;
+        stage.StopPreview();
+        hoverStates.Clear();pressedUntil.Clear();
         closedFrame = Time.frameCount;
         CutsceneLock.Unlock(this);
         StartAnim(CloseRoutine());
@@ -172,7 +185,7 @@ public class TutorialDemoWindow : MonoBehaviour
     {
         if (UnlockedCount == 0) return;
         index = Mathf.Clamp(index, 0, UnlockedCount - 1);
-        if (index == CurrentIndex && stage.Current == clips[index]) return;
+        if (index == CurrentIndex && stage.Current == clips[index] && stage.IsPlaying) return;
         CurrentIndex = index;
         var clip = clips[index];
         badgeText.text = $"TUTORIAL  {index + 1:00}";
@@ -307,7 +320,7 @@ public class TutorialDemoWindow : MonoBehaviour
 
         const float pad = 30f;
         float panelW = videoSize.x + pad * 2f;
-        float panelH = pad + 86f + videoSize.y + 8f + 6f + 22f + 52f + 44f + 30f + 56f + pad;
+        float panelH = pad + 86f + videoSize.y + 8f + 6f + 22f + 52f + 44f + 30f + 10f + pad;
 
         // 창 묶음(열고 닫을 때 같이 커지고 작아짐) = 그림자 → 창 순서로 그린다
         var windowGo = new GameObject("Window", typeof(RectTransform));
@@ -379,12 +392,14 @@ public class TutorialDemoWindow : MonoBehaviour
         nextButton = Button(panelRt, "NextButton", new Vector2(panelW + 24f, arrowTop), new Vector2(64f, 100f));
         nextIcon = Text(nextButton.rectTransform, "Arrow", Vector2.zero, new Vector2(64f, 100f), 40f, Color.white, TextAlignmentOptions.Center);
         ((TextMeshProUGUI)nextIcon).text = "▶";
+        replayText.gameObject.SetActive(false);
     }
 
     Image Button(RectTransform parent, string name, Vector2 topLeft, Vector2 size)
     {
         var bg = Add<Image>(parent, name);
         TopLeft(bg.rectTransform, topLeft, size);
+        bg.rectTransform.pivot=Vector2.one*.5f;bg.rectTransform.anchoredPosition=topLeft+new Vector2(size.x*.5f,-size.y*.5f);
         bg.sprite = roundedSprite; bg.type = Image.Type.Sliced;
         bg.color = new Color(1f, 1f, 1f, 0.1f);
         return bg;

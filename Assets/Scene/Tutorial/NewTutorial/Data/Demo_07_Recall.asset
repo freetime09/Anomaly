@@ -31,10 +31,11 @@ MonoBehaviour:
       y: -2
       width: 20
       height: 2
+    hitsToBreak: 1
   steps:
   - shape: 8
     moveDistance: 0.5
-    waitBefore: 0.4
+    waitBefore: 1.2
     drawTime: 0.6
     waitUntilIdle: 1
   endPause: 1.2

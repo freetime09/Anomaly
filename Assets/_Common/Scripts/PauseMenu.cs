@@ -42,6 +42,11 @@ public class PauseMenu : MonoBehaviour
     [Tooltip("'타이틀로'를 누르면 갈 씬 이름 (빌드 설정에 들어 있어야 함)")]
     public string titleScene = "Title";
 
+    AudioSource menuAudio;
+    void PlaySettingsClick(){if(menuAudio==null){menuAudio=gameObject.AddComponent<AudioSource>();menuAudio.playOnAwake=false;menuAudio.spatialBlend=0;menuAudio.ignoreListenerPause=true;}var clip=Resources.Load<AudioClip>("SettingsOpenClick");if(clip!=null)menuAudio.PlayOneShot(clip,.65f);}
+    bool closing;
+    SettingsMenuMotion motion;
+    SettingsMenuMotion Motion {get{if(motion==null)motion=gameObject.AddComponent<SettingsMenuMotion>();return motion;}}
     float savedTimeScale = 1f;
 
     void Awake()
@@ -52,6 +57,7 @@ public class PauseMenu : MonoBehaviour
 
         if (volumeSlider != null)
         {
+            SettingsVolumeSlider.Install(volumeSlider);
             volumeSlider.minValue = 0f;
             volumeSlider.maxValue = 1f;
             volumeSlider.SetValueWithoutNotify(vol);
@@ -113,39 +119,41 @@ public class PauseMenu : MonoBehaviour
     public void Pause()
     {
         if (IsPaused) return;
+        PlaySettingsClick();
         IsPaused = true;
         savedTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
         Time.timeScale = 0f;
         AudioListener.pause = true;
-        if (root != null) root.SetActive(true);
+        if (root != null) Motion.Open(root);
         if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
     }
 
-    public void Resume()
+    public void Resume(){CloseThen(null);}
+    void CloseThen(System.Action after)
     {
-        if (!IsPaused) return;
-        IsPaused = false;
-        Time.timeScale = savedTimeScale;
-        AudioListener.pause = false;
-        if (root != null) root.SetActive(false);
+        if(!IsPaused){after?.Invoke();return;}
+        if(closing)return;
+        closing=true;PlaySettingsClick();
+        Motion.Close(root,()=>{
+            IsPaused=false;Time.timeScale=savedTimeScale;AudioListener.pause=false;
+            if(root!=null)root.SetActive(false);
+            closing=false;after?.Invoke();
+        });
     }
 
     /// <summary>마지막 체크포인트(없으면 시작 지점)로 — 떨어져 죽었을 때와 같은 부활 과정을 탄다.</summary>
     public void RestartFromCheckpoint()
     {
-        Resume();
-        var fr = FindObjectOfType<FallRespawn>();
-        if (fr != null) fr.Die();
+        CloseThen(()=>{var fr=FindObjectOfType<FallRespawn>();if(fr!=null)fr.Die();});
     }
 
     public void GoToTitle()
     {
-        Resume();
-        SceneMusicBridge.Begin();
-        SceneManager.LoadSceneAsync(titleScene);
+        CloseThen(()=>{SceneMusicBridge.Begin();SceneManager.LoadSceneAsync(titleScene);});
     }
 
-    public void QuitGame()
+    public void QuitGame(){CloseThen(QuitNow);}
+    void QuitNow()
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;

@@ -17,6 +17,7 @@ public sealed class RewindOverlay : MonoBehaviour
     Image flicker, black, frameLine;
     Image[] scratches, dust, staticLines, arrows;
     RectTransform icon, prompt, ringDot;
+    RewindBrushPrompt brushPrompt;
     CanvasGroup promptGroup;
     Volume volume;
     VolumeProfile profile;
@@ -149,16 +150,7 @@ public sealed class RewindOverlay : MonoBehaviour
         prompt.sizeDelta = new Vector2(180f, 180f);
         promptGroup = pgo.GetComponent<CanvasGroup>();
         promptGroup.alpha = 0f;
-        var ring = MakeImage("Ring", new Color(1f, 0.9f, 0.25f), prompt);
-        ring.sprite = RingSprite();
-        var rrt = ring.rectTransform;
-        rrt.anchorMin = rrt.anchorMax = rrt.pivot = new Vector2(0.5f, 0.5f);
-        rrt.sizeDelta = new Vector2(150f, 150f);
-        var dot = MakeImage("Dot", Color.white, ring.transform);
-        dot.sprite = BlobSprite();
-        ringDot = dot.rectTransform;
-        ringDot.anchorMin = ringDot.anchorMax = ringDot.pivot = new Vector2(0.5f, 0.5f);
-        ringDot.sizeDelta = new Vector2(30f, 30f);
+        brushPrompt = gameObject.AddComponent<RewindBrushPrompt>();
     }
 
     /// <summary>필름 화면 세기 (0~1).</summary>
@@ -202,7 +194,7 @@ public sealed class RewindOverlay : MonoBehaviour
         worldBlack.transform.localScale = new Vector3(h * blackCam.aspect + 2f, h, 1f);
     }
 
-    public void ShowPrompt(bool on) { promptOn = on; if (on) promptTime = 0f; }
+    public void ShowPrompt(bool on) { promptOn = on; if (on) promptTime = 0f; if(brushPrompt!=null)brushPrompt.Show(on); }
     bool promptOn;
 
     void ApplyVolume() { if (volume != null) volume.weight = film * fade; }
@@ -214,7 +206,7 @@ public sealed class RewindOverlay : MonoBehaviour
         var crt = (RectTransform)transform;
         float h = crt.rect.height > 0f ? crt.rect.height : 1080f;
         float w = crt.rect.width > 0f ? crt.rect.width : 1920f;
-        float f = film;
+        float f = promptOn ? (brushPrompt != null && brushPrompt.Burst ? .65f : .025f) : film;
 
         // 밝기 깜빡임 (되감을 땐 더 심하게)
         float fl = Random.Range(0f, rewinding ? 0.22f : 0.1f);
@@ -300,7 +292,7 @@ public sealed class RewindOverlay : MonoBehaviour
         float target = promptOn ? Mathf.Lerp(0.75f, 1f, 0.5f + 0.5f * Mathf.Sin(promptTime * 3f)) : 0f;
         promptGroup.alpha = Mathf.MoveTowards(promptGroup.alpha, target, dt * 3f);
         float ang = Mathf.PI * 0.5f + Mathf.Repeat(promptTime * 0.9f, 1f) * Mathf.PI * 2f;
-        ringDot.anchoredPosition = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * 62f;
+        
 
         ApplyVolume();
     }
@@ -345,6 +337,7 @@ public sealed class RewindOverlay : MonoBehaviour
         var img = go.GetComponent<Image>();
         img.color = c;
         img.raycastTarget = false;
+        if(name.StartsWith("Static")) GlitchHalo.Attach(img);
         return img;
     }
 

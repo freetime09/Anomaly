@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -57,16 +57,38 @@ public class GestureTrail : MonoBehaviour
     bool drawing;
     Coroutine fadeCo;
     Coroutine popCo;
+    Material strokeMaterial;
+    Vector3[] worldPoints = new Vector3[128];
+    public void SetSortingOrder(int order)
+    {
+        if(line!=null)line.sortingOrder=order;
+        if(glow!=null)glow.sortingOrder=order-1;
+        if(ps!=null)ps.GetComponent<ParticleSystemRenderer>().sortingOrder=order+1;
+    }
+
+    // Guides share the actual brush material, width and soft halo. No HDR emission.
+    public void ApplyGuideStyle(LineRenderer core, LineRenderer halo, Color tint, float opacity=1f)
+    {
+        if(core==null||halo==null)return;
+        core.sharedMaterial=halo.sharedMaterial=strokeMaterial;
+        core.numCapVertices=halo.numCapVertices=6;
+        core.numCornerVertices=halo.numCornerVertices=6;
+        core.textureMode=halo.textureMode=LineTextureMode.Stretch;
+        core.widthMultiplier=width;halo.widthMultiplier=width*glowWidthMultiplier;
+        tint.a=opacity;core.startColor=core.endColor=tint;
+        tint.a=opacity*glowAlpha;halo.startColor=halo.endColor=tint;
+    }
 
     void Awake()
     {
+        width *= .85f;
         cam = Camera.main;
 
         // 예전에 쓰던 TrailRenderer 가 붙어 있으면 꺼둔다 (중복 렌더 방지)
         var tr = GetComponent<TrailRenderer>();
         if (tr != null) tr.enabled = false;
 
-        var mat = new Material(Shader.Find("Sprites/Default"));
+        var mat = strokeMaterial = new Material(Shader.Find("Sprites/Default"));
 
         // 코어 라인 (이 오브젝트)
         line = GetComponent<LineRenderer>();
@@ -233,13 +255,16 @@ public class GestureTrail : MonoBehaviour
     void LateUpdate()
     {
         if (cam == null || line.positionCount == 0 || line.positionCount != points.Count) return;
+        if(worldPoints.Length<points.Count)System.Array.Resize(ref worldPoints,Mathf.Max(points.Count,worldPoints.Length*2));
         for (int i = 0; i < points.Count; i++)
         {
             Vector3 w = ToWorld(points[i]);
-            line.SetPosition(i, w);
-            glow.SetPosition(i, w);
+            worldPoints[i]=w;
         }
+        line.SetPositions(worldPoints);glow.SetPositions(worldPoints);
     }
+
+    void OnDestroy(){if(strokeMaterial!=null)Destroy(strokeMaterial);}
 
     /// <summary>제스처가 인식된 순간 호출 — 획 전체에 색을 입히고, 팝(번쩍)과 파티클 버스트를 낸다.</summary>
     public void SetStrokeColor(Color c)

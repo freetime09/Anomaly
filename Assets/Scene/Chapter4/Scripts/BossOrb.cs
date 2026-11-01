@@ -30,7 +30,7 @@ public class BossOrb : MonoBehaviour, IDamageable
             fight.TickOrb(this);
             return;
         }
-        if (reflected) velocity = (fight.BossPosition - (Vector2)transform.position).normalized * fight.reflectSpeed; // 보스를 따라감
+        if (reflected) velocity = (fight.BossPosition - (Vector2)transform.position).normalized * fight.ReflectedOrbSpeed; // 보스를 따라감
         transform.position += (Vector3)(velocity * Time.deltaTime);
         fight.TickOrb(this);
     }

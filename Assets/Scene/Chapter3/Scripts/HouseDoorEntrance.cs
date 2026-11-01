@@ -51,6 +51,7 @@ public class HouseDoorEntrance : MonoBehaviour, IInteractable
     [Header("이벤트")]
     [Tooltip("집 안으로 다 들어간 뒤 호출 (예: Chapter3HouseCutscene.Play)")]
     public UnityEvent onEntered = new UnityEvent();
+    public UnityEvent onEntering = new UnityEvent();
 
     bool playerInside;
     bool requested;   // O 를 그려 들어가기로 함 (대사가 끝나기를 기다리는 중일 수 있음)
@@ -118,6 +119,7 @@ public class HouseDoorEntrance : MonoBehaviour, IInteractable
     IEnumerator EnterRoutine()
     {
         entering = true;
+        onEntering.Invoke();
         ShowPrompt(false);
         CutsceneLock.Lock(this);
         var player = FindAnyObjectByType<PlayerController>();

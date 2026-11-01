@@ -32,6 +32,7 @@ public class ChapterTransitionTrigger : MonoBehaviour
     [Tooltip("페이드 색")]
     public Color fadeColor = Color.black;
 
+    public bool ditherFade;
     bool started;
 
     void Reset() { GetComponent<Collider2D>().isTrigger = true; }
@@ -63,14 +64,17 @@ public class ChapterTransitionTrigger : MonoBehaviour
     /// <summary>씬 전환 내내 살아 있는 페이드 진행자.</summary>
     class FadeRunner : MonoBehaviour
     {
+        Material ditherMaterial;bool useDither;
         public void Run(ChapterTransitionTrigger t)
         {
             // 원래 트리거는 씬과 함께 사라지므로 설정값을 미리 복사해 둔다
+            useDither=t.ditherFade;
             StartCoroutine(Routine(t.nextSceneName, t.fadeOutTime, t.holdTime, t.fadeInTime, t.fadeColor));
         }
 
         IEnumerator Routine(string scene, float outTime, float hold, float inTime, Color color)
         {
+            if(scene=="LastScene"||scene.EndsWith("LastScene.unity"))inTime=Mathf.Max(inTime,2.2f);
             CutsceneLock.Lock(this);
             var group = BuildOverlay(color);
 
@@ -89,15 +93,17 @@ public class ChapterTransitionTrigger : MonoBehaviour
             Destroy(gameObject);
         }
 
-        static IEnumerator Fade(CanvasGroup g, float from, float to, float time)
+        IEnumerator Fade(CanvasGroup g, float from, float to, float time)
         {
             for (float t = 0f; t < time; t += Time.unscaledDeltaTime)
             {
-                g.alpha = Mathf.Lerp(from, to, t / time);
+                SetFade(g,Mathf.Lerp(from,to,t/time));
                 yield return null;
             }
-            g.alpha = to;
+            SetFade(g,to);
         }
+
+        void SetFade(CanvasGroup g,float value){if(ditherMaterial!=null){g.alpha=1;ditherMaterial.SetFloat("_Reveal",1-value);}else g.alpha=value;}
 
         CanvasGroup BuildOverlay(Color color)
         {
@@ -111,6 +117,7 @@ public class ChapterTransitionTrigger : MonoBehaviour
             var img = new GameObject("Fade", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
             img.transform.SetParent(transform, false);
             img.color = color;
+            if(useDither){var template=Resources.Load<Material>("WakeDither");if(template!=null){ditherMaterial=new Material(template);img.material=ditherMaterial;ditherMaterial.SetFloat("_Reveal",1);}}
             img.raycastTarget = false;
             img.rectTransform.anchorMin = Vector2.zero;
             img.rectTransform.anchorMax = Vector2.one;
@@ -118,6 +125,6 @@ public class ChapterTransitionTrigger : MonoBehaviour
             return group;
         }
 
-        void OnDestroy() { CutsceneLock.Unlock(this); } // 중간에 끊겨도 잠금이 남지 않게
+        void OnDestroy() { CutsceneLock.Unlock(this);if(ditherMaterial!=null)Destroy(ditherMaterial); } // 중간에 끊겨도 잠금이 남지 않게
     }
 }

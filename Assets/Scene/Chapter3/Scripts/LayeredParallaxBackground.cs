@@ -23,6 +23,10 @@ public class LayeredParallaxBackground : MonoBehaviour
         [Tooltip("이 층의 크기 배율 (1 = 화면 높이에 맞춤). 작게 하면 같은 지평선 위에 더 작게 놓여 멀리 있는 것처럼 보인다")]
         [Range(0.1f, 2f)] public float heightScale = 1f;
         [Range(0.5f, 2f)] public float widthScale = 1f;
+        public bool fullScreen;
+        public float driftSpeed;
+        public float verticalShift;
+        public int orderOffset=-1;
     }
 
     [Tooltip("먼 층부터 가까운 층 순서로 (Background_1, 2, 3 …). 위에 있을수록 뒤에 그려진다")]
@@ -53,7 +57,7 @@ public class LayeredParallaxBackground : MonoBehaviour
             var r = layers[i].renderer;
             if (r == null) continue;
             r.drawMode = SpriteDrawMode.Tiled;  // 가로 반복
-            r.sortingOrder = baseSortingOrder + i;
+            r.sortingOrder = baseSortingOrder + (layers[i].orderOffset>=0?layers[i].orderOffset:i);
         }
     }
 
@@ -78,7 +82,7 @@ public class LayeredParallaxBackground : MonoBehaviour
 
             // 크기: 화면 높이에 맞춘 배율. 폭은 화면 폭 + 한 장 여유 (어느 위치에서도 빈틈 없게)
             Vector2 spriteSize = r.sprite.bounds.size;
-            float scale = viewH * heightCoverage * layer.heightScale / spriteSize.y;
+            float scale = viewH * heightCoverage * (layer.fullScreen ? Mathf.Max(1.12f,layer.heightScale) : layer.heightScale) / spriteSize.y;
             r.transform.localScale = new Vector3(scale * layer.widthScale, scale, 1f);
             float tileW = spriteSize.x;                                  // 한 장 폭 (로컬)
             int tiles = Mathf.CeilToInt(viewW / (tileW * scale * layer.widthScale)) + 2;
@@ -87,10 +91,10 @@ public class LayeredParallaxBackground : MonoBehaviour
             // 위치: 무늬의 기준점은 카메라 이동의 factor 만큼만 따라간다.
             // 렌더러 자체는 한 장 폭 단위로 카메라 근처로 옮겨 붙여 끝없이 이어지는 것처럼 보이게 한다.
             float worldTileW = tileW * scale * layer.widthScale;
-            float origin = c.x * layer.factor;
+            float origin = c.x * layer.factor + Time.time * layer.driftSpeed;
             float x = origin + Mathf.Round((c.x - origin) / worldTileW) * worldTileW;
-            float y = bottomY + spriteSize.y * scale * 0.5f; // 아래 가장자리를 지평선에 맞춤
-            r.transform.position = new Vector3(x, y, r.transform.position.z);
+            float y = layer.fullScreen ? c.y : bottomY + spriteSize.y * scale * 0.5f; // 아래 가장자리를 지평선에 맞춤
+            r.transform.position = new Vector3(x, y + layer.verticalShift * viewH, r.transform.position.z);
         }
     }
 

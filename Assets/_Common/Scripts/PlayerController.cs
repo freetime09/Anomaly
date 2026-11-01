@@ -141,6 +141,12 @@ public class PlayerController : MonoBehaviour
     float moveRemaining;  // 남은 이동 거리 예산 (units)
     bool stopMoveNext;    // 마지막 이동 스텝이 끝났음 → 다음 FixedUpdate에서 수평 정지
     float moveDir; // -1 왼쪽, +1 오른쪽
+    float respawnSlowStart, respawnSlowEnd, respawnSlowFactor=1f;
+    public void BeginRespawnSlow(float duration,float multiplier){respawnSlowStart=Time.time;respawnSlowEnd=Time.time+Mathf.Max(0,duration);respawnSlowFactor=Mathf.Clamp01(multiplier);}
+    public float RespawnMoveScale { get { return Time.time>=respawnSlowEnd?1f:Mathf.Lerp(respawnSlowFactor,1f,Mathf.SmoothStep(0,1,Mathf.InverseLerp(respawnSlowStart,respawnSlowEnd,Time.time))); } }
+    Vector3 slideOriginalScale;
+    float bossPushUntil,bossPushVelocity;
+    public void ForceBossPush(float x,float velocity){ResetMotion();var pos=transform.position;pos.x=x;transform.position=pos;rb.position=pos;bossPushUntil=Time.time+.22f;bossPushVelocity=velocity;}
     float moveSpeedMul = 1f; // 이동 속도 배율 (박스 끌 때 carrySpeedScale 로 낮춤)
     int facing = 1; // +1 오른쪽, -1 왼쪽 (바라보는 방향)
     bool? lastHeld;  // 직전 프레임의 나뭇가지 소지 여부 (바뀔 때만 컨트롤러 교체)
@@ -171,6 +177,7 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         if (GetComponent<PlayerRunDust>() == null) gameObject.AddComponent<PlayerRunDust>();
+        if (GetComponent<PlayerSlideDust>() == null) gameObject.AddComponent<PlayerSlideDust>();
         col = GetComponent<BoxCollider2D>();
         origColSize = col.size;
         origColOffset = col.offset;
@@ -254,16 +261,17 @@ public class PlayerController : MonoBehaviour
         }
         if (movePreview == null) movePreview = CreateSilhouette("MovePreview");
 
-        float dist = Mathf.Min(MoveDistanceFor(px), FreeDistance(dir));
+        Vector3 destination;
+        bool validDestination = MoveDestinationPreview.TryResolve(this, dir, MoveDistanceFor(px), out destination, moveSpeed * moveSpeedMul * RespawnMoveScale);
         movePreview.sprite = sr.sprite;
         movePreview.flipX = dir < 0;
         movePreview.sortingLayerID = sr.sortingLayerID;
         movePreview.sortingOrder = sr.sortingOrder - 1; // 캐릭터와 겹치면 캐릭터가 위
         movePreview.transform.localScale = sr.transform.lossyScale;
         movePreview.transform.rotation = Quaternion.identity;
-        movePreview.transform.position = sr.transform.position + Vector3.right * (dir * dist);
+        movePreview.transform.position = sr.transform.position + destination - transform.position;
         movePreview.color = movePreviewColor;
-        movePreview.enabled = true;
+        movePreview.enabled = validDestination;
     }
 
     /// <summary>dir 방향으로 걸었을 때 막히기 전까지 갈 수 있는 거리. 몸 앞면에서 발(낮은 턱은 제외)·허리·머리
@@ -498,6 +506,8 @@ public class PlayerController : MonoBehaviour
             1f);
         var ae = fx.GetComponent<AttackEffect>();
         if (ae != null) ae.SetFacing(facing);
+        var effectRenderer=fx.GetComponent<SpriteRenderer>();
+        if(effectRenderer!=null){if(sr!=null){effectRenderer.sortingLayerID=sr.sortingLayerID;effectRenderer.sortingOrder=Mathf.Max(effectRenderer.sortingOrder,sr.sortingOrder+2);}if(BossNeonLighting.Current!=null){effectRenderer.sortingOrder=Mathf.Max(35,effectRenderer.sortingOrder);effectRenderer.sharedMaterial=Resources.Load<Material>("BossPlainSprite");}}
     }
 
     /// <summary>S(돌아오기). 던졌거나 박혀 있는 나뭇가지를 거리 무관하게 불러들인다.</summary>
@@ -675,6 +685,8 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>진행 중인 이동 거리가 남아 있는가? (걸어서 붙는 중인지 판단용)</summary>
     public bool IsMoving => moveRemaining > 0f;
+    public bool IsSliding { get { return sliding; } }
+    public int SlidingDirection { get { return slideDir; } }
 
     public void SetCarrying(bool on) { moveSpeedMul = on ? Mathf.Max(0.05f, carrySpeedScale) : 1f; }
 
@@ -765,6 +777,9 @@ public class PlayerController : MonoBehaviour
         if (sliding || Time.time - lastSlideTime < slideCooldown) return; // 슬라이드 중이거나 쿨타임이면 무시
         slideDir = dir;
         facing = dir; // 슬라이드 방향으로 바라봄(스프라이트 반전 반영)
+        slideOriginalScale=transform.localScale;
+        float foot=col.bounds.min.y;transform.localScale=slideOriginalScale*.9f;
+        transform.position+=Vector3.up*(foot-col.bounds.min.y);
         sliding = true;
         slideTimer = slideDuration;
         slideExtraTimer = 0f;
@@ -794,6 +809,7 @@ public class PlayerController : MonoBehaviour
     {
         Vector2 center = transform.TransformPoint(origColOffset);
         Vector3 ls = transform.lossyScale;
+        if(sliding){ls/=.9f;float feet=col.bounds.min.y;center.y=feet+Mathf.Abs(origColSize.y*ls.y)*.5f;}
         // 바닥/옆벽에 닿아 있는 건 무시하도록 살짝 줄이고, 아래쪽은 발이 바닥에 걸리지 않게 띄운다
         Vector2 size = new Vector2(Mathf.Abs(origColSize.x * ls.x) * 0.9f, Mathf.Abs(origColSize.y * ls.y) - 0.1f);
         center.y += 0.05f;
@@ -811,6 +827,8 @@ public class PlayerController : MonoBehaviour
 
     void EndSlide()
     {
+        float foot=col.bounds.min.y;
+        transform.localScale=slideOriginalScale;
         sliding = false;
         lastSlideTime = Time.time; // 여기서부터 슬라이드 쿨타임 시작
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y); // 수평 정지
@@ -820,10 +838,12 @@ public class PlayerController : MonoBehaviour
         // 콜라이더 원래대로 복구 (FixedUpdate는 CanStandUp일 때만 여기로 옴 — 천장 밑 끼임 방지)
         col.size = origColSize;
         col.offset = origColOffset;
+        transform.position+=Vector3.up*(foot-col.bounds.min.y);
     }
 
     void FixedUpdate()
     {
+        if(Time.time<bossPushUntil){rb.linearVelocity=new Vector2(bossPushVelocity,rb.linearVelocity.y);return;}
         bool grounded = IsGrounded();
         // 착지 소리: 공중에 좀 있다가(직전 접지로부터 0.12초 초과) 바닥에 닿는 순간 1회 (미세 지터 오재생 방지)
         if (grounded && !wasGrounded && Time.time - lastGroundedTime > 0.12f) PlaySfx(landClip);
@@ -893,7 +913,7 @@ public class PlayerController : MonoBehaviour
         if (moveRemaining > 0f)
         {
             int dir = (int)Mathf.Sign(moveDir);
-            float ms = moveSpeed * moveSpeedMul; // 박스 끌 때 느려진 실효 이동 속도
+            float ms = moveSpeed * moveSpeedMul * RespawnMoveScale; // 박스 끌 때 느려진 실효 이동 속도
             float stepRise = StepRiseAhead(dir);
             // 점프로 위로 솟는 중이면 벽을 타고 오르지 않게 막는다(그 외 걷기/하강 중엔 낮은 턱을 오름).
             bool rising = rb.linearVelocity.y > 0.5f;
@@ -910,7 +930,7 @@ public class PlayerController : MonoBehaviour
                 // 도로 떨어지며 이음새에 끼인다. 위치로 옮기면 모서리에 막히지 않고 확실히 올라선다.
                 rb.position += new Vector2(moveDir * fwd, up);
                 rb.linearVelocity = Vector2.zero;
-                moveRemaining -= fwd; // 거리 예산 소진
+                moveRemaining -= fwd;
                 if (moveRemaining <= 0f) stepClimbing = false;
             }
             else if (WallAhead(dir))
@@ -928,8 +948,8 @@ public class PlayerController : MonoBehaviour
                 // (예전엔 마지막 스텝에서 예산을 다 쓰자마자 같은 프레임에 속도를 0으로 만들어 한 스텝만큼 덜 갔다)
                 float step = Mathf.Min(ms * Time.fixedDeltaTime, moveRemaining);
                 rb.linearVelocity = new Vector2(moveDir * step / Time.fixedDeltaTime, rb.linearVelocity.y);
-                moveRemaining -= step; // 거리 예산 소진
-                if (moveRemaining <= 0f) stopMoveNext = true; // 이 스텝 이동이 반영된 뒤 다음 FixedUpdate에서 수평 정지
+                moveRemaining -= step;
+                if (moveRemaining <= 0f) stopMoveNext = true;
             }
         }
 

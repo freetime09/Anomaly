@@ -85,7 +85,8 @@ public class SoundLevels : ScriptableObject
         if (table == null) return;
         foreach (var mb in root.GetComponentsInChildren<MonoBehaviour>(true))
         {
-            if (mb == null) continue;
+            // StoryMusicLoop applies this table as source gain without allocating a PCM copy.
+            if (mb == null || mb is StoryMusicLoop) continue;
             foreach (var f in ClipFields(mb.GetType()))
             {
                 object v = f.GetValue(mb);
@@ -96,6 +97,7 @@ public class SoundLevels : ScriptableObject
         }
         foreach (var src in root.GetComponentsInChildren<AudioSource>(true))
         {
+            if (src.GetComponent<StoryMusicLoop>() != null) continue;
             var c = Get(src.clip);
             if (c == src.clip) continue;
             bool playing = src.isPlaying;
