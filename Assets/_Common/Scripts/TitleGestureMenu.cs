@@ -91,8 +91,6 @@ public sealed class TitleGestureMenu : MonoBehaviour
         if (match.name == null || match.score < .78f) { Fail(); return; }
         if (match.name == "\u22c9" || match.name == "X") { Recognized(new Color(.75f,.45f,1),teleportSound); if (confirming) ConfirmQuit(); else SelectAction(3); }
         else if (!confirming && match.name.StartsWith("O")) { Recognized(new Color(1,.9f,.3f)); SelectAction(0); }
-        else if (!confirming && match.name == "S") { Recognized(new Color(.35f,.7f,1),returnSound); SelectAction(1); }
-        else if (!confirming && match.name == "9") { Recognized(new Color(.3f,.9f,.35f),plantSound); SelectAction(2); }
         else Fail();
     }
     // Same two-leg attack corner used in the game; only enabled in quit confirmation.
@@ -120,7 +118,8 @@ public sealed class TitleGestureMenu : MonoBehaviour
         if (IsTransitioning || FrontEndTransition.Busy || PauseMenu.IsPaused) return;
         CancelDraw();
         if (index == 3) { confirming = true; if(logo!=null)logo.gameObject.SetActive(false); menu.interactable = false; menu.blocksRaycasts = false; confirm.gameObject.SetActive(true);gestureHint.alpha=0; StartCoroutine(ShowConfirm()); return; }
-        string scene = index == 0 ? gameScene : index == 1 ? tutorialScene : storyScene;
+        // 게임 시작 = 스토리부터 (스토리가 끝나면 튜토리얼로 이어짐)
+        string scene = index == 0 ? storyScene : index == 1 ? tutorialScene : storyScene;
         IsTransitioning = FrontEndTransition.Load(scene);
     }
     IEnumerator ShowConfirm() { for (float t = 0; t < .25f; t += Time.unscaledDeltaTime) { confirm.alpha = Mathf.SmoothStep(0,1,t/.25f); menu.alpha = 1-confirm.alpha*.88f; yield return null; } confirm.alpha=1; menu.alpha=.12f; }
@@ -132,10 +131,8 @@ public sealed class TitleGestureMenu : MonoBehaviour
         var canvas=go.GetComponent<Canvas>();menuCanvas=canvas;canvas.renderMode=RenderMode.ScreenSpaceCamera;canvas.worldCamera=Camera.main;canvas.planeDistance=5;canvas.sortingOrder=1050;
         var scale=go.GetComponent<CanvasScaler>();scale.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scale.referenceResolution=new Vector2(1920,1080);scale.matchWidthOrHeight=.5f;
         menu=new GameObject("FloatingMenu",typeof(RectTransform),typeof(CanvasGroup)).GetComponent<CanvasGroup>();menu.transform.SetParent(go.transform,false);Stretch((RectTransform)menu.transform);menu.alpha=0;
-        Option(menu.transform,"O", "게임 시작",new Vector2(-405,-35),Yellow,0);
-        Option(menu.transform,"S", "튜토리얼",new Vector2(365,-65),Blue,1);
-        Option(menu.transform,"9", "스토리 보기",new Vector2(-310,-250),Green,2);
-        Option(menu.transform,"⋉", "게임 나가기",new Vector2(425,-285),Purple,3);
+        Option(menu.transform,"O", "게임 시작",new Vector2(-380,-150),Yellow,0);
+        Option(menu.transform,"⋉", "게임 나가기",new Vector2(380,-150),Purple,3);
         confirm=new GameObject("QuitConfirmation",typeof(RectTransform),typeof(CanvasGroup)).GetComponent<CanvasGroup>();confirm.transform.SetParent(go.transform,false);Stretch((RectTransform)confirm.transform);
         var veil=new GameObject("Veil",typeof(RectTransform),typeof(Image)).GetComponent<Image>();veil.transform.SetParent(confirm.transform,false);Stretch(veil.rectTransform);veil.color=new Color(.94f,.94f,.94f,.96f);
         var prompt=Text(confirm.transform,"Question","정말 게임을 나가시겠습니까?",new Vector2(0,80),new Vector2(1200,90),48, new Color(.16f,.16f,.18f));

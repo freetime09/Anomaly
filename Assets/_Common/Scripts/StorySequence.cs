@@ -27,6 +27,8 @@ public sealed class StorySequence : MonoBehaviour
     public AudioClip textSound, glitchSound;
     public Cut[] cuts;
     public string gameScene = "Chapter1", titleScene = "Title";
+    [Tooltip("스토리가 끝나면 넘어갈 씬 (튜토리얼)")]
+    public string afterStoryScene = "TutorialNew";
     public float charactersPerSecond = 27;
     public bool allowManualAdvance=true;
     public Vector2 contentOffset=Vector2.zero;
@@ -49,6 +51,16 @@ public sealed class StorySequence : MonoBehaviour
     Coroutine playingCut, enteringCut;
     public bool CanSkipCut { get { return cutActive&&!skipRequested&&!PauseMenu.IsPaused&&!ChoiceVisible&&!FrontEndTransition.Busy; } }
     public bool SkipToNextCut(){if(!CanSkipCut)return false;skipRequested=true;return true;}
+    bool holding, quoting, quoteSkip;
+    /// <summary>좌클릭: 대사가 나오는 중이면 끝까지 바로 보여 주고, 다 나온 뒤면 다음 장으로.</summary>
+    public bool ClickAdvance()
+    {
+        if(!CanSkipCut)return false;
+        if(holding)return SkipToNextCut();
+        if(IsTyping){advance=true;return true;}
+        if(quoting){quoteSkip=true;return true;}
+        return false;
+    }
     Material illustrationInk, bodyInk, quoteInk;
     float currentSpeed=27, currentNarrationDuration, cutAge;
     RectTransform question;readonly System.Collections.Generic.List<RectTransform> motes=new System.Collections.Generic.List<RectTransform>();
@@ -77,11 +89,15 @@ public sealed class StorySequence : MonoBehaviour
             }
             playingCut=null;
         }
-        continueHint.gameObject.SetActive(false); ChoiceVisible=true;choice.gameObject.SetActive(true);
-        yield return Fade(choice,0,1,.9f);choice.interactable=true;choice.blocksRaycasts=true;
+        FrontEndProgress.StoryDone=true;
+        // 스토리가 끝나면 묻지 않고 튜토리얼로 이어짐 (선택지 없음)
+        continueHint.gameObject.SetActive(false); ChoiceVisible=true;
+        while(!(Choosing=FrontEndTransition.Load(afterStoryScene)))yield return null;
+        voice.Stop();
     }
     IEnumerator PlayCut(int i)
     {
+            holding=false;quoting=false;quoteSkip=false;
             CurrentCut=i;var cut=cuts[i];cutAge=0;currentSpeed=cut.textSpeed>0?cut.textSpeed:charactersPerSecond;currentNarrationDuration=cut.narrationDuration;
             page.alpha=0;body.text=cut.narration;body.maxVisibleCharacters=0;quote.text="";eyeBubble.gameObject.SetActive(false);
             number.text=(i+1).ToString("00")+" / "+cuts.Length.ToString("00");
@@ -100,7 +116,7 @@ public sealed class StorySequence : MonoBehaviour
                 yield return Wait(cut.quoteLead);
                 yield return GlitchQuote(cut.quote,cut.quoteDuration,cut.quoteSettle);
             }
-            advance=false;
+            advance=false;holding=true;
             float readingHold=0;
             // The clock starts at the beginning of the picture fade, excluding pauses.
             // Both the requested scene duration and the completed-text reading time must pass.
@@ -111,7 +127,7 @@ public sealed class StorySequence : MonoBehaviour
                 yield return null;
             }
             yield return Fade(page,1,0,cut.fadeOut);yield return Wait(cut.gap);
-        cutFinished=true;
+        holding=false;cutFinished=true;
     }
     void Update()
     {
@@ -155,13 +171,14 @@ public sealed class StorySequence : MonoBehaviour
     {
         eyeBubble.gameObject.SetActive(true);
         quote.maxVisibleCharacters=int.MaxValue;
+        quoting=true;quoteSkip=false;
         voice.pitch=.72f;
         if(textSound!=null)voice.Play();
 
         float tick=0;
         const string symbols="%#^*!01";
         var normal=new Color(.12f,.10f,.18f);
-        for(float t=0;t<duration;t+=PauseMenu.IsPaused?0:Time.unscaledDeltaTime)
+        for(float t=0;t<duration&&!quoteSkip;t+=PauseMenu.IsPaused?0:Time.unscaledDeltaTime)
         {
             if(PauseMenu.IsPaused){yield return null;continue;}
             tick-=Time.unscaledDeltaTime;
@@ -190,7 +207,8 @@ public sealed class StorySequence : MonoBehaviour
         quote.color=normal;
         quote.rectTransform.anchoredPosition=Vector2.zero;
         quoteGhost.text="";
-        yield return Wait(Mathf.Max(.65f,settle));
+        bool skipped=quoteSkip;quoting=false;quoteSkip=false;
+        if(!skipped)yield return Wait(Mathf.Max(.65f,settle));
     }
 
     void BuildEyeBubble(Transform parent)
@@ -258,7 +276,7 @@ public sealed class StorySequence : MonoBehaviour
         bodyInk=new Material(body.fontSharedMaterial);body.fontSharedMaterial=bodyInk;
         quoteInk=new Material(quote.fontSharedMaterial);quote.fontSharedMaterial=quoteInk;
         continueHint=Text(canvasGo.transform,"ContinueHint","ㅇ을 그리면 다음 장면",new Vector2(0,-473),new Vector2(600,40),21,new Color(.38f,.4f,.44f,.72f));
-        continueHint.gameObject.SetActive(true);
+        continueHint.gameObject.SetActive(false); // 아래 안내 문구 숨김
         ApplyLayout();
         choice=Group(canvasGo.transform,"BeginGameChoice");choice.alpha=0;choice.interactable=choice.blocksRaycasts=false;
         question=Text(choice.transform,"Question","게임을 바로 시작하시겠습니까?",new Vector2(0,70),new Vector2(1200,110),55,new Color(.94f,.93f,.89f)).rectTransform;

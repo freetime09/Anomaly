@@ -33,6 +33,8 @@ public class ChapterTransitionTrigger : MonoBehaviour
     public Color fadeColor = Color.black;
 
     public bool ditherFade;
+    [Tooltip("켜면 이 전환이 시작될 때 '튜토리얼 완료'로 저장 (타이틀의 게임 시작 잠금 해제용)")]
+    public bool marksTutorialDone;
     bool started;
 
     void Reset() { GetComponent<Collider2D>().isTrigger = true; }
@@ -54,6 +56,7 @@ public class ChapterTransitionTrigger : MonoBehaviour
             return;
         }
         started = true;
+        if (marksTutorialDone) FrontEndProgress.TutorialDone = true;
 
         // 씬이 바뀌어도 살아남는 진행자 오브젝트가 페이드·로딩·잠금 해제를 맡는다
         var runner = new GameObject("ChapterTransition (Fader)").AddComponent<FadeRunner>();
