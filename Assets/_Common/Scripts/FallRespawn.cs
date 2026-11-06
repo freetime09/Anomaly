@@ -48,6 +48,7 @@ public class FallRespawn : MonoBehaviour
     Quaternion spawnRot;             // 부활 시 자세 (시작 자세로 세움)
     int currentOrder = int.MinValue; // 마지막으로 활성화된 체크포인트 순서 (시작 지점 = -무한대)
     bool respawning;
+    [System.NonSerialized] public bool cinematicFall;
 
     CanvasGroup fadeGroup; // 알파로 페이드
 
@@ -99,7 +100,7 @@ public class FallRespawn : MonoBehaviour
     /// <summary>죽음 진입점. 죽는 애니메이션 등은 여기(또는 RespawnRoutine 앞)에 연결하면 된다.</summary>
     public void Die()
     {
-        if (respawning) return;
+        if (respawning || cinematicFall) return;
         StartCoroutine(RespawnRoutine());
     }
 

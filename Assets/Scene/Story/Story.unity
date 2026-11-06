@@ -403,10 +403,10 @@ MonoBehaviour:
   - id: 1-1
     narration: "\uC5B4\uB290 \uB9C8\uC744\uC5D0\uC11C \uC81C\uC77C\uAC00\uB294 \uAC1C\uAD6C\uC7C1\uC774
       \uC18C\uB144\uC774 \uC788\uC5C8\uB2F5\uB2C8\uB2E4.\n\uADF8 \uC18C\uB144\uC758
-      \uC774\uB984\uC740 \uBA54\uD06C\uB85C."
+      \uC774\uB984\uC740 \uBA54\uD06C\uB85C\uC600\uC5B4\uC694."
     quote: 
     illustration: {fileID: 1251241993294252591, guid: 8b32470c468be284ab049311b561dc9f, type: 3}
-    minimumDuration: 8
+    minimumDuration: 7
     narrationDuration: 3
     sentencePause: 0.85
     quoteSettle: 0.35
@@ -424,7 +424,7 @@ MonoBehaviour:
     narration: "\uADF8\uB294 \uC0B0 \uD0C0\uB294 \uAC78 \uC815\uB9D0 \uC88B\uC544\uD588\uC5B4\uC694."
     quote: 
     illustration: {fileID: 2178390891028426014, guid: a85a76fa42db5614ebdcf51d7508b5ed, type: 3}
-    minimumDuration: 7
+    minimumDuration: 5
     narrationDuration: 2
     sentencePause: 0.85
     quoteSettle: 0.35
@@ -440,11 +440,11 @@ MonoBehaviour:
     drift: {x: 10, y: 0}
   - id: 2
     narration: "\uADF8\uB798\uC11C \uD3C9\uC18C\uCC98\uB7FC \uC0B0 \uC815\uC0C1\uC5D0
-      \uC62C\uB77C\uC628 \uBA54\uD06C\uB85C\uB294\n\uACBD\uCE58\uB97C \uAD6C\uACBD
+      \uC62C\uB77C\uC628 \uBA54\uD06C\uB85C\uB294\n\uACBD\uCE58\uB97C \uAD6C\uACBD\uD558\uACE4
       \uD588\uC8E0."
     quote: 
     illustration: {fileID: -6014875715913232297, guid: a59557f5d344a1d438720bf5a7d8febc, type: 3}
-    minimumDuration: 8
+    minimumDuration: 7
     narrationDuration: 3.3
     sentencePause: 0.85
     quoteSettle: 0.35
@@ -463,7 +463,7 @@ MonoBehaviour:
       \uB208\uC774 \uB098\uD0C0\uB098\uC11C\n\uB9D0\uD588\uC5B4\uC694."
     quote: "\uC544 \uC774\uC81C \uC774\uAC74 \uC0AD\uC81C \uD574\uC57C\uACA0\uB2E4"
     illustration: {fileID: 3014716621760928512, guid: 6a39e5d45d004bf47acb3592f25c4721, type: 3}
-    minimumDuration: 8
+    minimumDuration: 7
     narrationDuration: 2.8
     sentencePause: 0.85
     quoteSettle: 0
@@ -479,10 +479,10 @@ MonoBehaviour:
     drift: {x: 4, y: 0}
   - id: 4
     narration: "\uADF8 \uB9D0\uC774 \uB098\uC628 \uC9C1\uD6C4,\n\uC138\uACC4\uAC00
-      \uAC11\uC790\uAE30 \uC9C4\uC9DC \uC0AC\uB77C\uC9C0\uAE30 \uC2DC\uC791\uD588\uC5B4\uC694."
+      \uC9C4\uC9DC \uC0AC\uB77C\uC9C0\uAE30 \uC2DC\uC791\uD588\uC5B4\uC694."
     quote: 
     illustration: {fileID: 1962961259728982085, guid: c09aea066c5022a429e4fb0c289e276e, type: 3}
-    minimumDuration: 8
+    minimumDuration: 6
     narrationDuration: 3
     sentencePause: 0.85
     quoteSettle: 0.35
@@ -498,10 +498,10 @@ MonoBehaviour:
     drift: {x: 4, y: 0}
   - id: 5-1
     narration: "\uACE7 \uC774\uC5B4 \uBA54\uD06C\uB85C\uAC00 \uC788\uB358 \uB545\uB3C4\n\uC810\uC810
-      \uC0AC\uB77C\uC9C0\uBA70"
+      \uC0AC\uB77C\uC9C0\uBA70,"
     quote: 
     illustration: {fileID: 6144263812595545699, guid: f8ac052f5a3bff14bb9ee09acb290a6c, type: 3}
-    minimumDuration: 7
+    minimumDuration: 4
     narrationDuration: 2.4
     sentencePause: 0.85
     quoteSettle: 0.35
@@ -520,7 +520,7 @@ MonoBehaviour:
       \uB410\uC5B4\uC694."
     quote: 
     illustration: {fileID: 4861224601310592578, guid: 744d4c45cdbf1394a8208ccf33eeb8ce, type: 3}
-    minimumDuration: 9
+    minimumDuration: 7
     narrationDuration: 2.5
     sentencePause: 0.85
     quoteSettle: 0.35
@@ -542,7 +542,7 @@ MonoBehaviour:
   picturePosition: {x: 0, y: 95}
   pictureSize: {x: 870, y: 580}
   narrationPosition: {x: 0, y: -270}
-  narrationSize: {x: 1400, y: 140}
+  narrationSize: {x: 1400, y: 70}
   quotePosition: {x: 0, y: -385}
   quoteSize: {x: 1400, y: 80}
   narrationFontSize: 42

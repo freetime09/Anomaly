@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Random=UnityEngine.Random;
 using System.Collections;
 using TMPro;
@@ -41,7 +41,8 @@ public sealed class StorySequence : MonoBehaviour
     public bool Choosing { get; private set; }
     CanvasGroup page, choice;
     Canvas textCanvas;
-    TMP_Text body, quote, number, continueHint;
+    TMP_Text body, quote, quoteGhost, number, continueHint;
+    RectTransform eyeBubble;
     Image illustration;
     AudioSource voice, fx;
     bool advance, skipRequested, cutActive, cutFinished;
@@ -82,7 +83,7 @@ public sealed class StorySequence : MonoBehaviour
     IEnumerator PlayCut(int i)
     {
             CurrentCut=i;var cut=cuts[i];cutAge=0;currentSpeed=cut.textSpeed>0?cut.textSpeed:charactersPerSecond;currentNarrationDuration=cut.narrationDuration;
-            page.alpha=0;body.text=cut.narration;body.maxVisibleCharacters=0;quote.text="";
+            page.alpha=0;body.text=cut.narration;body.maxVisibleCharacters=0;quote.text="";eyeBubble.gameObject.SetActive(false);
             number.text=(i+1).ToString("00")+" / "+cuts.Length.ToString("00");
             illustration.gameObject.SetActive(cut.illustration!=null);illustration.sprite=cut.illustration;
             illustration.rectTransform.localScale=Vector3.one;illustration.rectTransform.anchoredPosition=picturePosition+contentOffset;
@@ -150,7 +151,90 @@ public sealed class StorySequence : MonoBehaviour
         for(float t=0;t<duration;t+=PauseMenu.IsPaused?0:Time.unscaledDeltaTime){float visibility=Mathf.SmoothStep(from,to,t/duration);target.alpha=visibility;if(target==page)SetInkVisibility(visibility);yield return null;}target.alpha=to;if(target==page)SetInkVisibility(to);
     }
     IEnumerator Wait(float seconds){for(float t=0;t<seconds;t+=PauseMenu.IsPaused?0:Time.unscaledDeltaTime)yield return null;}
-    IEnumerator GlitchQuote(string value,float duration,float settle){quote.maxVisibleCharacters=int.MaxValue;voice.pitch=.72f;if(textSound!=null)voice.Play();float tick=0;string symbols="%#^*!01<>";for(float t=0;t<duration;t+=PauseMenu.IsPaused?0:Time.unscaledDeltaTime){if(PauseMenu.IsPaused){yield return null;continue;}tick-=Time.unscaledDeltaTime;if(tick<=0){tick=.09f;var chars=value.ToCharArray();for(int n=0;n<3;n++){int j=Random.Range(0,chars.Length);if(!char.IsWhiteSpace(chars[j]))chars[j]=symbols[Random.Range(0,symbols.Length)];}quote.text=new string(chars);quote.color=Color.Lerp(new Color(.9f,.92f,.95f),Random.value>.5f?new Color(.65f,.88f,.94f):new Color(.94f,.66f,.77f),.65f);quote.rectTransform.anchoredPosition=quotePosition+contentOffset+new Vector2(Random.Range(-2f,2f),Random.Range(-1f,1f));}if(t>.9f)voice.Stop();yield return null;}voice.Stop();quote.text=value;quote.color=new Color(.88f,.9f,.93f);quote.rectTransform.anchoredPosition=quotePosition+contentOffset;yield return Wait(settle);}
+    IEnumerator GlitchQuote(string value,float duration,float settle)
+    {
+        eyeBubble.gameObject.SetActive(true);
+        quote.maxVisibleCharacters=int.MaxValue;
+        voice.pitch=.72f;
+        if(textSound!=null)voice.Play();
+
+        float tick=0;
+        const string symbols="%#^*!01";
+        var normal=new Color(.12f,.10f,.18f);
+        for(float t=0;t<duration;t+=PauseMenu.IsPaused?0:Time.unscaledDeltaTime)
+        {
+            if(PauseMenu.IsPaused){yield return null;continue;}
+            tick-=Time.unscaledDeltaTime;
+            if(tick<=0)
+            {
+                tick=.065f;
+                float strength=1f-Mathf.SmoothStep(0,1,Mathf.InverseLerp(duration*.42f,duration,t));
+                var chars=value.ToCharArray();
+                for(int n=0;n<Mathf.CeilToInt(6*strength);n++)
+                {
+                    int j=Random.Range(0,chars.Length);
+                    if(!char.IsWhiteSpace(chars[j]))chars[j]=symbols[Random.Range(0,symbols.Length)];
+                }
+                quote.text=new string(chars);
+                quote.rectTransform.anchoredPosition=new Vector2(Random.Range(-5f,5f)*strength,Random.Range(-2f,2f)*strength);
+                quote.color=Color.Lerp(normal,Random.value>.5f?new Color(.43f,.06f,.33f):new Color(.03f,.33f,.39f),strength*.65f);
+                quoteGhost.text=quote.text;
+                quoteGhost.rectTransform.anchoredPosition=new Vector2(Random.Range(-9f,9f)*strength,Random.Range(-3f,3f)*strength);
+                quoteGhost.color=new Color(.94f,.14f,.49f, strength*.35f);
+            }
+            if(t>.9f&&voice.isPlaying)voice.Stop();
+            yield return null;
+        }
+        voice.Stop();
+        quote.text=value;
+        quote.color=normal;
+        quote.rectTransform.anchoredPosition=Vector2.zero;
+        quoteGhost.text="";
+        yield return Wait(Mathf.Max(.65f,settle));
+    }
+
+    void BuildEyeBubble(Transform parent)
+    {
+        eyeBubble=BubblePanel(parent,"EyeSpeechBubble",Vector2.zero,new Vector2(276,94),new Color(.12f,.12f,.2f));
+        var tail=BubblePanel(eyeBubble,"Tail",new Vector2(137,0),new Vector2(31,31),new Color(.12f,.12f,.2f));
+        tail.localRotation=Quaternion.Euler(0,0,45);
+        var fill=new Color(.94f,.94f,.97f);
+        var tailFill=BubblePanel(eyeBubble,"TailFill",new Vector2(137,0),new Vector2(24,24),fill);
+        tailFill.localRotation=tail.localRotation;
+        BubblePanel(eyeBubble,"Paper",Vector2.zero,new Vector2(268,86),fill);
+        quoteGhost=Text(eyeBubble,"GlitchEcho","",Vector2.zero,new Vector2(250,84),30,Color.clear);
+        quote=Text(eyeBubble,"EyeSpeech","",Vector2.zero,new Vector2(250,84),30,new Color(.12f,.10f,.18f));
+        quote.richText=quoteGhost.richText=false;
+        eyeBubble.gameObject.SetActive(false);
+    }
+
+    RectTransform BubblePanel(Transform parent,string name,Vector2 position,Vector2 size,Color color)
+    {
+        var panel=new GameObject(name,typeof(RectTransform),typeof(Image)).GetComponent<Image>();
+        panel.transform.SetParent(parent,false);
+        panel.color=color;
+        panel.raycastTarget=false;
+        panel.rectTransform.anchoredPosition=position;
+        panel.rectTransform.sizeDelta=size;
+        return panel.rectTransform;
+    }
+
+    void PlaceEyeBubble()
+    {
+        var sprite=illustration.sprite;
+        if(sprite==null)
+        {
+            eyeBubble.SetParent(page.transform,false);
+            eyeBubble.anchoredPosition=quotePosition+contentOffset;
+            return;
+        }
+        eyeBubble.SetParent(illustration.rectTransform,false);
+        var spriteSize=sprite.rect.size;
+        float scale=Mathf.Min(pictureSize.x/spriteSize.x,pictureSize.y/spriteSize.y);
+        Vector2 size=spriteSize*scale;
+        // The left point of the eye sits about 35% across and 73% up the artwork.
+        eyeBubble.anchoredPosition=new Vector2(-size.x*.15f-162f,size.y*.235f);
+    }
     public void Choose(bool play)
     {
         if(!ChoiceVisible||Choosing||FrontEndTransition.Busy)return;
@@ -167,13 +251,13 @@ public sealed class StorySequence : MonoBehaviour
         number=Text(page.transform,"CutNumber","",new Vector2(0,190),new Vector2(300,45),23,new Color(.45f,.48f,.52f));
         number.gameObject.SetActive(false);
         body=Text(page.transform,"Narration","",new Vector2(0,5),new Vector2(1190,270),44,new Color(.94f,.93f,.89f));body.lineSpacing=12;
-        quote=Text(page.transform,"EyeSpeech","",quotePosition,new Vector2(1400,80),38,new Color(.8f,.83f,.87f));quote.richText=false;
         illustration=new GameObject("CutIllustration",typeof(RectTransform),typeof(Image)).GetComponent<Image>();illustration.transform.SetParent(page.transform,false);illustration.rectTransform.sizeDelta=pictureSize;illustration.rectTransform.anchoredPosition=picturePosition+contentOffset;illustration.preserveAspect=true;illustration.raycastTarget=false;illustration.gameObject.SetActive(false);
+        BuildEyeBubble(illustration.rectTransform);
         var inkTemplate=Resources.Load<Material>("StoryInkReveal");
         if(inkTemplate!=null){illustrationInk=new Material(inkTemplate);illustration.material=illustrationInk;}
         bodyInk=new Material(body.fontSharedMaterial);body.fontSharedMaterial=bodyInk;
         quoteInk=new Material(quote.fontSharedMaterial);quote.fontSharedMaterial=quoteInk;
-        continueHint=Text(canvasGo.transform,"ContinueHint","ㅇ을 그리면 다음 장면",new Vector2(0,-450),new Vector2(600,40),21,new Color(.38f,.4f,.44f));
+        continueHint=Text(canvasGo.transform,"ContinueHint","ㅇ을 그리면 다음 장면",new Vector2(0,-473),new Vector2(600,40),21,new Color(.38f,.4f,.44f,.72f));
         continueHint.gameObject.SetActive(true);
         ApplyLayout();
         choice=Group(canvasGo.transform,"BeginGameChoice");choice.alpha=0;choice.interactable=choice.blocksRaycasts=false;
@@ -196,7 +280,8 @@ public sealed class StorySequence : MonoBehaviour
         body.rectTransform.anchoredPosition=(hasPicture?narrationPosition:Vector2.zero)+contentOffset;
         body.rectTransform.sizeDelta=hasPicture?narrationSize:new Vector2(1190,270);
         body.fontSize=narrationFontSize;
-        quote.rectTransform.anchoredPosition=quotePosition+contentOffset;quote.rectTransform.sizeDelta=quoteSize;
+        body.alignment=TextAlignmentOptions.Top;
+        PlaceEyeBubble();
     }
     void SetInkVisibility(float visibility)
     {

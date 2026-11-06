@@ -26,8 +26,8 @@ public sealed class PracticePressureGate : MonoBehaviour, IPuzzleState
         if(body.min.x>passage.max.x+.04f){completed=true;return;}
         if(body.max.x<passage.min.x-.04f){
             crossing=false;gate.reappearWhenOff=true;
-            bool active=false;foreach(int id in gate.signalIds)if(SignalBus.IsOn(id)){active=true;break;}
-            if(!active)gate.LoadState(false);
+            int active=0;foreach(int id in gate.signalIds)if(SignalBus.IsOn(id))active++;
+            if(active<gate.requiredCount)gate.LoadState(false);
         }
     }
     public object SaveState(){return completed;}

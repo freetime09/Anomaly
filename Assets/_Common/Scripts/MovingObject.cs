@@ -27,6 +27,7 @@ public class MovingObject : SignalReceiver, IPuzzleState
     [Header("소리")]
     [Tooltip("움직이기 시작할 때 소리 (예: 올라가는 블럭). 비우면 소리 없음")]
     public AudioClip moveClip;
+    public bool playMoveClipOnReturn = true;
     [Range(0f, 1f)] public float sfxVolume = 1f;
 
     [Header("상태 (읽기용)")]
@@ -53,7 +54,7 @@ public class MovingObject : SignalReceiver, IPuzzleState
 
     void FixedUpdate()
     {
-        if(returnAt>=0&&Time.time>=returnAt){returnAt=-1;target=startPos;if(moveClip!=null&&sfxSrc!=null)sfxSrc.PlayOneShot(moveClip,sfxVolume);}
+        if(returnAt>=0&&Time.time>=returnAt){returnAt=-1;target=startPos;if(playMoveClipOnReturn&&moveClip!=null&&sfxSrc!=null)sfxSrc.PlayOneShot(moveClip,sfxVolume);}
         Vector3 cur = rb != null ? (Vector3)rb.position : transform.position;
         bool returning = !activated && target == startPos;
         float speed = (returning && returnSpeed > 0f) ? returnSpeed : moveSpeed;
@@ -80,7 +81,7 @@ public class MovingObject : SignalReceiver, IPuzzleState
             if(returnDelay+remaining>0)returnAt=Time.time+returnDelay+remaining;else target = startPos;
         }
         // returnWhenOff=false 면 target 그대로 두어 이동한 자리에 머무름
-        if (target != before && moveClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring) sfxSrc.PlayOneShot(moveClip, sfxVolume); // 움직이는 소리
+        if ((on || playMoveClipOnReturn) && target != before && moveClip != null && sfxSrc != null && !PuzzleSnapshot.Restoring) sfxSrc.PlayOneShot(moveClip, sfxVolume); // 움직이는 소리
     }
 
     // ── IPuzzleState (죽으면 체크포인트 때 위치로, 미끄러지지 않고 바로) ──
