@@ -44,7 +44,10 @@ public sealed class StorySequence : MonoBehaviour
     TMP_Text body, quote, number, continueHint;
     Image illustration;
     AudioSource voice, fx;
-    bool advance;
+    bool advance, skipRequested, cutActive, cutFinished;
+    Coroutine playingCut, enteringCut;
+    public bool CanSkipCut { get { return cutActive&&!skipRequested&&!PauseMenu.IsPaused&&!ChoiceVisible&&!FrontEndTransition.Busy; } }
+    public bool SkipToNextCut(){if(!CanSkipCut)return false;skipRequested=true;return true;}
     Material illustrationInk, bodyInk, quoteInk;
     float currentSpeed=27, currentNarrationDuration, cutAge;
     RectTransform question;readonly System.Collections.Generic.List<RectTransform> motes=new System.Collections.Generic.List<RectTransform>();
@@ -53,6 +56,7 @@ public sealed class StorySequence : MonoBehaviour
         voice = gameObject.AddComponent<AudioSource>(); voice.playOnAwake = false; voice.spatialBlend = 0; voice.loop = true; voice.clip = textSound; voice.volume = .16f;
         fx = gameObject.AddComponent<AudioSource>(); fx.playOnAwake = false; fx.spatialBlend = 0;
         Build();
+        gameObject.AddComponent<StorySkipGesture>().sequence=this;
     }
     IEnumerator Start()
     {
@@ -60,6 +64,23 @@ public sealed class StorySequence : MonoBehaviour
         yield return Wait(1.1f);
         for (int i = 0; cuts != null && i < cuts.Length; i++)
         {
+            skipRequested=false;cutFinished=false;cutActive=true;
+            playingCut=StartCoroutine(PlayCut(i));
+            while(!cutFinished&&!skipRequested)yield return null;
+            cutActive=false;
+            if(skipRequested)
+            {
+                StopCoroutine(playingCut);if(enteringCut!=null){StopCoroutine(enteringCut);enteringCut=null;}
+                voice.Stop();IsTyping=false;advance=false;
+                yield return Fade(page,page.alpha,0,.45f);yield return Wait(.12f);
+            }
+            playingCut=null;
+        }
+        continueHint.gameObject.SetActive(false); ChoiceVisible=true;choice.gameObject.SetActive(true);
+        yield return Fade(choice,0,1,.9f);choice.interactable=true;choice.blocksRaycasts=true;
+    }
+    IEnumerator PlayCut(int i)
+    {
             CurrentCut=i;var cut=cuts[i];cutAge=0;currentSpeed=cut.textSpeed>0?cut.textSpeed:charactersPerSecond;currentNarrationDuration=cut.narrationDuration;
             page.alpha=0;body.text=cut.narration;body.maxVisibleCharacters=0;quote.text="";
             number.text=(i+1).ToString("00")+" / "+cuts.Length.ToString("00");
@@ -68,11 +89,11 @@ public sealed class StorySequence : MonoBehaviour
             if(illustrationInk!=null)illustrationInk.SetFloat("_Seed",i*3.17f);
             ApplyLayout();
             SetInkVisibility(0);
-            var entering=StartCoroutine(Fade(page,0,1,cut.fadeIn));
+            enteringCut=StartCoroutine(Fade(page,0,1,cut.fadeIn));
             yield return Wait(cut.imageLead);
             int split=i==0&&cut.narration.Contains("있었답니다.")?cut.narration.IndexOf("있었답니다.",StringComparison.Ordinal)+"있었답니다.".Length:-1;
             yield return Type(body,cut.narration,1,split);
-            yield return entering;
+            yield return enteringCut;enteringCut=null;
             if(!string.IsNullOrEmpty(cut.quote))
             {
                 yield return Wait(cut.quoteLead);
@@ -89,9 +110,7 @@ public sealed class StorySequence : MonoBehaviour
                 yield return null;
             }
             yield return Fade(page,1,0,cut.fadeOut);yield return Wait(cut.gap);
-        }
-        continueHint.gameObject.SetActive(false); ChoiceVisible=true;choice.gameObject.SetActive(true);
-        yield return Fade(choice,0,1,.9f);choice.interactable=true;choice.blocksRaycasts=true;
+        cutFinished=true;
     }
     void Update()
     {
@@ -106,7 +125,7 @@ public sealed class StorySequence : MonoBehaviour
                 illustration.rectTransform.anchoredPosition=picturePosition+contentOffset+cut.drift*motion;}
         }
         if (PauseMenu.IsPaused || ChoiceVisible || FrontEndTransition.Busy || !allowManualAdvance) return;
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || (Input.GetMouseButtonDown(0) && !PauseMenu.IsPointerOnSettingsButton(Input.mousePosition))) advance=true;
+        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)) advance=true;
     }
     IEnumerator Type(TMP_Text text,string value,float pitch,int pauseAfter=-1)
     {
@@ -154,8 +173,8 @@ public sealed class StorySequence : MonoBehaviour
         if(inkTemplate!=null){illustrationInk=new Material(inkTemplate);illustration.material=illustrationInk;}
         bodyInk=new Material(body.fontSharedMaterial);body.fontSharedMaterial=bodyInk;
         quoteInk=new Material(quote.fontSharedMaterial);quote.fontSharedMaterial=quoteInk;
-        continueHint=Text(canvasGo.transform,"ContinueHint","클릭 / Space로 이어보기",new Vector2(0,-450),new Vector2(600,40),21,new Color(.38f,.4f,.44f));
-        continueHint.gameObject.SetActive(false);
+        continueHint=Text(canvasGo.transform,"ContinueHint","ㅇ을 그리면 다음 장면",new Vector2(0,-450),new Vector2(600,40),21,new Color(.38f,.4f,.44f));
+        continueHint.gameObject.SetActive(true);
         ApplyLayout();
         choice=Group(canvasGo.transform,"BeginGameChoice");choice.alpha=0;choice.interactable=choice.blocksRaycasts=false;
         question=Text(choice.transform,"Question","게임을 바로 시작하시겠습니까?",new Vector2(0,70),new Vector2(1200,110),55,new Color(.94f,.93f,.89f)).rectTransform;

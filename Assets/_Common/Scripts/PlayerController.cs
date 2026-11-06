@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -206,8 +206,24 @@ public class PlayerController : MonoBehaviour
 
     SpriteRenderer movePreview;   // 이동 도착 지점 미리보기 (캐릭터 단색 실루엣)
 
+    float visualGroundOffset;
+    void ClearGroundOffset(){if(visual!=null)visual.position-=Vector3.up*visualGroundOffset;visualGroundOffset=0;}
+    void OnDisable(){ClearGroundOffset();}
     void LateUpdate()
     {
+        ClearGroundOffset();
+        Vector2 support;
+        if(visual!=null&&!dead&&!sliding&&Time.time-lastJumpTime>.18f&&StandingOnSomething(out support)&&support.y<.995f&&Vector2.Angle(support,Vector2.up)<=maxSlopeAngle)
+        {
+            // A box is supported at its uphill corner. Align the artwork's feet at its centre.
+            Bounds bounds=col.bounds;
+            var hit=Physics2D.Raycast(new Vector2(bounds.center.x,bounds.min.y+.08f),Vector2.down,bounds.extents.x+.2f,groundLayer);
+            if(hit.collider!=null&&!hit.collider.isTrigger&&hit.normal.y>.5f)
+            {
+                visualGroundOffset=-Mathf.Clamp(bounds.min.y-hit.point.y,0,bounds.extents.x+.05f);
+                visual.position+=Vector3.up*visualGroundOffset;
+            }
+        }
         UpdatePlantPreview();
         UpdateMovePreview();
     }
@@ -241,8 +257,10 @@ public class PlayerController : MonoBehaviour
         plantPreview.transform.localScale = branch.transform.lossyScale;
 
         Vector2 pos;
-        bool ok = TryGetPlantSpot(out pos);
-        plantPreview.transform.position = pos + Vector2.down * branch.stickDepth; // 실제 세워질 때처럼 살짝 꽂힌 위치
+        Vector2 plantNormal;
+        bool ok = TryGetPlantSpot(out pos,out plantNormal);
+        plantPreview.transform.rotation=Quaternion.FromToRotation(Vector3.up,plantNormal);
+        plantPreview.transform.position = pos - plantNormal * branch.stickDepth; // 실제 세워질 때처럼 살짝 꽂힌 위치
         plantPreview.color = ok ? plantPreviewColor : plantPreviewBlockedColor;
         plantPreview.enabled = true;
     }
@@ -552,22 +570,25 @@ public class PlayerController : MonoBehaviour
     {
         if (branch == null || !branch.CanThrow) return; // 회수 전까지 재사용 불가
         Vector2 pos;
-        if (!TryGetPlantSpot(out pos)) return; // 밑에 바닥 없음 → 세우기 취소
-        branch.Plant(pos);
+        Vector2 plantNormal;
+        if (!TryGetPlantSpot(out pos,out plantNormal)) return; // 밑에 바닥 없음 → 세우기 취소
+        branch.Plant(pos,plantNormal);
     }
 
     /// <summary>9로 세울 자리 계산 (실제 세우기와 미리보기가 같은 계산을 쓴다).
     /// 세울 자리 밑에 바닥이 있을 때만 true. 발 높이 기준으로 위 0.6~아래 1.0 범위에서
     /// 바닥(groundLayer) 윗면을 찾아 거기에 밑동을 맞춘다. 바닥이 없으면(공중/앞이 낭떠러지)
     /// false → 하늘에 박히는 것 방지. false일 때 pos는 발 높이 기준 자리(미리보기용).</summary>
-    bool TryGetPlantSpot(out Vector2 pos)
+    bool TryGetPlantSpot(out Vector2 pos,out Vector2 normal)
     {
-        float x = transform.position.x + plantDistance * facing;
-        float feetY = col.bounds.min.y;
-        RaycastHit2D g = Physics2D.Raycast(new Vector2(x, feetY + 0.6f), Vector2.down, 0.6f + 1.0f, groundLayer);
-        float halfH = branch != null ? branch.WorldHalfHeight : 0.5f;
-        if (g.collider == null) { pos = new Vector2(x, feetY + halfH); return false; }
-        pos = new Vector2(x, g.point.y + halfH); // 찾은 바닥 윗면에 밑동을 맞춰 세움
+        float x=transform.position.x+plantDistance*facing;
+        float feetY=col.bounds.min.y;
+        float reach=Mathf.Max(1f,Mathf.Abs(plantDistance)*Mathf.Tan(Mathf.Min(60,maxSlopeAngle)*Mathf.Deg2Rad)+.3f);
+        var g=Physics2D.Raycast(new Vector2(x,feetY+reach),Vector2.down,reach*2,groundLayer);
+        float halfH=branch!=null?branch.WorldHalfHeight:.5f;
+        normal=Vector2.up;pos=new Vector2(x,feetY+halfH);
+        if(g.collider==null||g.collider.isTrigger||Vector2.Angle(g.normal,Vector2.up)>maxSlopeAngle+.1f)return false;
+        normal=g.normal.normalized;pos=g.point+normal*halfH;
         return true;
     }
 
@@ -906,7 +927,8 @@ public class PlayerController : MonoBehaviour
                 // 경사면 방향 중력 성분을 상쇄 (속도만 0으로 하면 매 스텝 중력이 다시 경사 아래로 조금씩 밀어냄)
                 Vector2 g = Physics2D.gravity * rb.gravityScale;
                 Vector2 tangent = new Vector2(n.y, -n.x);
-                rb.AddForce(-Vector2.Dot(g, tangent) * tangent * rb.mass);
+                rb.linearVelocity=Vector2.zero;
+                rb.AddForce(-g * rb.mass);
             }
         }
 
@@ -914,6 +936,18 @@ public class PlayerController : MonoBehaviour
         {
             int dir = (int)Mathf.Sign(moveDir);
             float ms = moveSpeed * moveSpeedMul * RespawnMoveScale; // 박스 끌 때 느려진 실효 이동 속도
+            Vector2 slopeNormal;
+            if(Time.time-lastJumpTime>.18f && TryMovementSlope(dir,out slopeNormal) && slopeNormal.y<.995f && Vector2.Angle(slopeNormal,Vector2.up)<=maxSlopeAngle)
+            {
+                stepClimbing=false;
+                Vector2 along=new Vector2(slopeNormal.y,-slopeNormal.x)*moveDir;
+                float speed=Mathf.Min(ms,moveRemaining/(Mathf.Max(.1f,Mathf.Abs(along.x))*Time.fixedDeltaTime));
+                rb.linearVelocity=along*speed;
+                rb.AddForce(-Physics2D.gravity*rb.gravityScale*rb.mass);
+                moveRemaining-=Mathf.Abs(along.x)*speed*Time.fixedDeltaTime;
+                if(moveRemaining<=0)stopMoveNext=true;
+                return;
+            }
             float stepRise = StepRiseAhead(dir);
             // 점프로 위로 솟는 중이면 벽을 타고 오르지 않게 막는다(그 외 걷기/하강 중엔 낮은 턱을 오름).
             bool rising = rb.linearVelocity.y > 0.5f;
@@ -958,6 +992,27 @@ public class PlayerController : MonoBehaviour
         // (속도가 누적되지 못해, 계단을 다 오른 순간 잔여 상승 없이 바로 멈춘다. 점프는 lastJumpFrame로 보호.)
         if (rb.linearVelocity.y > 0f && Time.time - lastJumpTime > 0.12f && IsGrounded())
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+    }
+
+    bool TryMovementSlope(int direction,out Vector2 normal)
+    {
+        normal=Vector2.up;
+        // At a ramp entrance both flat ground and ramp touch the box. The ramp must win.
+        int count=rb.GetContacts(contactBuf);
+        for(int i=0;i<count;i++)
+        {
+            var contact=contactBuf[i];var n=contact.normal;
+            if(contact.collider.isTrigger||n.y>=.995f||n.y<=.5f||Vector2.Angle(n,Vector2.up)>maxSlopeAngle+.1f)continue;
+            if(n.x*direction<0){normal=n;return true;}
+        }
+        if(IsGrounded())
+        {
+            Bounds b=col.bounds;float ahead=(direction>0?b.max.x:b.min.x)+direction*.07f;
+            var hit=Physics2D.Raycast(new Vector2(ahead,b.min.y+maxStepHeight+.08f),Vector2.down,maxStepHeight+.16f,groundLayer);
+            if(hit.collider!=null&&!hit.collider.isTrigger&&hit.normal.y<.995f&&hit.normal.y>.5f&&hit.normal.x*direction<0&&Vector2.Angle(hit.normal,Vector2.up)<=maxSlopeAngle+.1f)
+            {normal=hit.normal;return true;}
+        }
+        return StandingOnSomething(out normal)&&normal.y<.995f;
     }
 
     static readonly Collider2D[] groundBuf = new Collider2D[8];
@@ -1027,7 +1082,7 @@ public class PlayerController : MonoBehaviour
         float aheadX = (dir > 0 ? b.max.x : b.min.x) + dir * 0.14f;
         Vector2 top = new Vector2(aheadX, feetY + maxStepHeight + 0.05f);
         RaycastHit2D d = Physics2D.Raycast(top, Vector2.down, maxStepHeight + 0.1f, groundLayer);
-        if (d.collider == null) return -1f;        // 앞에 올라설 바닥 없음(낭떠러지/트인 공간)
+        if (d.collider == null || d.normal.y < .995f) return -1f;        // 앞에 올라설 바닥 없음(낭떠러지/트인 공간)
         float rise = d.point.y - feetY;
         return (rise > 0.02f && rise <= maxStepHeight) ? rise : -1f; // 계단 높이 범위면 그 높이, 아니면 -1
     }
@@ -1052,7 +1107,7 @@ public class PlayerController : MonoBehaviour
         for (int i = 0; i < hs.Length; i++)
         {
             RaycastHit2D hit = Physics2D.Raycast(new Vector2(startX, hs[i]), castDir, dist, groundLayer);
-            if (hit.collider == null || hit.normal == Vector2.zero) continue; // 안 맞거나 겹침 글리치 → 통과
+            if (hit.collider == null || hit.fraction <= 0f || hit.normal == Vector2.zero) continue; // 안 맞거나 겹침 글리치 → 통과
             if (Vector2.Angle(hit.normal, Vector2.up) > maxSlopeAngle) return true; // 가파른 벽
         }
         return false;

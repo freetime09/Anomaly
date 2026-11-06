@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 [CustomEditor(typeof(StorySequence))]
@@ -24,7 +24,7 @@ public sealed class StorySequenceEditor : Editor
         serializedObject.Update();
         EditorGUILayout.LabelField("스토리 컷씬",EditorStyles.boldLabel);
         EditorGUILayout.HelpBox("각 컷의 시간을 초 단위로 조정합니다. 최소 표시 시간은 그림이 나타나기 시작한 순간부터 퇴장을 시작하기 전까지입니다. 대사가 더 길면 읽기가 끝날 때까지 기다립니다. 퇴장 시간과 다음 컷까지 여백은 별도로 더해집니다.",MessageType.Info);
-        Field(null,"allowManualAdvance","클릭 / Space로 넘기기","켜면 플레이어가 설정한 시간보다 먼저 대사를 완성하거나 다음 컷으로 넘길 수 있습니다.");
+        Field(null,"allowManualAdvance","Space / Enter로 넘기기","키보드 넘기기를 허용합니다. 마우스로 ㅇ 그려 다음 컷 넘기기는 항상 사용할 수 있습니다.");
 
         var cuts=serializedObject.FindProperty("cuts");
         for(int i=0;i<cuts.arraySize;i++)

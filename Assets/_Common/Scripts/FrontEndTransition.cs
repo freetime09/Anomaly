@@ -1,19 +1,20 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using TMPro;
 
 public sealed class FrontEndTransition : MonoBehaviour
 {
     static FrontEndTransition active;
     public static bool Busy { get { return active != null; } }
     CanvasGroup group;
-    readonly Image[] loading = new Image[3];
+    Image loadingPlayer;
+    LoadingRunnerFrames runFrames;
+    Material silhouetteMaterial;
+    AudioSource loadingFootsteps;
     CanvasGroup loadingGroup;
     float loadingStarted;
-    Texture2D dotTexture;
-    Sprite dotSprite;
+    int displayedFrame = -1;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetState() { active = null; }
     static FrontEndTransition Create()
@@ -45,35 +46,73 @@ public sealed class FrontEndTransition : MonoBehaviour
         var image = new GameObject("BlackFade", typeof(RectTransform), typeof(Image)).GetComponent<Image>(); image.transform.SetParent(transform, false);
         image.rectTransform.anchorMin = Vector2.zero; image.rectTransform.anchorMax = Vector2.one; image.rectTransform.offsetMin = image.rectTransform.offsetMax = Vector2.zero;
         image.color = Color.black;
-        var dots=new GameObject("LoadingDots",typeof(RectTransform),typeof(CanvasGroup));dots.transform.SetParent(transform,false);
-        var rect=(RectTransform)dots.transform;rect.anchorMin=rect.anchorMax=new Vector2(.5f,.11f);rect.anchoredPosition=Vector2.zero;rect.sizeDelta=new Vector2(160,44);
-        loadingGroup=dots.GetComponent<CanvasGroup>();loadingGroup.blocksRaycasts=false;
-        dotTexture=new Texture2D(24,24,TextureFormat.RGBA32,false){filterMode=FilterMode.Bilinear};
-        var pixels=new Color[24*24];
-        for(int y=0;y<24;y++)for(int x=0;x<24;x++){float radius=new Vector2(x-11.5f,y-11.5f).magnitude;pixels[y*24+x]=new Color(1,1,1,Mathf.Clamp01(11.5f-radius));}
-        dotTexture.SetPixels(pixels);dotTexture.Apply(false,true);dotSprite=Sprite.Create(dotTexture,new Rect(0,0,24,24),Vector2.one*.5f);
-        for(int i=0;i<loading.Length;i++){
-            var dot=new GameObject("Dot"+i,typeof(RectTransform),typeof(Image));dot.transform.SetParent(dots.transform,false);
-            var imageDot=dot.GetComponent<Image>();imageDot.sprite=dotSprite;imageDot.raycastTarget=false;imageDot.color=new Color(.3f,.32f,.36f);imageDot.rectTransform.sizeDelta=Vector2.one*9;
-            imageDot.rectTransform.anchoredPosition=new Vector2((i-1)*28,0);loading[i]=imageDot;
-        }
-        dots.SetActive(false);
+        BuildLoadingRunner();
         SetCover(1);
     }
-    void Update(){
-        if(loadingGroup==null||!loadingGroup.gameObject.activeSelf)return;
-        float phase=(Time.unscaledTime-loadingStarted)/.34f;
-        int activeDot=Mathf.FloorToInt(phase)%3;
-        float pulse=Mathf.Sin(Mathf.Repeat(phase,1)*Mathf.PI);
-        for(int i=0;i<3;i++){
-            bool lit=i==activeDot;loading[i].color=lit?Color.white:new Color(.3f,.32f,.36f);
-            loading[i].rectTransform.localScale=Vector3.one*(lit?1.22f+.18f*pulse:1);
-            loading[i].rectTransform.anchoredPosition=new Vector2((i-1)*28,lit?pulse*3:0);
+    void BuildLoadingRunner()
+    {
+        var root = new GameObject("LoadingRunner", typeof(RectTransform), typeof(CanvasGroup));
+        root.transform.SetParent(transform, false);
+        var rect = (RectTransform)root.transform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
+        loadingGroup = root.GetComponent<CanvasGroup>();
+        loadingGroup.blocksRaycasts = false;
+        // Stationary Chapter2-style floor with a single white upper edge.
+        var floor = LoadingImage(root.transform, "BlackGround", Vector2.zero, Vector2.zero, new Color(.025f, .03f, .04f, 1));
+        floor.rectTransform.anchorMin = Vector2.zero;
+        floor.rectTransform.anchorMax = new Vector2(1, .115f);
+        floor.rectTransform.offsetMin = floor.rectTransform.offsetMax = Vector2.zero;
+        var edge=LoadingImage(root.transform,"WhiteGroundEdge",Vector2.zero,new Vector2(0,2),Color.white);
+        edge.rectTransform.anchorMin=new Vector2(0,.115f);edge.rectTransform.anchorMax=new Vector2(1,.115f);
+        edge.rectTransform.sizeDelta=new Vector2(0,2);
+        loadingFootsteps=gameObject.AddComponent<AudioSource>();loadingFootsteps.playOnAwake=false;loadingFootsteps.loop=true;loadingFootsteps.spatialBlend=0;loadingFootsteps.volume=0;
+        runFrames = Resources.Load<LoadingRunnerFrames>("LoadingRunnerFrames");
+        if(runFrames!=null)loadingFootsteps.clip=runFrames.footsteps;
+        loadingFootsteps.pitch=.96f;
+        loadingPlayer = LoadingImage(root.transform, "PlayerRun", Vector2.zero, new Vector2(112, 112), new Color(1,1,1,.82f));
+        loadingPlayer.rectTransform.anchorMin = loadingPlayer.rectTransform.anchorMax = new Vector2(.5f, .115f);
+        loadingPlayer.rectTransform.pivot = new Vector2(.5f, 0);
+        var silhouetteShader = Resources.Load<Shader>("LoadingRunnerSilhouette");
+        if (silhouetteShader != null)
+        {
+            silhouetteMaterial = new Material(silhouetteShader);
+            loadingPlayer.material = silhouetteMaterial;
+        }
+        loadingPlayer.preserveAspect = true;
+        if (runFrames != null && runFrames.frames != null && runFrames.frames.Length > 0)
+            loadingPlayer.sprite = runFrames.frames[0];
+        else loadingPlayer.enabled = false;
+        root.SetActive(false);
+    }
+    static Image LoadingImage(Transform parent, string name, Vector2 position, Vector2 size, Color color)
+    {
+        var image = new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        image.transform.SetParent(parent, false);
+        image.rectTransform.anchorMin = image.rectTransform.anchorMax = Vector2.one * .5f;
+        image.rectTransform.anchoredPosition = position;
+        image.rectTransform.sizeDelta = size;
+        image.color = color;
+        image.raycastTarget = false;
+        return image;
+    }
+    void Update()
+    {
+        if (loadingGroup == null || !loadingGroup.gameObject.activeSelf) return;
+        float age = Time.unscaledTime - loadingStarted;
+        // Keep the original run recording quiet, with a gentle difference in tone.
+        if(loadingFootsteps!=null)loadingFootsteps.pitch=.96f+Mathf.Sin(age*2.4f)*.02f;
+        if (runFrames != null && runFrames.frames != null && runFrames.frames.Length > 0)
+        {
+            int frame = Mathf.FloorToInt(age * runFrames.framesPerSecond) % runFrames.frames.Length;
+            if (frame != displayedFrame) { loadingPlayer.sprite = runFrames.frames[frame]; displayedFrame = frame; }
         }
     }
     void SetCover(float cover)
     {
         group.alpha = cover;
+        if(loadingFootsteps!=null)loadingFootsteps.volume=.08f*cover*(loadingGroup!=null?loadingGroup.alpha:0);
     }
     IEnumerator Fade(float from, float to, float duration)
     {
@@ -91,16 +130,19 @@ public sealed class FrontEndTransition : MonoBehaviour
         // Let the recognized ink and its click sound finish before hiding them.
         yield return new WaitForSecondsRealtime(.45f);
         CutsceneLock.Lock(this); SceneMusicBridge.Begin();
-        var load = SceneManager.LoadSceneAsync(scene); load.allowSceneActivation = false;
-        yield return Fade(0, 1, .85f);
+        yield return Fade(0, 1, 1.05f);
         loadingStarted=Time.unscaledTime;loadingGroup.alpha=0;loadingGroup.gameObject.SetActive(true);
-        for(float t=0;t<2.4f;t+=Time.unscaledDeltaTime){loadingGroup.alpha=Mathf.SmoothStep(0,1,t/.2f);yield return null;}
+        if(loadingFootsteps.clip!=null)loadingFootsteps.Play();
+        var load = SceneManager.LoadSceneAsync(scene); load.allowSceneActivation = false;
+        for(float t=0;t<2.1f;t+=Time.unscaledDeltaTime){loadingGroup.alpha=Mathf.SmoothStep(0,1,t/.35f);SetCover(1);yield return null;}
+        loadingGroup.alpha=1;
         while (load.progress < .9f) yield return null;
         load.allowSceneActivation = true;
         while (!load.isDone) yield return null;
-        for(float t=0;t<.3f;t+=Time.unscaledDeltaTime){loadingGroup.alpha=1-Mathf.SmoothStep(0,1,t/.3f);yield return null;}
-        loadingGroup.gameObject.SetActive(false);
-        yield return null; yield return Fade(1, 0, 1.05f);
+        // Give the new scene its initial layout before revealing it, then fade everything together.
+        yield return null;yield return null;Canvas.ForceUpdateCanvases();
+        yield return Fade(1, 0, 1.35f);
+        loadingFootsteps.Stop();loadingGroup.gameObject.SetActive(false);
         CutsceneLock.Unlock(this); Destroy(gameObject);
     }
     IEnumerator QuitRoutine()
@@ -116,5 +158,5 @@ public sealed class FrontEndTransition : MonoBehaviour
         Application.Quit();
 #endif
     }
-    void OnDestroy() { CutsceneLock.Unlock(this); if (active == this) active = null; if(dotSprite!=null)Destroy(dotSprite);if(dotTexture!=null)Destroy(dotTexture); }
+    void OnDestroy() { if (silhouetteMaterial != null) Destroy(silhouetteMaterial); CutsceneLock.Unlock(this); if (active == this) active = null; }
 }

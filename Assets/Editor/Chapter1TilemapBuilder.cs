@@ -28,7 +28,7 @@ public static class Chapter1TilemapBuilder
 
     static readonly List<Vector3Int> positions=new List<Vector3Int>();
     static readonly List<TileBase> painted=new List<TileBase>();
-    static readonly Vector2[] profile={new Vector2(-12,0),new Vector2(12,0),new Vector2(28,-3),new Vector2(38,-5),new Vector2(43,-5),new Vector2(44,-1),new Vector2(49,-1),new Vector2(59,-7),new Vector2(72,-10),new Vector2(78,-12),new Vector2(89,-12),new Vector2(90,-7),new Vector2(96,-7),new Vector2(108,-15),new Vector2(116,-16),new Vector2(120,-16),new Vector2(126,-17),new Vector2(132,-18),new Vector2(148,-22),new Vector2(166,-25),new Vector2(181,-28),new Vector2(194,-30),new Vector2(198,-30),new Vector2(212,-31),new Vector2(218,-31),new Vector2(231,-34),new Vector2(248,-38),new Vector2(264,-40),new Vector2(283,-40),new Vector2(291,-43),new Vector2(299,-46),new Vector2(308,-48)};
+    static readonly Vector2[] profile={new Vector2(-12,0),new Vector2(10,0),new Vector2(14,-1),new Vector2(18,-1),new Vector2(22,-3),new Vector2(28,-3),new Vector2(32,-4),new Vector2(36,-5),new Vector2(43,-5),new Vector2(44,-1),new Vector2(50,-1),new Vector2(55,-4),new Vector2(61,-7),new Vector2(66,-7),new Vector2(72,-10),new Vector2(76,-12),new Vector2(89,-12),new Vector2(90,-7),new Vector2(97,-7),new Vector2(101,-9),new Vector2(105,-11),new Vector2(109,-14),new Vector2(112,-16),new Vector2(120,-16),new Vector2(126,-17),new Vector2(134,-17),new Vector2(138,-19),new Vector2(142,-20),new Vector2(148,-20),new Vector2(154,-22),new Vector2(159,-23),new Vector2(164,-23),new Vector2(170,-25),new Vector2(176,-25),new Vector2(181,-27),new Vector2(187,-29),new Vector2(191,-30),new Vector2(198,-30),new Vector2(212,-31),new Vector2(224,-31),new Vector2(228,-32),new Vector2(233,-33),new Vector2(239,-33),new Vector2(244,-35),new Vector2(249,-36),new Vector2(254,-38),new Vector2(262,-40),new Vector2(286,-40),new Vector2(291,-42),new Vector2(295,-44),new Vector2(300,-46),new Vector2(308,-48)};
     static int Height(int x){for(int i=1;i<profile.Length;i++)if(x<=profile[i].x)return Mathf.RoundToInt(Mathf.Lerp(profile[i-1].y,profile[i].y,Mathf.InverseLerp(profile[i-1].x,profile[i].x,x)));return -48;}
     static bool Gap(int x){return (x>=120&&x<126)||(x>=198&&x<212);}
 
@@ -127,14 +127,50 @@ public static class Chapter1TilemapBuilder
     }
     static void Forest()
     {
-        var random=new System.Random(1110);float x=-8;int n=0;
-        while(x<305)
+        var random=new System.Random(111005);int n=0;
+        float[] groves={-7,18,28,57,66,103,140,150,166,181,229,240,254,294,304};
+        foreach(float grove in groves)
         {
-            int ix=Mathf.FloorToInt(x);bool clear=(x>38&&x<51)||(x>77&&x<98)||(x>116&&x<129)||(x>196&&x<215)||(x>268&&x<285);
-            if(!Gap(ix)&&!clear){float h=4.7f+(float)random.NextDouble()*3.4f;bool far=n%3==0;var sr=Graphic("Tree_"+n,scenery,tree,new Vector3(x,Height(ix)+h*.5f-.12f),new Vector2(h*tree.bounds.size.x/tree.bounds.size.y,h),far?-25:-15);sr.color=far?new Color(.65f,.77f,.68f,.82f):new Color(.86f,.96f,.84f,1);sr.flipX=random.Next(2)==0;n++;}
-            x+=4.5f+(float)random.NextDouble()*4.3f;
+            int count=3+random.Next(3);
+            for(int j=0;j<count;j++)
+            {
+                float x=grove-3+j*1.75f+(float)random.NextDouble()*.8f;int ix=Mathf.FloorToInt(x);
+                bool clear=(x>37&&x<52)||(x>75&&x<99)||(x>115&&x<130)||(x>192&&x<225)||(x>266&&x<287);
+                if(Gap(ix)||clear||x>=307)continue;
+                bool far=j%3==0;float h=far?7.8f+(float)random.NextDouble()*3.2f:4.3f+(float)random.NextDouble()*3.1f;
+                float floor=Height(ix)-(Height(ix+1)==Height(ix)-1?.5f:0);
+                var sr=Graphic("Tree_"+n++,scenery,tree,new Vector3(x,floor+h*.5f-(far?1.15f:.12f)),new Vector2(h*tree.bounds.size.x/tree.bounds.size.y,h),far?-25:-15);
+                sr.color=far?new Color(.40f,.58f,.48f,.8f):new Color(.80f,.94f,.77f,1);sr.flipX=random.Next(2)==0;
+            }
         }
-        for(int i=0;i<17;i++){float px=17+i*16.4f;if(Gap((int)px)||px>268)continue;float d=.35f+(i%3)*.19f;var go=Node("GroundPebble_"+i,scenery,new Vector3(px,Height((int)px)+d*.38f));RoundStone(go,d,1);}
+
+    }
+
+    public static string RefineTerrain()
+    {
+        if(EditorApplication.isPlaying)throw new InvalidOperationException("플레이 모드를 종료하세요.");
+        var scene=UnityEngine.SceneManagement.SceneManager.GetActiveScene();if(!scene.path.EndsWith("Chapter1.unity"))throw new InvalidOperationException("Chapter1 씬을 먼저 여세요.");
+        mapRoot=GameObject.Find(MapName).transform;puzzles=mapRoot.Find("Puzzles_5개의_서로다른_구간");scenery=mapRoot.Find("BackgroundTrees_충돌없음");
+        var terrain=mapRoot.GetComponentInChildren<Tilemap>();soil=AssetDatabase.LoadAssetAtPath<Chapter1TerrainTile>(AssetsRoot+"/Tiles/AutoGrass_Soil.asset");down=AssetDatabase.LoadAssetAtPath<Tile>(AssetsRoot+"/Tiles/DownSlope_45.asset");
+        positions.Clear();painted.Clear();
+        for(int x=-12;x<308;x++)
+        {
+            if(Gap(x))continue;int h=Height(x),next=Height(x+1);
+            for(int y=-78;y<h;y++){positions.Add(new Vector3Int(x,y,0));painted.Add(next==h-1&&y==h-1?down:soil);}
+        }
+        terrain.ClearAllTiles();terrain.SetTiles(positions.ToArray(),painted.ToArray());terrain.CompressBounds();terrain.RefreshAllTiles();
+        var composite=terrain.GetComponent<CompositeCollider2D>();composite.generationType=CompositeCollider2D.GenerationType.Synchronous;terrain.GetComponent<TilemapCollider2D>().ProcessTilemapChanges();composite.GenerateGeometry();
+        art=AssetDatabase.LoadAssetAtPath<Material>(AssetsRoot+"/Terrain_Unlit.mat");tree=Sprite("나무");stone=Sprite("돌멩이");
+        foreach(Transform child in scenery.Cast<Transform>().ToArray())if(child.name!="CounterweightTree")Object.DestroyImmediate(child.gameObject);
+        Forest();
+        foreach(var cp in mapRoot.GetComponentsInChildren<Checkpoint>())
+        {
+            float floor=Height(Mathf.FloorToInt(cp.transform.position.x));var neon=cp.GetComponent<CheckpointNeon>();float delta=floor-neon.monument.bounds.min.y;cp.transform.position+=Vector3.up*delta;
+            var player=Object.FindFirstObjectByType<PlayerController>();float feet=player.transform.position.y-player.GetComponent<Collider2D>().bounds.min.y;cp.respawnOffset=new Vector2(-1.8f,floor+feet+.03f-cp.transform.position.y);
+        }
+        Physics2D.SyncTransforms();
+        PrefabUtility.SaveAsPrefabAsset(mapRoot.gameObject,AssetsRoot+"/Prefabs/Chapter1_EditableMap.prefab");EditorSceneManager.MarkSceneDirty(scene);EditorSceneManager.SaveScene(scene);AssetDatabase.SaveAssets();Selection.activeGameObject=terrain.gameObject;
+        return "Refined 320-unit mountain / 5 puzzle sites / wider flat approaches and landings / clustered forest";
     }
 
     static void Folder(string path){Directory.CreateDirectory(path);}

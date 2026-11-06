@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
@@ -256,16 +256,19 @@ public class Branch : MonoBehaviour
     }
 
     /// <summary>지정 위치에 나뭇가지를 똑바로 세운다. 단단한 발판/장애물이 되며, 회수 전까지 재사용 불가.</summary>
-    public void Plant(Vector2 position)
+    public void Plant(Vector2 position){Plant(position,Vector2.up);}
+    public void Plant(Vector2 position,Vector2 normal)
     {
         if (state != State.Held) return;
         if (sr != null) sr.enabled = true;
         col.enabled = true;
         SetPassThroughOwner(false); // 세운 즉시 단단하게 (밟을 수 있음)
-        transform.rotation = Quaternion.identity; // 똑바로
+        normal=normal.sqrMagnitude>.001f?normal.normalized:Vector2.up;
+        transform.rotation = Quaternion.FromToRotation(Vector3.up,normal);
+        rb.rotation=transform.eulerAngles.z; // follow the same ground normal as the preview
         rb.bodyType = RigidbodyType2D.Kinematic;
         // stickDepth만큼 바닥 속으로 파고들어 '꽂힌' 느낌. rb가 Interpolate라 rb.position까지 내려야 실제로 박힌다.
-        Vector2 sunk = position + Vector2.down * stickDepth;
+        Vector2 sunk = position - normal * stickDepth;
         rb.position = sunk;
         transform.position = sunk;
         rb.linearVelocity = Vector2.zero;
@@ -376,11 +379,12 @@ public class Branch : MonoBehaviour
         groundClip.enabled = buried;
         if (!buried) return;
         // 밑동이 stickDepth 만큼 꽂혀 있으므로 바닥 윗면 = 밑동 + stickDepth. 그 위만 보이게 마스크를 놓음
-        float groundTop = transform.position.y - WorldHalfHeight + stickDepth;
+        Vector3 up=transform.up;
+        Vector3 groundPoint=transform.position-up*(WorldHalfHeight-stickDepth);
         const float size = 20f;
         var mt = groundClip.transform;
-        mt.rotation = Quaternion.identity;
-        mt.position = new Vector3(transform.position.x, groundTop + size * 0.5f, transform.position.z);
+        mt.rotation = transform.rotation;
+        mt.position = groundPoint+up*(size*.5f);
         Vector3 ls = transform.lossyScale;
         mt.localScale = new Vector3(size / Mathf.Max(0.0001f, Mathf.Abs(ls.x)), size / Mathf.Max(0.0001f, Mathf.Abs(ls.y)), 1f);
         groundClip.frontSortingLayerID = groundClip.backSortingLayerID = sr.sortingLayerID;
