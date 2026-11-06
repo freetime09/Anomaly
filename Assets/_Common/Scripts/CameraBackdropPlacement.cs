@@ -8,6 +8,9 @@ public sealed class CameraBackdropPlacement:MonoBehaviour
  public float horizontalRepeats;
  public float horizonOffset=-.1375f;
  public bool followViewWidth;
+ public bool lockHorizon;
+ bool horizonReady;
+ float fixedBaseY;
  public Vector2 visibleX=new Vector2(-80,120);
  SpriteRenderer image;
  Sprite source;
@@ -44,7 +47,9 @@ public sealed class CameraBackdropPlacement:MonoBehaviour
  transform.position=new Vector3(c.x,c.y,transform.position.z);
  }else if(extension!=null){
  image.drawMode=SpriteDrawMode.Simple;
-  float baseY=c.y+h*horizonOffset,low=c.y-h*.5f-1;
+  if(!horizonReady){fixedBaseY=c.y+h*horizonOffset;horizonReady=true;}
+  float baseY=lockHorizon?fixedBaseY:c.y+h*horizonOffset;
+  float low=Mathf.Min(c.y-h*.5f-1,baseY);
   float placementWidth=followViewWidth?w*1.12f:worldWidth;
   float left=followViewWidth?c.x-placementWidth*.5f:worldLeft;
  float extra=baseY-low,total=worldHeight+extra;

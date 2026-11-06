@@ -48152,7 +48152,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: -98
+  m_SortingOrder: -95
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 39aa65349ef3a3242bb3abc707c5683d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -48199,6 +48199,7 @@ MonoBehaviour:
   horizontalRepeats: 2
   horizonOffset: -0.34
   followViewWidth: 0
+  lockHorizon: 1
   visibleX: {x: -80, y: 120}
 --- !u!1 &1090160724
 GameObject:
@@ -55183,7 +55184,7 @@ MonoBehaviour:
     fullScreen: 0
     driftSpeed: 0
     verticalShift: 0.055
-    orderOffset: 3
+    orderOffset: 2
   - renderer: {fileID: 1541963027}
     factor: 0.8
     heightScale: 0.8
@@ -56227,6 +56228,7 @@ MonoBehaviour:
   horizontalRepeats: 0
   horizonOffset: -0.43
   followViewWidth: 1
+  lockHorizon: 0
   visibleX: {x: -80, y: 120}
 --- !u!1001 &1567008443
 PrefabInstance:
@@ -69570,6 +69572,7 @@ MonoBehaviour:
   horizontalRepeats: 0
   horizonOffset: -0.1375
   followViewWidth: 0
+  lockHorizon: 0
   visibleX: {x: -80, y: 120}
 --- !u!1 &1750821220
 GameObject:

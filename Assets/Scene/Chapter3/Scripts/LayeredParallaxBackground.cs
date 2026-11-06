@@ -49,6 +49,7 @@ public class LayeredParallaxBackground : MonoBehaviour
 
     bool shown = true;
 
+
     void Start()
     {
         if (cam == null) cam = Camera.main;
