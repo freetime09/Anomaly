@@ -630,10 +630,13 @@ public class VaccineWall : MonoBehaviour
             }
             // 얇은 장애물 건너기: 주변 fitBridge 안에서 가장 넓은 값. 그다음 다음 구간 통로 앞에서 자르기
             int win = Mathf.Max(0, Mathf.RoundToInt(fitBridge / Mathf.Max(step, 1e-3f)));
+            float maxL = 0f, maxR = 0f;
             for (int k = 0; k < cnt; k++)
             {
                 float l = 0f, r = 0f;
                 for (int m = Mathf.Max(0, k - win); m <= Mathf.Min(cnt - 1, k + win); m++) { l = Mathf.Max(l, L[m]); r = Mathf.Max(r, R[m]); }
+                // 지나가며 넓어진 폭은 줄이지 않음 → 채움 옆선이 계단처럼 들쭉날쭉하지 않게
+                maxL = Mathf.Max(maxL, l); maxR = Mathf.Max(maxR, r); l = maxL; r = maxR;
                 Vector2 pt = legA[i] + legDir[i] * ((k + 0.5f) * step);
                 l = Quantize(ClampByLater(pt, perp, l, i));
                 r = Quantize(ClampByLater(pt, -perp, r, i));
@@ -649,6 +652,8 @@ public class VaccineWall : MonoBehaviour
                 else
                     list.Add(new Run { a0 = k * step, a1 = (k + 1) * step, left = l, right = r, killL = kl, killR = kr });
             }
+            // 시작점 뒤(화면 밖) 채움도 첫 자리 폭에 맞춤 (아래에 검은 띠가 안 남게)
+            if (i == 0 && depth > 0f && list.Count > 1) { list[0].left = list[1].left; list[0].right = list[1].right; }
         }
     }
 

@@ -40,6 +40,13 @@ public class Checkpoint : MonoBehaviour
     {
         var fr = other.GetComponentInParent<FallRespawn>();
         if (fr == null) return; // 플레이어(FallRespawn 보유)만 인식
+        Activate(fr);
+    }
+
+    /// <summary>이 체크포인트를 부활 지점으로 등록 (밟지 않아도 다른 스크립트가 불러 저장할 수 있음).</summary>
+    public void Activate(FallRespawn fr)
+    {
+        if (fr == null) return;
         Vector3 pos = transform.position + (Vector3)respawnOffset;
         if (fr.TrySetCheckpoint(order, pos)) // 새로 활성화될 때(앞으로 진행)만 true
         {

@@ -15,6 +15,8 @@ public class VaccineChaseTrigger : MonoBehaviour
     public VaccineWall wall;
     [Tooltip("Start 전용: 처음 밟을 때 재생할 추격 시작 연출 (비우면 바로 추격). 한 번 본 뒤엔 바로 추격")]
     public VaccineChaseIntro intro;
+    [Tooltip("Start 전용: 밟으면 이 체크포인트에 자동 저장 (나뭇가지 등으로 체크포인트를 건너뛰어도 저장되게)")]
+    public Checkpoint saveCheckpoint;
 
     void Awake()
     {
@@ -25,9 +27,11 @@ public class VaccineChaseTrigger : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (wall == null || other.GetComponentInParent<FallRespawn>() == null) return;
+        var fr = other.GetComponentInParent<FallRespawn>();
+        if (wall == null || fr == null) return;
         if (mode == Mode.Start)
         {
+            if (saveCheckpoint != null) saveCheckpoint.Activate(fr);
             if (intro != null && !intro.Played) intro.Play(wall);
             else if (intro == null || !intro.Playing) wall.Begin();
         }
