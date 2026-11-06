@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -219,6 +219,9 @@ public static class Chapter1TilemapBuilder
         var root=PrefabUtility.LoadPrefabContents(path);var tilemap=root.GetComponentInChildren<Tilemap>();tilemap.ClearAllTiles();
         for(int i=0;i<tiles.Length;i++){var r=tiles[i].sprite.rect;tilemap.SetTile(new Vector3Int((int)r.x/32,-(166-(int)r.y)/32,0),tiles[i]);}
         tilemap.SetTile(new Vector3Int(9,0),soil);tilemap.SetTile(new Vector3Int(9,-2),down);
+        // Keep both slope directions available when rebuilding the editable palette.
+        for(int i=0;i<tiles.Length;i++){string mirroredPath=AssetsRoot+"/Tiles/Mirrored_"+i.ToString("00")+".asset";var mirror=AssetDatabase.LoadAssetAtPath<Tile>(mirroredPath);if(mirror==null){mirror=ScriptableObject.CreateInstance<Tile>();AssetDatabase.CreateAsset(mirror,mirroredPath);}EditorUtility.CopySerialized(tiles[i],mirror);mirror.transform=Matrix4x4.Scale(new Vector3(-1,1,1))*tiles[i].transform;EditorUtility.SetDirty(mirror);var rect=tiles[i].sprite.rect;var cell=new Vector3Int(17-(int)rect.x/32,-(166-(int)rect.y)/32,0);tilemap.SetTile(cell,mirror);tilemap.SetTileFlags(cell,TileFlags.None);tilemap.SetTransformMatrix(cell,mirror.transform);}
+
         PrefabUtility.SaveAsPrefabAsset(root,path);PrefabUtility.UnloadPrefabContents(root);
     }
     static void MakeDraftSample()
