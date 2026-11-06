@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
@@ -163,12 +163,15 @@ public class Branch : MonoBehaviour
 
             // 벽(지형)에 막히면 통과하지 않고, 벽면을 타고 미끄러지며 조금씩 플레이어 쪽으로 돈다.
             // (collide-and-slide) 벽 정면에 막혀도 접선 방향으로 흘러 벽 가장자리를 돌아 나간다.
-            Vector2 next = MoveWithSlide(cur, dirN, step);
+            // Recall is spectral: terrain cannot trap the returning branch.
+            Vector2 side = new Vector2(-dirN.y, dirN.x);
+            float swirl = Mathf.Sin(Time.time * 11f) * .32f * Mathf.Clamp01(toDist / 1.5f);
+            Vector2 next = cur + (dirN + side * swirl) * step;
 
             rb.MovePosition(next);
             // 회전은 '플레이어 방향'만 바라봄 (실제 이동 방향으로 맞추면 미끄러질 때 매 프레임 홱홱 돌아 어지러움).
             if (dirN != Vector2.zero)
-                rb.MoveRotation(Mathf.Atan2(dirN.y, dirN.x) * Mathf.Rad2Deg - 90f);
+                rb.MoveRotation(rb.rotation + 420f * Time.fixedDeltaTime);
             if (Vector2.Distance(next, target) <= returnCatchDistance) SetHeld();
         }
     }
@@ -291,7 +294,7 @@ public class Branch : MonoBehaviour
         if (state == State.Held || state == State.Returning) return;
         if (ownerCol == null) { SetHeld(); return; } // 목표(플레이어)를 모르면 즉시 회수
         if (sr != null) sr.enabled = true;
-        if (col != null) col.enabled = false;   // 물리 충돌은 끄고, 이동은 레이캐스트로 벽에 막음(통과 X)
+        if (col != null) col.enabled = false;   // 회수 중에는 지형 충돌을 끄고 손까지 돌아온다.
         rb.bodyType = RigidbodyType2D.Kinematic;
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
