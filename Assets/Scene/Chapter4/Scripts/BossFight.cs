@@ -1774,6 +1774,7 @@ public class BossFight : MonoBehaviour
         if (defeated) return;
         StopAllCoroutines();
         ClearHazards();
+        ClearSlamBlocks(); // 내려찍기로 남은 블럭(ㄱ으로 부수는 것)도 다시 시작할 땐 없앰
         phase = 0; cracks = 0;
         if (eyePresentation != null) eyePresentation.EnterCombat();
         SetHearts(hearts);
@@ -2006,6 +2007,12 @@ public class BossFight : MonoBehaviour
         CutsceneLock.Unlock(this);
         SetSettingsGear(true); // 하트는 OnRespawned 에서 다시 꽉 차서 나타남
         OnRespawned(spawnPos); // 처음부터 (이 코루틴도 여기서 멈춤)
+    }
+
+    /// <summary>바닥에 남은 내려찍기 블럭을 모두 없앤다 (hazards 목록에서 빠져 있어 ClearHazards 로는 안 지워짐).</summary>
+    void ClearSlamBlocks()
+    {
+        foreach (var b in new List<BossSlamBlock>(BossSlamBlock.Active)) if (b != null) Destroy(b.gameObject);
     }
 
     void ClearHazards()

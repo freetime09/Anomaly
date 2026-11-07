@@ -9,6 +9,7 @@ public sealed class Chapter1FallingLog : MonoBehaviour, IDamageable, IPuzzleStat
     float angularSpeed;
     void Awake(){body=GetComponent<Rigidbody2D>();angularSpeed=Mathf.Abs(standingAngle-fallenAngle)/Mathf.Max(.1f,fallDuration);}
     void FixedUpdate(){if(body!=null&&!PauseMenu.IsPaused)body.MoveRotation(Mathf.MoveTowardsAngle(body.rotation,fallen?fallenAngle:standingAngle,angularSpeed*Time.fixedDeltaTime));}
+    public bool Fallen=>fallen;
     public void TakeHit(int damage,Vector2 direction){if(damage>0)fallen=true;}
     struct State {public bool fallen;public float angle;}
     public object SaveState(){return new State{fallen=fallen,angle=body!=null?body.rotation:transform.eulerAngles.z};}

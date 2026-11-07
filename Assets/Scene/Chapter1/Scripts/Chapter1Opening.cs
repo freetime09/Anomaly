@@ -152,11 +152,16 @@ public sealed class Chapter1Opening : MonoBehaviour
     IEnumerator Say(int index, float speed, float extra)
     {
         string text = lines[index];
-        yield return bubble.Say(text, speed);
-        yield return new WaitForSecondsRealtime(Mathf.Clamp(.8f + text.Length * .055f, 1.25f, 2.4f) + extra);
+        // 좌클릭: 나오는 중이면 끝까지 바로 보이기, 다 나왔으면 다음 대사
+        StartCoroutine(bubble.Say(text, speed));
+        while (bubble.IsTyping) { if (Clicked()) bubble.CompleteTyping(); yield return null; }
+        float wait = Mathf.Clamp(.8f + text.Length * .055f, 1.25f, 2.4f) + extra;
+        for (float t = 0; t < wait; t += Time.unscaledDeltaTime) { if (Clicked()) break; yield return null; }
         bubble.Hide();
         yield return new WaitForSecondsRealtime(.5f);
     }
+
+    static bool Clicked() => Input.GetMouseButtonDown(0) && !PauseMenu.IsPaused && !PauseMenu.IsPointerOnSettingsButton(Input.mousePosition);
 
     void MeasureOpaqueBounds()
     {

@@ -1008,7 +1008,7 @@ public class PlayerController : MonoBehaviour
         if(IsGrounded())
         {
             Bounds b=col.bounds;float ahead=(direction>0?b.max.x:b.min.x)+direction*.07f;
-            var hit=Physics2D.Raycast(new Vector2(ahead,b.min.y+maxStepHeight+.08f),Vector2.down,maxStepHeight+.16f,groundLayer);
+            var hit=RaycastSolid(new Vector2(ahead,b.min.y+maxStepHeight+.08f),Vector2.down,maxStepHeight+.16f,groundLayer);
             if(hit.collider!=null&&!hit.collider.isTrigger&&hit.normal.y<.995f&&hit.normal.y>.5f&&hit.normal.x*direction<0&&Vector2.Angle(hit.normal,Vector2.up)<=maxSlopeAngle+.1f)
             {normal=hit.normal;return true;}
         }
@@ -1081,7 +1081,7 @@ public class PlayerController : MonoBehaviour
         // 턱 0.06~0.12 앞에서 멈춰 못 올라가는 데드존이 생김).
         float aheadX = (dir > 0 ? b.max.x : b.min.x) + dir * 0.14f;
         Vector2 top = new Vector2(aheadX, feetY + maxStepHeight + 0.05f);
-        RaycastHit2D d = Physics2D.Raycast(top, Vector2.down, maxStepHeight + 0.1f, groundLayer);
+        RaycastHit2D d = RaycastSolid(top, Vector2.down, maxStepHeight + 0.1f, groundLayer);
         if (d.collider == null || d.normal.y < .995f) return -1f;        // 앞에 올라설 바닥 없음(낭떠러지/트인 공간)
         float rise = d.point.y - feetY;
         return (rise > 0.02f && rise <= maxStepHeight) ? rise : -1f; // 계단 높이 범위면 그 높이, 아니면 -1
@@ -1091,6 +1091,23 @@ public class PlayerController : MonoBehaviour
     /// 콜라이더 옆으로 여러 높이에서 앞으로 레이를 쏴, 맞은 면의 각도가 maxSlopeAngle보다 크면(가파른 벽) 막는다.
     /// 걸을 수 있는 경사면(≤ maxSlopeAngle)은 벽으로 치지 않아 그대로 타고 올라간다.
     /// 레이 시작점은 콜라이더 안쪽(플레이어는 Ground 레이어가 아니라 자기 자신엔 안 걸림)이라 지형 면 법선을 깨끗이 얻는다.</summary>
+    static readonly RaycastHit2D[] solidRayBuf = new RaycastHit2D[16];
+
+    /// <summary>Physics2D.Raycast 와 같지만, 플레이어와 충돌을 끈 콜라이더(잡고 끄는 Ground 레이어 상자 등)는 건너뛴다.
+    /// 안 그러면 상자를 잡고 앞으로 밀 때 상자를 벽/턱으로 보고 멈춘다.</summary>
+    RaycastHit2D RaycastSolid(Vector2 origin, Vector2 direction, float distance, int mask)
+    {
+        int n = Physics2D.RaycastNonAlloc(origin, direction, solidRayBuf, distance, mask);
+        RaycastHit2D best = default(RaycastHit2D);
+        for (int i = 0; i < n; i++)
+        {
+            var h = solidRayBuf[i];
+            if (h.collider == null || Physics2D.GetIgnoreCollision(h.collider, col)) continue;
+            if (best.collider == null || h.distance < best.distance) best = h;
+        }
+        return best;
+    }
+
     bool WallAhead(int dir)
     {
         Bounds b = col.bounds;
@@ -1106,7 +1123,7 @@ public class PlayerController : MonoBehaviour
         float[] hs = { b.min.y + 0.05f, b.center.y, b.max.y - 0.1f };
         for (int i = 0; i < hs.Length; i++)
         {
-            RaycastHit2D hit = Physics2D.Raycast(new Vector2(startX, hs[i]), castDir, dist, groundLayer);
+            RaycastHit2D hit = RaycastSolid(new Vector2(startX, hs[i]), castDir, dist, groundLayer);
             if (hit.collider == null || hit.fraction <= 0f || hit.normal == Vector2.zero) continue; // 안 맞거나 겹침 글리치 → 통과
             if (Vector2.Angle(hit.normal, Vector2.up) > maxSlopeAngle) return true; // 가파른 벽
         }

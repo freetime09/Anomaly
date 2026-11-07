@@ -6,6 +6,7 @@ using UnityEngine;
 ///  1) $1 템플릿 인식 우선 — §, ★ 같은 복잡한 모양 (지금은 인식 시 콘솔 로그만).
 ///  2) 매칭이 없으면 기존 방향 시퀀스로 폴백 — [오른쪽]=오른쪽이동, [왼쪽]=왼쪽이동, [위]=점프, [아래,오른쪽]=오른쪽 슬라이드(ㄴ), [아래,왼쪽]=왼쪽 슬라이드(반대 ㄴ).
 ///
+/// 보스 그림 녹화: F1 → bossRecordSequence(§)만 bossRecordsPerShape 번 그려 같은 파일에 추가 (다시 F1 = 지금까지 것만 저장).
 /// 녹화: F9 → recordSequence 모양들을 recordsPerShape 번씩 차례로 그리면 공용 녹화 파일에 추가된다.
 ///   (녹화 중 Backspace = 직전 것 지우기, F9 = 지금까지 그린 것만 저장하고 끝)
 ///
@@ -65,6 +66,11 @@ public class GestureRecognizer : MonoBehaviour
     public string[] recordSequence = { "O(상호작용)", "N", "9", "S", "⋉" };
     [Tooltip("모양마다 몇 번씩 그릴지 (모두 같은 개수 → 한 모양으로 쏠리지 않음)")]
     public int recordsPerShape = 4;
+    [Header("보스 그림 녹화 (F1) — 보스전 § 만 더 그려서 추가")]
+    [Tooltip("F1 로 녹화할 모양")]
+    public string[] bossRecordSequence = { "§" };
+    [Tooltip("F1 녹화 때 모양마다 몇 번씩 그릴지")]
+    public int bossRecordsPerShape = 4;
 
     [Header("제스처별 궤적 색 (기본 이동/점프는 흰색 유지)")]
     [Tooltip("N 나뭇가지 던지기")]  public Color colorThrow    = new Color(1f, 0.55f, 0.1f);   // 주황
@@ -131,7 +137,10 @@ public class GestureRecognizer : MonoBehaviour
     }
 
     readonly List<UnistrokeRecognizer.Template> templates = new List<UnistrokeRecognizer.Template>();
-    bool fullRecording;   // F9 전체 녹화 중
+    bool fullRecording;   // F9 전체 녹화 / F1 보스 그림 녹화 중
+    bool bossRecording;   // 지금 녹화가 F1(보스 그림)인가
+    string[] RecSeq => bossRecording ? bossRecordSequence : recordSequence;
+    int RecPer => bossRecording ? bossRecordsPerShape : recordsPerShape;
     bool showCheck;       // F10 템플릿 확인 창
     int sharedCount;      // F10 확인용: 공용 파일에서 읽은 개수
     int myCopyCount;      // F10 확인용: 이 PC 사본 개수
@@ -214,7 +223,16 @@ public class GestureRecognizer : MonoBehaviour
 
         // 녹화 조작
         if (Input.GetKeyDown(KeyCode.F10)) showCheck = !showCheck; // 템플릿 확인 창 열기/닫기
-        if (Input.GetKeyDown(KeyCode.F9))
+        if (Input.GetKeyDown(KeyCode.F1) && !(fullRecording && !bossRecording))
+        {
+            if (fullRecording)
+            {
+                if (recNew.Count > 0) FinishFullRecording();
+                else { fullRecording = false; Debug.Log("[녹화] 보스 그림 녹화 그만둠 — 그린 게 없어 저장 안 함."); }
+            }
+            else StartFullRecording(true);
+        }
+        if (Input.GetKeyDown(KeyCode.F9) && !(fullRecording && bossRecording))
         {
             if (fullRecording)
             {
@@ -510,20 +528,21 @@ public class GestureRecognizer : MonoBehaviour
 
     // ── 전체 녹화 (F9) ──────────────────────────────
 
-    void StartFullRecording()
+    void StartFullRecording(bool boss = false)
     {
-        if (recordSequence == null || recordSequence.Length == 0 || recordsPerShape <= 0) return;
+        bossRecording = boss;
+        if (RecSeq == null || RecSeq.Length == 0 || RecPer <= 0) return;
         fullRecording = true;
         recIndex = 0;
         recNew.Clear();
-        Debug.Log($"[녹화] 전체 녹화 시작 — 모양 {recordSequence.Length}개 × {recordsPerShape}번. 첫 모양: '{recordSequence[0]}'");
+        Debug.Log($"[녹화] 전체 녹화 시작 — 모양 {RecSeq.Length}개 × {RecPer}번. 첫 모양: '{RecSeq[0]}'");
     }
 
     int RecordedCount(string name) { return recNew.FindAll(x => x.name == name).Count; }
 
     void RecordForSequence()
     {
-        string name = recordSequence[recIndex];
+        string name = RecSeq[recIndex];
         if (points.Count < 8)
         {
             Debug.LogWarning("[녹화] 획이 너무 짧아 저장 안 함 — 좀 더 크게 그려주세요.");
@@ -533,12 +552,12 @@ public class GestureRecognizer : MonoBehaviour
         recNew.Add(new UnistrokeRecognizer.Template { name = name, points = UnistrokeRecognizer.Normalize(points) });
         FlashTrail(TemplateColor(name));
         int n = RecordedCount(name);
-        Debug.Log($"[녹화] '{name}' {n}/{recordsPerShape}");
-        if (n >= recordsPerShape)
+        Debug.Log($"[녹화] '{name}' {n}/{RecPer}");
+        if (n >= RecPer)
         {
             recIndex++;
-            if (recIndex >= recordSequence.Length) FinishFullRecording();
-            else Debug.Log($"[녹화] 다음 모양: '{recordSequence[recIndex]}'");
+            if (recIndex >= RecSeq.Length) FinishFullRecording();
+            else Debug.Log($"[녹화] 다음 모양: '{RecSeq[recIndex]}'");
         }
     }
 
@@ -549,9 +568,9 @@ public class GestureRecognizer : MonoBehaviour
         var last = recNew[recNew.Count - 1];
         recNew.RemoveAt(recNew.Count - 1);
         // 앞 모양으로 넘어간 직후라면 그 모양으로 돌아감
-        int idx = System.Array.IndexOf(recordSequence, last.name);
+        int idx = System.Array.IndexOf(RecSeq, last.name);
         if (idx >= 0) recIndex = idx;
-        Debug.Log($"[녹화] 직전 '{last.name}' 지움 — 지금 '{recordSequence[recIndex]}' {RecordedCount(recordSequence[recIndex])}/{recordsPerShape}");
+        Debug.Log($"[녹화] 직전 '{last.name}' 지움 — 지금 '{RecSeq[recIndex]}' {RecordedCount(RecSeq[recIndex])}/{RecPer}");
     }
 
     /// <summary>이번 녹화를 공용 파일(하나, 모든 사람 것이 쌓임)에 추가하고, 이 PC 사본에도 추가한다.
@@ -951,11 +970,12 @@ public class GestureRecognizer : MonoBehaviour
         style.normal.textColor = Color.red;
         if (fullRecording)
         {
-            string name = recordSequence[recIndex];
+            string name = RecSeq[recIndex];
+            string key = bossRecording ? "F1" : "F9";
             GUI.Label(new Rect(110, 14, 1200, 34),
-                $"● 전체 녹화 ({recIndex + 1}/{recordSequence.Length}) — '{name}' 그리기 {RecordedCount(name) + 1}/{recordsPerShape}번째", style);
+                $"● {(bossRecording ? "보스 그림 녹화" : "전체 녹화")} ({recIndex + 1}/{RecSeq.Length}) — '{name}' 그리기 {RecordedCount(name) + 1}/{RecPer}번째", style);
             style.fontSize = 16; style.fontStyle = FontStyle.Normal;
-            GUI.Label(new Rect(110, 48, 1200, 26), "우클릭: 이번 획 취소   Backspace: 직전 것 지우기   F9: 지금까지 그린 것만 저장하고 끝", style);
+            GUI.Label(new Rect(110, 48, 1200, 26), $"우클릭: 이번 획 취소   Backspace: 직전 것 지우기   {key}: 지금까지 그린 것만 저장하고 끝", style);
         }
     }
 }

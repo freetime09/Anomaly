@@ -179228,7 +179228,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4585a089dd6e48f4eaaad8ae70025e4f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Checkpoint
-  order: 4
+  order: 6
   respawnOffset: {x: -1.8, y: 0.037829064}
   activateClip: {fileID: 8300000, guid: 3639da52e855a9a439b074422573896a, type: 3}
   sfxVolume: 1
@@ -179266,7 +179266,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 29.5, y: -7.32}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -193002,6 +193002,7 @@ GameObject:
   m_Component:
   - component: {fileID: 948353596}
   - component: {fileID: 948353597}
+  - component: {fileID: 948353598}
   m_Layer: 0
   m_Name: RoundStoneArt
   m_TagString: Untagged
@@ -193018,8 +193019,8 @@ Transform:
   m_GameObject: {fileID: 948353595}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 10.666666, y: 10.666666, z: 1}
+  m_LocalPosition: {x: 0.21, y: 0.4, z: 0}
+  m_LocalScale: {x: 12, y: 12, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 618130705}
@@ -193083,6 +193084,23 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &948353598
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 948353595}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4dbfa8bacdfcd1b4fa0fab0b3c5bce8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteOutlineGlow
+  target: {fileID: 948353597}
+  color: {r: 1, g: 0.86, b: 0.35, a: 1}
+  thickness: 0.06
+  pulseSpeed: 2.2
+  minAlpha: 0.35
 --- !u!1 &952718851
 GameObject:
   m_ObjectHideFlags: 0
@@ -203868,7 +203886,7 @@ Transform:
   m_GameObject: {fileID: 1509897390}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.24, z: 0}
+  m_LocalPosition: {x: -47.879, y: 8.818, z: 0}
   m_LocalScale: {x: 4, y: 4, z: 4}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -204125,6 +204143,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1535842744}
   - component: {fileID: 1535842745}
+  - component: {fileID: 1535842746}
   m_Layer: 0
   m_Name: OneIntactLog
   m_TagString: Untagged
@@ -204206,6 +204225,23 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &1535842746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1535842743}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4dbfa8bacdfcd1b4fa0fab0b3c5bce8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteOutlineGlow
+  target: {fileID: 1535842745}
+  color: {r: 1, g: 0.86, b: 0.35, a: 1}
+  thickness: 0.06
+  pulseSpeed: 2.2
+  minAlpha: 0.35
 --- !u!1 &1539619966
 GameObject:
   m_ObjectHideFlags: 0
@@ -389051,7 +389087,7 @@ GameObject:
   - component: {fileID: 1642669492}
   - component: {fileID: 1642669491}
   m_Layer: 0
-  m_Name: Checkpoint_5
+  m_Name: Checkpoint_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -389164,7 +389200,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -47.96, y: 8.95}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -394343,7 +394379,7 @@ Transform:
   m_GameObject: {fileID: 1901388977}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -15.79, y: 1.79, z: 0}
+  m_LocalPosition: {x: 29.6, y: -7.2, z: 0}
   m_LocalScale: {x: 4, y: 4, z: 4}
   m_ConstrainProportionsScale: 0
   m_Children: []
